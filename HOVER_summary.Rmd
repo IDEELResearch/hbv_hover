@@ -1,0 +1,440 @@
+---
+title: "HOVER data summary"
+output:
+  html_document:
+    body_placement: left
+    code_folding: hide
+    toc_float:                                                             
+      collapse: true                                                      
+      smooth_scroll: true 
+header-includes:
+  - \usepackage{titling}
+  - \pretitle{\begin{flushleft}}
+  - \posttitle{\end{flushleft}}
+---
+
+```{r setup, include=FALSE, warning=FALSE, echo=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+
+options(dplyr.summarise.inform = FALSE)
+
+library(tidyverse)
+library(knitr)
+library(stringr)
+library(viridis)
+library(sf)
+library(tmap)    # for static and interactive maps
+library(leaflet) # for interactive maps
+library(tmaptools)
+library(OpenStreetMap)
+library(REDCapR)
+library(readr)
+
+drc_colors <- c("#007fff", 	"#ce102f", 	"#f7d618")
+# dichot_colors <- scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)
+# dichot_colors <- c(viridis(1, begin=0.1,end = 0.1),viridis(1, begin=0.58,end = 0.58) )
+
+# read data
+# API route
+data0 <- redcap_read_oneshot(redcap_uri = "https://global.redcap.unc.edu/api/",
+                         token = read_file("hover_api.txt"))$data
+# backup route via export/import
+# data0 <- read.csv('ParrHOVERHBV_DATA_2021-03-04_0850.csv')
+
+#subset data to all valid IDs
+# remove duplicate Menage1 
+data1<- data0 %>% 
+  dplyr::filter(hrhhid!="Menage1")
+  #dplyr::mutate(hrhhid=toupper(hrhhid)) %>% 
+
+# select household entries
+hhdata1 <- data1[(is.na(data1$redcap_repeat_instrument)), ]
+# for hh dataset, select only hh variables
+hhdata1 <- hhdata1 %>% 
+  select(starts_with("h"), "questionnaire_menage_complete")
+# table(hhdata1$hxcoord, useNA = "always") #check if any non-missing GPS coords of hh are same (duplicate hh)
+# save GPS coords as numeric
+hhdata1$hxcoord <- as.numeric(hhdata1$hxcoord)
+hhdata1$hycoord <- as.numeric(hhdata1$hycoord)
+
+# select individual entries
+inddata1 <- data1[!is.na(data1$redcap_repeat_instrument),] #data1$redcap_repeat_instrument=="questionnaire_individuel"
+# select only individual variables
+inddata1 <- inddata1 %>% 
+  select("hrhhid", "redcap_repeat_instance", "participant_code", starts_with("hr"), starts_with("i"))
+
+# add index mother HBV status (HBV status of hh)
+inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid", "h10_hbv_rdt")], by = "hrhhid")
+
+inddata1 <- inddata1 %>% relocate("h10_hbv_rdt", .after = "participant_code")
+
+# source("0_HOVER_CleaningData.R")
+```
+
+<br> 
+
+```{r warning=FALSE, echo=TRUE}
+downloaddate0=as.Date(Sys.Date(),format="%Y-%m-%d")
+downloaddate=format(downloaddate0, format="%B %d %Y")
+# total hh enrolled
+totalhh_enrolled <- nrow(hhdata1)
+
+# counts by HBV status
+hhdenom_hbvpos <- sum(hhdata1$h10_hbv_rdt==1 & !is.na(hhdata1$hrhhid))
+hhdenom_hbvneg <- sum(hhdata1$h10_hbv_rdt==0 & !is.na(hhdata1$hrhhid))
+```
+
+#### From REDCap data downloaded on `r downloaddate`
+
+***
+
+#### Household enrollments (n=`r totalhh_enrolled`, `r hhdenom_hbvpos` HBV+ and `r hhdenom_hbvneg` HBV- index mothers)
+
+
+```{r echo=FALSE, out.width="50%", echo=TRUE}
+hhdata1$h10_hbv_rdt <- as.factor(hhdata1$h10_hbv_rdt)
+
+hhenrolhbvstat <- hhdata1 %>% 
+  dplyr::filter(!is.na(hrhhid)) %>% 
+  dplyr::group_by(h10_hbv_rdt) %>% 
+  dplyr::summarise(n=n()) %>% 
+  ggplot(aes(x=h10_hbv_rdt, y=n, fill=h10_hbv_rdt))+
+  geom_bar(stat = "identity", width = 0.5)+
+  geom_text(aes(x=h10_hbv_rdt, y=n+2 ,label = n))+
+  geom_hline(yintercept=100, size=2)+
+  labs(x="Index mother HBV status", y="Enrollments", fill="") +
+  scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  theme_bw()+
+  ggtitle("Enrolled households (target: 100 in each group)")
+
+hhenrolhbvstat
+
+
+# missing data for below
+ind_misspartcode_ct <- sum(is.na(inddata1$participant_code))
+ind_misspartcode <- data.frame(inddata1[is.na(inddata1$participant_code),])
+hhID_indpartcodeNA <- table(ind_misspartcode$hrhhid)
+# count of ind entries missing identifying information
+ind_miss_3 <- sum(is.na(inddata1$participant_code) & is.na(inddata1$hrname_last) &is.na(inddata1$hrname_first))
+# Drop empty entries
+inddata1 <- inddata1[!is.na(inddata1$participant_code) & !is.na(inddata1$hrname_last) & !is.na(inddata1$hrname_first),]
+# total individuals enrolled
+totalind_enrolled <- nrow(inddata1)
+```
+
+
+```{r echo=FALSE, out.width="50%", echo=F, eval=F}
+# keeping this code chunk for creating matrix and plot of sum counts
+totalhh_enrolled_df <- data.frame(totalhh_enrolled)
+current_fortarget <- data.frame(c(hhdenom_hbvpos, hhdenom_hbvneg))
+names(current_fortarget)[1] <- "currentnos"
+current_fortarget$hbvstat <- c("HBVpos", "HBVneg")
+
+ggplot(current_fortarget)+
+  geom_bar(stat = "identity", aes(x=hbvstat, y=currentnos, fill=hbvstat))+
+  scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  geom_hline(yintercept=100)+
+  labs(x="Household index mother HBV status", y="Enrollments", fill="") +
+  ggtitle("Progress to target household enrollment")+
+  theme_bw()+
+  theme(legend.position = "none")
+
+```
+
+#### Missing Data:  
+
+`r ind_misspartcode_ct` individual enrollments are missing for "participant code," `r ind_miss_3` missing for first three survey questions.  
+
+##### Household IDs of entries with missing participant codes
+
+```{r echo=FALSE, echo=TRUE}
+hhID_indpartcodeNA
+```
+
+##### Household IDs of entries with missing participant code but non-missing subsequent questions
+
+```{r echo=FALSE, echo=TRUE}
+table(ind_misspartcode$hrhhid[!is.na(ind_misspartcode$hr3_relationship)])
+```
+
+
+#### Individuals enrolled by index mother HBV status (n=`r totalind_enrolled`, excluding `r ind_miss_3` with empty entries) 
+
+```{r echo=FALSE, warning=FALSE, out.width="50%", echo=TRUE}
+inddata1$h10_hbv_rdt <- as.factor(inddata1$h10_hbv_rdt)
+
+ind_hh_hbvstat <- inddata1 %>% 
+  dplyr::filter(!is.na(hrhhid)) %>% 
+  dplyr::group_by(h10_hbv_rdt) %>% 
+  dplyr::summarise(n=n()) %>% 
+  ggplot(aes(x=h10_hbv_rdt, y=n, fill=h10_hbv_rdt))+
+  geom_bar(stat = "identity", width = 0.5)+
+  geom_text(aes(x=h10_hbv_rdt, y=n+1.5 ,label = n))+
+  labs(x="Enrolled participants by index mother HBV status", y="Enrollments", fill="") +
+  scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  theme_bw()
+ind_hh_hbvstat
+```
+
+
+
+```{r echo=FALSE, warning=FALSE, echo=TRUE}
+
+# RDT data
+ind_rdtdone <- sum(inddata1$i27_rdt_done==1, na.rm = TRUE)
+ind_rdtnotdone <- sum(inddata1$i27_rdt_done ==0 & !is.na(inddata1$hrhhid), na.rm = TRUE)
+ind_rdtNA <- sum(is.na(inddata1$i27_rdt_done) & !is.na(inddata1$hrhhid), na.rm = TRUE)
+
+```
+
+#### RDT data
+
+`r ind_rdtdone` RDTs done, `r ind_rdtnotdone` RDTs not done (reasons below), and `r ind_rdtNA` missing.
+
+```{r echo=FALSE, warning=FALSE, echo=TRUE}
+table(inddata1$i27_rdt_notdone_reason[inddata1$i27_rdt_done==0])
+```
+
+
+#### Individual HBV RDT results
+
+```{r echo=FALSE, warning=FALSE, out.width="50%", echo=TRUE}
+inddata1$i27a_rdt_result <- as.factor(inddata1$i27a_rdt_result)
+inddata1$participant_code <- as.numeric(inddata1$participant_code)
+
+ind_hbvstat <- inddata1 %>%
+  dplyr::filter(i27_rdt_done==1) %>% 
+  dplyr::group_by(h10_hbv_rdt, i27a_rdt_result) %>% 
+  dplyr::summarise(n=n()) %>% 
+  ggplot(aes(fill=i27a_rdt_result, x=h10_hbv_rdt, y=n))+
+  geom_bar(position = "dodge", stat="identity")+
+  geom_text(aes(x=h10_hbv_rdt, y=n+1 ,label = n), position=position_dodge(width=0.9))+
+  labs(x="Index mother HBV status", fill="RDT result")+
+  scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  ggtitle("HBV RDT result of RDTs completed")+
+  theme(panel.background = element_blank())
+
+ind_hbvstat
+
+ind_hbvstat_noindex <- inddata1 %>%
+  dplyr::filter(i27_rdt_done==1 & hr3_relationship!=1) %>% 
+  dplyr::group_by(h10_hbv_rdt, i27a_rdt_result) %>% 
+  dplyr::summarise(n=n()) %>% 
+  ggplot(aes(fill=i27a_rdt_result, x=h10_hbv_rdt, y=n))+
+  geom_bar(position = "dodge", stat="identity")+
+  geom_text(aes(x=h10_hbv_rdt, y=n+1 ,label = n), position=position_dodge(width=0.9))+
+  labs(x="Index mother HBV status", fill="RDT result")+
+  scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  ggtitle("HBV RDT result of non-index mothers")+
+  theme(panel.background = element_blank())
+
+ind_hbvstat_noindex
+```
+
+
+#### Non-index mother family member with positive RDT
+(3 = Son or daughter, 99 = Refused to answer)
+
+```{r echo=FALSE, warning=FALSE, out.width="50%", echo=TRUE}
+table(inddata1$hrhhid[inddata1$i27a_rdt_result==1 &inddata1$hr3_relationship!=1], inddata1$hr3_relationship[inddata1$i27a_rdt_result==1 &inddata1$hr3_relationship!=1])
+```
+
+#### Age (years) of RDT+ participants (non-index mothers)
+
+```{r echo=FALSE, warning=FALSE, out.width="50%", echo=TRUE}
+# age
+inddata1$age_combined <- ifelse(inddata1$hr7a_month_year==0, as.numeric(inddata1$hr7_age_year), inddata1$hr7_age_mois/12)
+
+table(inddata1$age_combined[inddata1$i27a_rdt_result==1 &inddata1$hr3_relationship!=1])
+```
+
+
+***
+
+#### Age distribution
+
+```{r echo=FALSE, warning=FALSE, out.width="50%", echo=TRUE}
+# Age 
+
+age_dist <- ggplot(inddata1)+
+  geom_histogram(aes(x=age_combined, fill=h10_hbv_rdt), bins = 40)+
+  labs(x="Age (in years)", fill="HH HBV status")+
+  scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  ggtitle("Age distribution by index mother HBV status")
+
+age_dist
+```
+
+#### Sex of enrollees
+
+```{r echo=FALSE, warning=FALSE, out.width="50%", echo=TRUE}
+# Sex 
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr4_sex_f=factor(
+    inddata1$hr4_sex, 
+    levels = c(0, 1),
+    labels = c("Male", "Female")))
+table(inddata1$hr4_sex_f)
+
+ggplot(inddata1, aes(fill=hr4_sex_f, x=h10_hbv_rdt))+
+  geom_bar(position = "dodge")+
+  labs(x="Index mother HBV status", fill="")+
+  #scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  ggtitle("Sex of enrollees by hh HBV status")+
+  theme(panel.background = element_blank())
+
+```
+
+#### Map of enrolled households
+
+```{r echo=FALSE, warning=FALSE, echo=TRUE}
+# latitudes are below equator, so need to be negative decimal degrees
+hhdata1$hxcoord <- (hhdata1$hxcoord)*-1
+hover_gps = st_as_sf(hhdata1 , coords = c("hycoord", "hxcoord"), crs = 4326)  
+hover_gps <- subset(hover_gps, select=c( "h10_hbv_rdt" , "hrhhid","geometry"))
+hover_gps$h10_hbv_rdt <-as.factor(hover_gps$h10_hbv_rdt)
+# interactive map
+tmap_mode("view")
+tm_basemap("OpenStreetMap") +
+  tm_shape(st_jitter(hover_gps, factor=0.005)) + 
+  tm_dots(col = as.factor("h10_hbv_rdt"), palette=c("darkslateblue","violetred2"),id="hrhhid") #popup.vars=("HH ID"="hrhhid")
+
+## static map
+# tmap_mode("plot")
+#osm <- read_osm(st_bbox(hover_gps)+c(-0.2,-0.2,0.2,0.2))
+#tm_shape(osm) +
+#  tm_rgb() +
+#tm_shape(hover_gps) +
+#  tm_dots("red", size = 0.5)
+
+```
+
+#### Other questions of interest
+
+```{r echo=FALSE, warning=FALSE, out.width="50%", echo=TRUE}
+# Vaccination 
+vacc_elig <- sum(inddata1$i39_vaccine_eligible==1)
+vacc_consent <- sum(inddata1$i39a_vac_consent[inddata1$i39_vaccine_eligible==1])
+vacc_noconsent <- sum(inddata1$i39a_vac_consent==0 & inddata1$i39_vaccine_eligible==1)
+# table(inddata1$i39_vac_whynot) # need to code these reasons
+```
+
+##### Vaccination
+`r vacc_elig` are eligible for the HBV vaccination, `r vacc_consent` gave consent to receive it. `r vacc_noconsent` did not give consent.
+
+```{r echo=FALSE, warning=FALSE, out.width="50%", echo=TRUE}
+# reasons consent not given
+ table(inddata1$i39_vac_whynot) # need to code these reasons
+```
+
+##### HBV potential exposures
+
+```{r echo=F,out.width="50%", echo=TRUE}
+# Shared razors
+inddata1$i14_shared_razor <- as.factor(inddata1$i14_shared_razor)
+
+ggplot(inddata1, aes(fill=i14_shared_razor, x=h10_hbv_rdt))+
+  geom_bar(position = "dodge")+
+  labs(x="Index mother HBV status", fill="")+
+  scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  ggtitle("Shared razors by hh HBV status")+
+  theme(panel.background = element_blank())
+
+# shared nail clippers
+inddata1$i15_shared_nailclippers <- as.factor(inddata1$i15_shared_nailclippers)
+
+ggplot(inddata1, aes(fill=i15_shared_nailclippers, x=h10_hbv_rdt))+
+  geom_bar(position = "dodge")+
+  labs(x="Index mother HBV status", fill="")+
+  scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  ggtitle("Shared nail clippers by hh HBV status")+
+  theme(panel.background = element_blank())
+
+# Transfusion 
+inddata1$i8_transfusion <- as.factor(inddata1$i8_transfusion)
+
+ggplot(inddata1, aes(fill=i8_transfusion, x=h10_hbv_rdt))+
+  geom_bar(position = "dodge")+
+  labs(x="Index mother HBV status", fill="")+
+  scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  ggtitle("Transfusion by hh HBV status")+
+  theme(panel.background = element_blank())
+
+#  i9_iv_drug_use
+
+inddata1$i9_iv_drug_use <- as.factor(inddata1$i9_iv_drug_use)
+
+ggplot(inddata1, aes(fill=i9_iv_drug_use, x=h10_hbv_rdt))+
+  geom_bar(position = "dodge")+
+  labs(x="Index mother HBV status", fill="")+
+  scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  ggtitle("IVDU by hh HBV status")+
+  theme(panel.background = element_blank())
+# which drug
+table(inddata1$i9a_iv_durg_use_list)
+
+#  i10_street_salon
+
+inddata1$i10_street_salon <- as.factor(inddata1$i10_street_salon)
+
+ggplot(inddata1, aes(fill=i10_street_salon, x=h10_hbv_rdt))+
+  geom_bar(position = "dodge")+
+  labs(x="Index mother HBV status", fill="")+
+  scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  ggtitle("Street salon by hh HBV status")+
+  theme(panel.background = element_blank())
+
+
+#  i10_street_salon times per month
+#table(inddata1$i10a_street_salon_number)
+##NEEDS FIXING
+# ggplot(inddata1, aes(fill=i10a_street_salon_number, x=h10_hbv_rdt))+
+#  geom_bar(position = "dodge")+
+#  labs(x="Index mother HBV status", fill="")+
+#  scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+#  ggtitle("Street salon visits per month hh HBV status")+
+#  theme(panel.background = element_blank())
+
+# i11_manucure outside home
+inddata1$i11_manucure <- as.factor(inddata1$i11_manucure)
+
+ggplot(inddata1, aes(fill=i11_manucure, x=h10_hbv_rdt))+
+  geom_bar(position = "dodge")+
+  labs(x="Index mother HBV status", fill="")+
+  scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  ggtitle("Manicure outside home by hh HBV status")+
+  theme(panel.background = element_blank())
+
+# i12_food_first_chew
+
+inddata1$i12_food_first_chew <- as.factor(inddata1$i12_food_first_chew)
+
+ggplot(inddata1, aes(fill=i12_food_first_chew, x=h10_hbv_rdt))+
+  geom_bar(position = "dodge")+
+  labs(x="Index mother HBV status", fill="")+
+  scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  ggtitle("i12_food_first_chew hh HBV status")+
+  theme(panel.background = element_blank())
+
+# i13_shared_toothbrush
+
+inddata1$i13_shared_toothbrush <- as.factor(inddata1$i13_shared_toothbrush)
+
+ggplot(inddata1, aes(fill=i13_shared_toothbrush, x=h10_hbv_rdt))+
+  geom_bar(position = "dodge")+
+  labs(x="Index mother HBV status", fill="")+
+  scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  ggtitle("Shared toothbrush by hh HBV status")+
+  theme(panel.background = element_blank())
+
+# i16_traditional_scarring
+
+inddata1$i16_traditional_scarring <- as.factor(inddata1$i16_traditional_scarring)
+
+ggplot(inddata1, aes(fill=i16_traditional_scarring, x=h10_hbv_rdt))+
+  geom_bar(position = "dodge")+
+  labs(x="Index mother HBV status", fill="")+
+  scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  ggtitle("Traditional scarring by hh HBV status")+
+  theme(panel.background = element_blank())
+```
