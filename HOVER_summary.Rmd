@@ -33,9 +33,11 @@ library(readr)
 library(lubridate)
 
 drc_colors <- c("#007fff", 	"#ce102f", 	"#f7d618")
-# dichot_colors <- scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)
-# dichot_colors <- c(viridis(1, begin=0.1,end = 0.1),viridis(1, begin=0.58,end = 0.58) )
-hbvcolors <- c('#00429d', '#93003a',"#A0A0A0") #C7427CFF
+#hbvcolors <- c('#00429d', '#93003a',"#A0A0A0") #red and blue
+hbvcolors <- c('#33374b', '#e2738c',"#b7d1da",'ghostwhite') #navy and pink, and gray
+nounprojgraphcol <- c("#4D4D4D","#B2182B")
+# colors for responses https://www.color-hex.com/color-palette/1010756 
+
 
 # read data
 # API route
@@ -44,39 +46,74 @@ data0 <- redcap_read_oneshot(redcap_uri = "https://global.redcap.unc.edu/api/",
 # save as backup
 # data0_april21 <- data0
 # backup route via export/import
-# data0 <- read.csv('ParrHOVERHBV_DATA_2021-03-04_0850.csv')
+# data0 <- read.csv('ParrHOVERHBV_DATA_2021-10-11_1521.csv')
 
 #subset data to all valid IDs
 # remove duplicate Menage1 
+
 data1<- data0 %>% 
-  dplyr::filter(hrhhid!="Menage1" & hrhhid!="HRK2003" &hrhhid!="HRB1010-02" & hrhhid!="HRB-1010-01" & hrhhid!="HRB 1011-01") 
-  #dplyr::mutate(hrhhid=toupper(hrhhid)) %>% 
-  # %>% dplyr::mutate(h10_hbv_rdt=factor(h10_hbv_rdt,
-  #                  levels=c("0","1","99"),
-  #                  labels = c("HBV-","HBV+","Unknown")))
+  dplyr::filter(hrhhid!="HRB -1045" & hrhhid!="HRB -1048" & hrhhid!="HRB -1059") 
+
+# per Patrick, HR2084 enrolled on April 17 remains HRK 2084 and HRK-2084 on April 30 should be HRK-2085
+data1$hrhhid <- ifelse(data1$hrhhid=="HRK-2084", "HRK-2085", data1$hrhhid)
+
+data1$hrhhid <- toupper(data1$hrhhid)
+# Add maternity center where women originally presented for maternity care
+# Binza is in a higher SES part of town than Kingasani.
+data1$mat <- substr(data1$hrhhid,3,3)
+#table(data1$mat)
+data1$maternity <- ifelse(data1$mat=="B","Binza",
+                          ifelse(data1$mat=="K","Kingasani",
+                              ifelse(data1$hrhhid=="HR2012","Kingasani",
+                                     ifelse(data1$hrhhid=="RB-1047","Binza",
+                                            ifelse(data1$hrhhid=="HR2086","Kingasani",
+                                                   ifelse(data1$hrhhid=="HR2087","Kingasani",""))))))
+
+
 
 # select household entries
-hhdata1 <- data1[(is.na(data1$redcap_repeat_instrument)), ]
+ hhdata1 <- data1[(is.na(data1$redcap_repeat_instrument)), ]
+ #hhdata1 <- data1[data1$redcap_repeat_instrument != "questionnaire_individuel", ]
+# ^ backup in case is.na() is not working
+
 # for hh dataset, select only hh variables
 hhdata1 <- hhdata1 %>% 
-  dplyr::select(starts_with("h"), "questionnaire_menage_complete")
+  dplyr::select(starts_with("h"), "questionnaire_menage_complete", "maternity")
+hhdata1 <- hhdata1 %>% relocate("maternity", .after = "h10_hbv_rdt")
 # table(hhdata1$hxcoord, useNA = "always") #check if any non-missing GPS coords of hh are same (duplicate hh)
 # save GPS coords as numeric
 hhdata1$hxcoord <- as.numeric(hhdata1$hxcoord)
 hhdata1$hycoord <- as.numeric(hhdata1$hycoord)
 
+# correct HRB-1028 coordinates using coords from the correct neighborhood (interview took place at BINZA)
+hhdata1$hxcoord[hhdata1$hrhhid=="HRB-1028"] <- -4.405503
+hhdata1$hycoord[hhdata1$hrhhid=="HRB-1028"] <- 15.273940
+# correct HRB-1040 coordinates using coords from the correct neighborhood (interview took place at BINZA)
+hhdata1$hxcoord[hhdata1$hrhhid=="HRB-1040"] <- 4.409953
+hhdata1$hycoord[hhdata1$hrhhid=="HRB-1040"] <- 15.245214
+
 # select individual entries
 inddata1 <- data1[!is.na(data1$redcap_repeat_instrument),] #data1$redcap_repeat_instrument=="questionnaire_individuel"
 # select only individual variables
 inddata1 <- inddata1 %>% 
-  dplyr::select("hrhhid", "redcap_repeat_instance", "participant_code", starts_with("hr"), starts_with("i"))
+  dplyr::select("hrhhid", "redcap_repeat_instance", "participant_code", "maternity","hxcoord", "hycoord",starts_with("hr"), starts_with("i"))
 
 # add index mother HBV status (HBV status of hh)
-inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid", "h10_hbv_rdt")], by = "hrhhid")
+inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid", "h10_hbv_rdt", "hdov")], by = "hrhhid")
 
 inddata1 <- inddata1 %>% relocate("h10_hbv_rdt", .after = "participant_code")
 inddata1<- inddata1 %>% 
-  dplyr::filter(hrhhid!="HRB1010-02" & hrhhid!="HRB-1010-01" & hrhhid!="HRK2003")
+  dplyr::filter(!is.na(inddata1$participant_code))
+# save datasets for offline work
+# saveRDS(hhdata1, file = "/Users/camille/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/hoverdataanalysis/hhdata1_backup.rds")
+
+#saveRDS(inddata1, file = "/Users/camille/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/hoverdataanalysis/inddata1_backup.rds")
+
+# open back up files for offline use
+# hhdata1_backup.rds <- readRDS(file = "/Users/camille/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/hoverdataanalysis/hhdata1_backup.rds")
+
+# inddata1_backup <- readRDS(file = "/Users/camille/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/hoverdataanalysis/inddata1_backup.rds")
+
 
 # source("0_HOVER_CleaningData.R")
 # subset issues
@@ -88,7 +125,7 @@ inddata1<- inddata1 %>%
 
 <br> 
 
-```{r warning=FALSE, echo=TRUE}
+```{r labelsfrench, warning=FALSE, echo=TRUE}
 downloaddate0=as.Date(Sys.Date(),format="%Y-%m-%d")
 downloaddate=format(downloaddate0, format="%B %d %Y")
 # total hh enrolled
@@ -98,18 +135,12 @@ totalhh_enrolled <- nrow(hhdata1)
 hhdenom_hbvpos <- sum(hhdata1$h10_hbv_rdt==1 & !is.na(hhdata1$hrhhid))
 hhdenom_hbvneg <- sum(hhdata1$h10_hbv_rdt==0 & !is.na(hhdata1$hrhhid))
 
+#create dataset of just index mothers
+#create variable to assess discordance of RDT result with previous HBV status
 
-```
+## NEW VARIABLES FOR ANALYSIS BELOW
 
-#### From REDCap data downloaded on `r downloaddate`
-
-***
-
-#### Household enrollments (n=`r totalhh_enrolled`, `r hhdenom_hbvpos` HBV+ and `r hhdenom_hbvneg` HBV- index mothers)
-
-
-```{r echo=FALSE, out.width="50%", echo=TRUE}
-hhdata1$h10_hbv_rdt <- as.factor(hhdata1$h10_hbv_rdt)
+# hhdata1$h10_hbv_rdt <- as.factor(hhdata1$h10_hbv_rdt)
 
 hhdata1 <- hhdata1 %>% 
   dplyr::mutate(h10_hbv_rdt_f=factor(
@@ -117,21 +148,236 @@ hhdata1 <- hhdata1 %>%
     levels = c(0, 1),
     labels = c("HBV-", "HBV+")))
 
+
+hhdata1$weeknum <- ifelse(year(hhdata1$hdov)==2021,isoweek(hhdata1$hdov) - 6, isoweek(hhdata1$hdov) - 6+52)
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(h10_hbv_rdt_f=factor(
+    inddata1$h10_hbv_rdt, 
+    levels = c(0, 1),
+    labels = c("HBV-", "HBV+")))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i27a_rdt_result_f=factor(
+    inddata1$i27a_rdt_result, 
+    levels = c(0, 1,4),
+    labels = c("Negatif", "Positif","Indéterminé")))
+    #labels = c("Negative", "Positive")))
+
+inddata1$hr7_age_mois <- as.numeric(inddata1$hr7_age_mois)
+inddata1$age_combined <- round(ifelse(as.numeric(inddata1$hr7a_month_year==0), as.numeric(inddata1$hr7_age_year), as.numeric(inddata1$hr7_age_mois)/12),2)
+
+# age group <15 vs > 15 (birth in 2007)
+# sens analysis with 2021 vs 2022 enrollments, potential birth at beginning vs end of year
+inddata1 = inddata1 %>%
+  mutate(agegrp15_2 = case_when(
+    age_combined < 15 ~ 0,
+    age_combined >= 15 ~ 1,
+    TRUE ~ 0
+  ) %>% as.numeric()
+  )
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr3_relationship_f=factor(
+    inddata1$hr3_relationship, 
+    levels = c(0, 1,2,3,4,5,6,7,8,9,10,11,12,13,97,98,99),
+    labels = c("Sans parenté", "Mère index","Femme ou mari", "Fils/fille", "Gendre/belle fille", "Petit-fils/fille","Père/mère","Beaux-parents","Frère/soeur","Neveu/nièce","Neveu/nièce par alliance","Enfant adopté/ garde/de la femme/du mari","Tante/oncle","Grandpère/mère","Autre","Ne sait pas", "Refusé")))    
+    #labels = c("Unrelated", "Index mother","Spouse","Son/daughter","Step-son/daughter","Grandson/daughter","Father/mother","In-laws","Brother/sister","Nephew/niece","Nephew/niece by marriage","Adopted/in custody","Aunt/uncle","Grandmother/father","Other","Don't know", "Refused")))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr4_sex_f=factor(
+    inddata1$hr4_sex, 
+    levels = c(0, 1),
+    labels = c("Masculin", "Féminin")))
+    #labels = c("Male", "Female")))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr5_primary_residence_f=factor(
+    inddata1$hr5_primary_residence, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+    #labels = c("No", "Yes", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr6_last_night_residence_f=factor(
+    inddata1$hr6_last_night_residence, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+    #labels = c("No", "Yes", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i2_past_hbv_dx_f=factor(
+    inddata1$i2_past_hbv_dx, 
+    levels = c(0, 1, 3,98,99),
+    labels = c("Non", "Oui", "Jamais testé", "Ne sait pas", "Refusé")))
+    #labels = c("No", "Yes", "Never tested", "Don't know", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i1_hbv_positive_f=factor(
+    inddata1$i1_hbv_positive, 
+    levels = c(0, 1,2, 3,98,99),
+    labels = c("Non", "Oui, une fois","Oui, plus d'une fois", "Jamais testé", "Ne sait pas", "Refusé")))
+    #labels = c("No", "Yes, once","Yes, more than once", "Never tested", "Don't know", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i3_hiv_pos_test_f=factor(
+    inddata1$i3_hiv_pos_test, 
+    levels = c(0, 1, 3,98,99),
+    labels = c("Non", "Oui", "Jamais testé", "Ne sait pas", "Refusé")))
+    #labels = c("No", "Yes", "Never tested", "Don't know", "Refused")))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i3a_hiv_treatment_f=factor(
+    inddata1$i3a_hiv_treatment, 
+    levels = c(0, 1, 98,99),
+    labels = c("Non", "Oui", "Ne sait pas","Refusé")))
+    #labels = c("No", "Yes", "Don't know", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i4_fever_f=factor(
+    inddata1$i4_fever, 
+    levels = c(0, 1, 98,99),
+    labels = c("Non", "Oui", "Ne sait pas","Refusé")))
+    #labels = c("No", "Yes", "Don't know", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i5_pregnancy_f=factor(
+    inddata1$i5_pregnancy, 
+    levels = c(0, 1, 98,99),
+    labels = c("Non", "Oui", "Ne sait pas","Refusé")))
+    #labels = c("No", "Yes", "Don't know", "Refused")))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i14_shared_razor_f=factor(
+    inddata1$i14_shared_razor, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+    #labels = c("No", "Yes", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i15_shared_nailclippers_f=factor(
+    inddata1$i15_shared_nailclippers, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+    #labels = c("No", "Yes", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i8_transfusion_f=factor(
+    inddata1$i8_transfusion, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+    #labels = c("No", "Yes", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i9_iv_drug_use_f=factor(
+    inddata1$i9_iv_drug_use, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+    #labels = c("No", "Yes", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i10_street_salon_f=factor(
+    inddata1$i10_street_salon, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+    #labels = c("No", "Yes", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i11_manucure_f=factor(
+    inddata1$i11_manucure, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+    #labels = c("No", "Yes", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i12_food_first_chew_f=factor(
+    inddata1$i12_food_first_chew, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+    #labels = c("No", "Yes", "Refused")))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i13_shared_toothbrush_f=factor(
+    inddata1$i13_shared_toothbrush, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+    #labels = c("No", "Yes", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i16_traditional_scarring_f=factor(
+    inddata1$i16_traditional_scarring, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+    #labels = c("No", "Yes", "Refused")))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i25_sex_hx_receive_money_f=factor(
+    inddata1$i25_sex_hx_receive_money, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+    #labels = c("No", "Yes", "Refused")))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i26_sex_hx_given_money_f=factor(
+    inddata1$i26_sex_hx_given_money, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+    #labels = c("No", "Yes", "Refused")))
+
+inddata1$indexmom <- ifelse(inddata1$hr3_relationship==1,1,0)
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(indexmom=factor(
+    inddata1$indexmom, 
+    levels = c(0, 1),
+    # labels = c("Household member", "Index mother")))
+    labels = c("Membre de ménage", "Mère index")))
+
+totalhbsagpositive <- inddata1 %>%
+  dplyr::group_by(hrhhid) %>%
+  dplyr::summarise(totalpositive = sum(i27a_rdt_result, na.rm=TRUE), n=n()) 
+
+hhdata1 <- left_join(hhdata1, totalhbsagpositive, by = "hrhhid")
+inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid","totalpositive")],  by = "hrhhid")
+
+```
+
+
+
+#### From REDCap data downloaded on `r downloaddate` 
+#### Les données du REDCap téléchargé sur `r downloaddate`. 
+
+***
+
+#### Household enrollments (n=`r totalhh_enrolled`, `r hhdenom_hbvpos` HBV+ and `r hhdenom_hbvneg` HBV- index mothers)
+#### Les inscriptions des ménages (n=`r totalhh_enrolled`, `r hhdenom_hbvpos` HBV+ et `r hhdenom_hbvneg` HBV- mères indices)
+
+```{r echo=FALSE, out.width="50%", echo=TRUE}
 hhenrolhbvstat <- hhdata1 %>% 
   dplyr::filter(!is.na(hrhhid)) %>% 
   dplyr::group_by(h10_hbv_rdt_f) %>% 
   dplyr::summarise(n=n()) %>% 
   ggplot(aes(x=h10_hbv_rdt_f, y=n, fill=h10_hbv_rdt_f))+
   geom_bar(stat = "identity", width = 0.5)+
-  geom_text(aes(x=h10_hbv_rdt_f, y=n+2 ,label = n))+
+  geom_text(aes(x=h10_hbv_rdt_f, y=n+7 ,label = n))+
   geom_hline(yintercept=100, size=2)+
   labs(x="Index mother HBV status", y="Enrollments", fill="") +
-  scale_fill_manual(values = hbvcolors)+
-  theme_bw()+
-  theme(legend.position = "none")+
-  ggtitle("Enrolled households (target: 100 in each group)")
+  #scale_fill_manual(values = hbvcolors)+
+  scale_fill_manual(values = nounprojgraphcol)+ 
+  #theme_bw()+
+  theme(legend.position = "none",
+        panel.background = element_blank())+
+  ggtitle("Enrolled households (target: 100 in each group)\nLes ménages enrolés (l'objectif: 100 dans chaque group)")
 
 hhenrolhbvstat
+```
+
+
+
+```{r echo=FALSE, out.width="50%", echo=TRUE}
+ggplot(hhdata1, aes(x=h10_hbv_rdt_f, fill=maternity))+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
+  labs(x="Statut de la mère index", fill="", y="Les ménages enrôles")+
+  scale_fill_manual(values = c('#42647f', '#F5B24E'))+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f'))+
+  geom_text(aes(label = ..count..), stat = "count", hjust = 0.5, vjust = -0.5, position = position_dodge(0.9))+
+  #geom_hline(yintercept=500, size=2)+
+  #scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  # ggtitle("Enrolled index mothers and household members")+
+  ggtitle("Les ménages enrôles")+
+  theme(panel.background = element_blank(),
+        plot.title = element_text(size = 15), #for presentation
+        legend.text = element_text(size = 15),
+        axis.text = element_text(size = 15),
+        axis.title = element_text(size = 15))
+
 
 # missing data for below
 ind_misspartcode_ct <- sum(is.na(inddata1$participant_code))
@@ -146,7 +392,6 @@ totalind_enrolled <- nrow(inddata1)
 ```
 
 ```{r warning=FALSE, echo=TRUE}
-hhdata1$weeknumiso <- isoweek(hhdata1$hdov) - 6
 
 dailyenroll <- hhdata1 %>% 
   dplyr::filter(!is.na(hrhhid)) %>% 
@@ -167,18 +412,31 @@ weeklyenroll <- hhdata1 %>%
   dplyr::filter(!is.na(hrhhid)) %>% 
   dplyr::group_by(h10_hbv_rdt_f) %>% 
   #dplyr::summarise(n=n()) %>% 
-  ggplot(aes(weeknumiso, fill=h10_hbv_rdt_f))+ #isoweek(hdov) 
+  ggplot(aes(weeknum, fill=h10_hbv_rdt_f))+ #isoweek(hdov) 
   geom_bar(stat = "count", width = 0.5)+
-  scale_fill_manual(values = hbvcolors)+
+  #scale_fill_manual(values = hbvcolors)+
+  scale_fill_manual(values = nounprojgraphcol)+ 
   #scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
-  ggtitle("Household enrollment by week")+
+  ggtitle("Household enrollment by week\nLes inscriptions des ménages par semaine")+
   #scale_x_date(breaks = "1 week", date_labels = "%m/%d")+
+  scale_x_continuous(breaks = seq(0,76,by=4))+ 
+  scale_y_continuous(breaks = seq(0,10,by=2))+
   xlab("Weeks since study launch")+
   ylab("Number of households")+
   theme(legend.title = element_blank(),
         panel.background = element_blank())
 
 weeklyenroll
+```
+
+IDs of enrollments from new screening in 2022
+Les PIDs des inscriptions à partir d'un nouveau dépistage
+
+```{r warning=FALSE, echo=TRUE}
+hhdata1 %>% 
+  dplyr::filter(hdov > "2022-01-01") %>% 
+  dplyr::arrange((hdov)) %>% 
+  dplyr::summarise(hrhhid, hdov, h10_hbv_rdt_f )
 ```
 
 
@@ -214,17 +472,9 @@ ggplot(current_fortarget)+
 
 ```
 
-#### Individuals enrolled by index mother HBV status (n=`r totalind_enrolled`, excluding `r ind_miss_3` with empty entries) 
+#### Individuals enrolled by index mother HBV status (n=`r totalind_enrolled`, excluding `r ind_miss_3` with empty entries) (Individus enrôlés par statut de la mère index [n=`r totalind_enrolled`])
 
 ```{r warning=FALSE, out.width="50%", echo=TRUE}
-inddata1$h10_hbv_rdt <- as.factor(inddata1$h10_hbv_rdt)
-
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(h10_hbv_rdt_f=factor(
-    inddata1$h10_hbv_rdt, 
-    levels = c(0, 1),
-    labels = c("HBV-", "HBV+")))
-  
 ind_hh_hbvstat <- inddata1 %>% 
   dplyr::filter(!is.na(hrhhid)) %>% 
   dplyr::group_by(h10_hbv_rdt_f) %>% 
@@ -233,14 +483,35 @@ ind_hh_hbvstat <- inddata1 %>%
   geom_bar(stat = "identity", width = 0.5)+
   geom_text(aes(x=h10_hbv_rdt_f, y=n+6 ,label = n))+
   labs(x="Index mother HBV status", y="Enrollments", fill="") +
-  scale_fill_manual(values = hbvcolors)+
-  theme_bw()+
-  theme(legend.position = "none")+
-  ggtitle("Enrolled participants by index mother HBV status")
+  scale_fill_manual(values = nounprojgraphcol)+ 
+  #scale_fill_manual(values = hbvcolors)+
+  #theme_bw()+
+  theme(legend.position = "none", 
+        panel.background = element_blank())+
+  ggtitle("Enrolled participants by index mother HBV status\nLes participants enrôlés par statut de la mère index")
 ind_hh_hbvstat
+
+ggplot(inddata1, aes(x=h10_hbv_rdt_f, fill=indexmom))+
+  geom_bar(position = "dodge")+
+  # labs(x="Index mother HBV status", fill="", y="Individuals enrolled")+
+  labs(x="Statut", fill="", y="Individuels enrôles")+
+  scale_fill_manual(values = c('#ff9966','#669999','#ff6666','#ffcc66','#33cccc','#00429d'))+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f'))+
+  ylim(c(0, 500))+
+  geom_text(aes(label = ..count..), stat = "count", hjust = 0.5, vjust = -0.5, position = position_dodge(0.9))+
+  #geom_hline(yintercept=500, size=2)+
+  #scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  # ggtitle("Enrolled index mothers and household members")+
+  ggtitle("Les mères enrôlées et les membres de ménage enrôlés")+
+  theme(panel.background = element_blank(),
+        plot.title = element_text(size = 15), #for presentation
+        legend.text = element_text(size = 15),
+        axis.text = element_text(size = 15),
+        axis.title = element_text(size = 15))
 ```
 
 #### Index mothers enrolled
+#### Les mères indices enrôlées
 
 ```{r warning=FALSE, out.width="50%", echo=TRUE}
 # check one index mother enrolled per household
@@ -266,9 +537,10 @@ hhid.no.indexmo <- hhid.no.indexmo$hrhhid
 
 ```
 
-Household IDs with more than one index mother: `r mult.index.mother.hhid`  
+Household IDs with more than one index mother (Les ménages avec plus d'une mère index): `r mult.index.mother.hhid`  
 
-Household IDs with no index mother enrolled: `r hhid.no.indexmo`  
+
+Household IDs with no index mother enrolled (Les ménages sans une mère index): `r hhid.no.indexmo`  
 
 
 ```{r echo=FALSE, warning=FALSE, echo=TRUE}
@@ -280,27 +552,21 @@ ind_rdtNA <- sum(is.na(inddata1$i27_rdt_done) & !is.na(inddata1$hrhhid), na.rm =
 
 ```
 
-#### RDT data
+#### RDT data (Les résultats de test rapide)
 
-`r ind_rdtdone` RDTs done, `r ind_rdtnotdone` RDTs not done (reasons below), and `r ind_rdtNA` missing.
+`r ind_rdtdone` RDTs done (tests complétés), `r ind_rdtnotdone` RDTs not done with reasons below (tests non fait avec les raisons ci-dessous), et `r ind_rdtNA` missing (manquantes).
 
 ```{r echo=FALSE, warning=FALSE, echo=TRUE}
 table(inddata1$i27_rdt_notdone_reason[inddata1$i27_rdt_done==0])
 ```
 
 
-#### Individual HBV RDT results
+#### Individual HBV RDT results (Les résultats de test rapid des individus)
+
 
 ```{r echo=FALSE, warning=FALSE, out.width="50%", echo=TRUE}
 inddata1$i27a_rdt_result <- as.factor(inddata1$i27a_rdt_result)
 inddata1$participant_code <- as.numeric(inddata1$participant_code)
-
-
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(i27a_rdt_result_f=factor(
-    inddata1$i27a_rdt_result, 
-    levels = c(0, 1),
-    labels = c("Negative", "Positive")))
 
 ind_hbvstat <- inddata1 %>%
   dplyr::filter(i27_rdt_done==1) %>% 
@@ -310,8 +576,9 @@ ind_hbvstat <- inddata1 %>%
   geom_bar(position = "dodge", stat="identity")+
   geom_text(aes(x=h10_hbv_rdt_f, y=n+5 ,label = n), position=position_dodge(width=0.9))+
   labs(x="Index mother HBV status", fill="RDT result")+
-  scale_fill_manual(values = hbvcolors)+
-  ggtitle("HBV RDT result of RDTs completed")+
+  #scale_fill_manual(values = hbvcolors)+
+  scale_fill_manual(values = c('#878787','#f4a582','ghostwhite'))+
+  ggtitle("HBV RDT result of RDTs completed\nLes résultats des tests rapides complétés")+
   theme(panel.background = element_blank())
 
 ind_hbvstat
@@ -324,8 +591,9 @@ ind_hbvstat_mothers <- inddata1 %>%
   geom_bar(position = "dodge", stat="identity")+
   geom_text(aes(x=h10_hbv_rdt_f, y=n+1.5 ,label = n), position=position_dodge(width=0.9))+
   labs(x="Index mother HBV status", fill="RDT result")+
-  scale_fill_manual(values = hbvcolors)+
-  ggtitle("HBV RDT result of index mothers")+
+  #scale_fill_manual(values = hbvcolors)+
+  scale_fill_manual(values = c('#878787','#f4a582','ghostwhite'))+
+  ggtitle("HBV RDT result of index mothers\nLes résultats de test rapide des mères indices")+
   theme(panel.background = element_blank())
 
 ind_hbvstat_mothers
@@ -339,7 +607,7 @@ ind_hbvstat_noindex <- inddata1 %>%
   geom_text(aes(x=h10_hbv_rdt_f, y=n+5 ,label = n), position=position_dodge(width=0.9))+
   labs(x="Index mother HBV status", fill="RDT result")+
   scale_fill_manual(values = hbvcolors)+
-  ggtitle("HBV RDT result of non-index mothers")+
+  ggtitle("HBV RDT result of non-index mothers\nLes résultats de test rapide des autres individus (non mères)")+
   theme(panel.background = element_blank())
 
 ind_hbvstat_noindex
@@ -358,34 +626,64 @@ ind_hbvstat_noindex
 ```
 
 
-#### Family members of index mothers with positive RDT
+#### Family members of index mothers with positive RDT (Relations familiales entres les members du ménage HBsAg+ et la mère indexée)
 
 ```{r echo=FALSE, warning=FALSE, out.width="50%", echo=TRUE}
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(hr3_relationship_f=factor(
-    inddata1$hr3_relationship, 
-    levels = c(0, 1,2,3,4,5,6,7,8,9,10,11,12,13,97,98,99),
-    labels = c("Unrelated", "Index mother","Spouse","Son/daughter","Step-son/daughter","Grandson/daughter","Father/mother","In-laws","Brother/sister","Nephew/niece","Nephew/niece by marriage","Adopted/in custody","Aunt/uncle","Grandmother/father","Other","Don't know", "Refused")))
-
 ind.with.rdt <- inddata1[inddata1$i27a_rdt_result==1 &inddata1$hr3_relationship!=1,]
 
-table(ind.with.rdt$hrhhid, droplevels(ind.with.rdt$hr3_relationship_f))
-table(ind.with.rdt$h10_hbv_rdt_f, droplevels(ind.with.rdt$hr3_relationship_f))
+addmargins(table(ind.with.rdt$hrhhid, droplevels(ind.with.rdt$hr3_relationship_f)))
+#(table(ind.with.rdt$h10_hbv_rdt_f, droplevels(ind.with.rdt$hr3_relationship_f))
+```
+
+
+```{r echo=FALSE, warning=FALSE, out.width="50%", echo=TRUE, eval=F}
+# heading to add back above
+#### Newly HBV+ index mothers (Les nouveux cas positifs des mères indexes)
+
+indexmoms <- inddata1[inddata1$hr3_relationship==1,]
+indexmoms <- indexmoms[!is.na(indexmoms$hrhhid),]
+
+indexmoms$rdtcongr <- indexmoms$h10_hbv_rdt + indexmoms$i27a_rdt_result
+#remove if needed
+# indexmoms <- subset(indexmoms, select = -rdtcongr)
+
+indexmoms_diffdiag <- indexmoms[indexmoms$rdtcongr==1, c("hrhhid","h10_hbv_rdt_f","i27a_rdt_result_f")]
+
+# table(indexmoms$rdtcongr)
+# indexmoms_diffdiag %>% group_by(hrhhid,h10_hbv_rdt_f,i27a_rdt_result_f) %>% summarize(n=n())
+
 
 ```
 
-#### Age (years) of RDT+ participants (non-index mothers) by index mother status
+#### Age (years) of RDT+ participants (non-index mothers) by index mother status (L'âge (ans) des participants HBsAg+ (non-mère index) par statut de la mère index)
 
 ```{r echo=FALSE, warning=FALSE, out.width="50%", echo=TRUE}
 # age
-inddata1$age_combined <- round(ifelse(as.numeric(inddata1$hr7a_month_year==0), as.numeric(inddata1$hr7_age_year), as.numeric(inddata1$hr7_age_mois)/12),2)
-
 table(inddata1$age_combined[inddata1$i27a_rdt_result==1 &inddata1$hr3_relationship!=1], inddata1$h10_hbv_rdt_f[inddata1$i27a_rdt_result==1 &inddata1$hr3_relationship!=1])
 ```
 
+#### Household clusters of infections
+
+Number of HBsAg+ individuals by household exposure status
+
+```{r echo=FALSE, warning=FALSE, out.width="50%", echo=TRUE}
+table(hhdata1$totalpositive, hhdata1$h10_hbv_rdt_f)
+```
+
+Of those households with 2 or more positives, who are the households members who are positive?
+
+```{r echo=FALSE, warning=FALSE, out.width="50%", echo=TRUE}
+options(tibble.print_max = Inf) # to show all the rows.
+
+inddata1 %>% filter(totalpositive >1) %>% group_by(h10_hbv_rdt_f,hrhhid, totalpositive, i27a_rdt_result_f, hr3_relationship_f) %>% summarize(n=n())
+
+hhclusters <- inddata1 %>% filter(totalpositive >1) %>% select(h10_hbv_rdt_f,hrhhid,participant_code, totalpositive, i27a_rdt_result_f, hr3_relationship_f, age_combined)
+```
+
+
 ***
 
-#### Age distribution
+#### Age distribution (La distribution d'âge)
 
 ```{r echo=FALSE, warning=FALSE, out.width="50%", echo=TRUE}
 # Age 
@@ -394,33 +692,27 @@ age_dist <- ggplot(inddata1)+
   geom_histogram(aes(x=age_combined, fill=h10_hbv_rdt_f), bins = 40)+
   labs(x="Age (in years)", fill="HH HBV status")+
   scale_fill_manual(values = hbvcolors)+
-  ggtitle("Age distribution by index mother HBV status")
+  ggtitle("Age distribution by index mother HBV status\nLa distribution d'âge des participants par le statut de la mère index")
 
 age_dist
 ```
 
-#### Sex of enrollees
+#### Sex of enrollees (Le sexe des participants)
 
 ```{r echo=FALSE, warning=FALSE, out.width="50%", echo=TRUE}
 # Sex 
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(hr4_sex_f=factor(
-    inddata1$hr4_sex, 
-    levels = c(0, 1),
-    labels = c("Male", "Female")))
-# table(inddata1$hr4_sex_f)
-
 ggplot(inddata1, aes(fill=hr4_sex_f, x=h10_hbv_rdt_f))+
   geom_bar(position = "dodge")+
   labs(x="Index mother HBV status", fill="")+
-  scale_fill_manual(values = c('#73a2c6','#f4777f'))+
+  scale_fill_manual(values = c('#ff9966','#669999','#ff6666','#ffcc66','#33cccc','#00429d'))+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f'))+
   #scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
-  ggtitle("Sex of enrollees by hh HBV status")+
+  ggtitle("Sex of enrollees by hh HBV status\nLe sexe des participants par statut de la mère index")+
   theme(panel.background = element_blank())
 
 ```
 
-#### Map of enrolled households
+#### Map of enrolled households by mother HBV status (La carte des ménages enrôlés par statut de la mère index)
 
 ```{r echo=FALSE, warning=FALSE, echo=TRUE}
 # latitudes are below equator, so need to be negative decimal degrees
@@ -447,23 +739,34 @@ hhdata1$hxcoord_edit <- ifelse(floor(log10(hhdata1$hxcoord))==5,
 # hhdata1 <- subset(hhdata1, select = -c(hycoord_edit))
 
 hhdata1$hxcoord_edit <- (hhdata1$hxcoord_edit)*-1
-hover_gps = st_as_sf(hhdata1[!is.na(hhdata1$hxcoord_edit) &!is.na(hhdata1$hycoord_edit),], coords = c("hycoord_edit", "hxcoord_edit"), crs = 4326)  
 
-hover_gps <- subset(hover_gps, select=c( "h10_hbv_rdt_f" , "hrhhid","geometry"))
+hover_gps = st_as_sf(hhdata1[!is.na(hhdata1$hxcoord_edit) &!is.na(hhdata1$hycoord_edit),], coords = c("hycoord_edit", "hxcoord_edit"), crs = 4326)  
+hover_gps_full <- hover_gps
+hover_gps <- subset(hover_gps, select=c( "h10_hbv_rdt_f" , "hrhhid","geometry","maternity"))
 # hover_gps$h10_hbv_rdt <-as.factor(hover_gps$h10_hbv_rdt)
 # interactive map
  tmap_mode("view")
 # tmap_mode("plot")
 tm_basemap("OpenStreetMap") +
   tm_shape(st_jitter(hover_gps, factor=0.005)) + 
-    tm_dots(col = "h10_hbv_rdt_f", palette=c('#00429d', '#93003a'),id="hrhhid")+
+    tm_dots(col = "h10_hbv_rdt_f", palette=c('#33374b', '#e2738c'),id="hrhhid")+ # size = 0.25
 #tm_basemap("OpenStreetMap") +
+  
+  tm_shape(matgps)+
+    tm_dots(col = "#ffffbf", id="centers", shapes = 23) #ffffe0 #size =0.3
+```
+
+
+#### Map of enrolled households by maternity center used by mother (La carte des ménages enrôlés par la maternité útilizé par la mère index)
+
+```{r echo=FALSE, warning=FALSE, echo=TRUE}
+# map of which facilities they enrolled from
+tm_basemap("OpenStreetMap") +
+  tm_shape(st_jitter(hover_gps, factor=0.005)) + 
+    tm_dots(col = "maternity", palette=c('#42647f', '#F5B24E'),id="hrhhid")+ #purple and yellow '#665191', '#F5B24E'
   tm_shape(matgps)+
     tm_dots(col = "#ffffbf", id="centers", shapes = 23) #ffffe0
-
-#popup.vars=("HH ID"="hrhhid")
-#   tm_dots(col = as.factor("h10_hbv_rdt"), palette=c('#00429d', '#93003a'),id="hrhhid") #popup.vars=("HH ID"="hrhhid")
-
+  
 
 ## static map
 # tmap_mode("plot")
@@ -474,10 +777,10 @@ tm_basemap("OpenStreetMap") +
 #  tm_dots("red", size = 0.5)
 
 ```
-*Points are randomly offset to protect privacy  
+*Points are randomly offset to protect privacy (J'ai déplacé les lieux por protéger l'anonymat)
 
 
-#### Other questions of interest
+#### Other questions of interest (les autres questions d'intérêt)
 
 ```{r echo=FALSE, warning=FALSE, out.width="50%", echo=TRUE}
 # Vaccination 
@@ -487,8 +790,11 @@ vacc_noconsent <- sum(inddata1$i39a_vac_consent==0 & inddata1$i39_vaccine_eligib
 # table(inddata1$i39_vac_whynot) # need to code these reasons
 ```
 
-##### Vaccination
+##### Vaccination (La vaccination)
 `r vacc_elig` are eligible for the HBV vaccination, `r vacc_consent` gave consent to receive it. `r vacc_noconsent` did not give consent.
+
+`r vacc_elig` sont eligibles pour le vaccin contre l'hépatite B, `r vacc_consent` ont donné leur consentement à le recevoir, et `r vacc_noconsent` n'ont pas donné leur consentement.
+
 
 ```{r echo=FALSE, warning=FALSE, out.width="50%", echo=TRUE, eval=F}
 table(inddata1$i39_vaccine_eligible, useNA = "always")
@@ -501,139 +807,130 @@ vacc.refuse.elig <- inddata1[inddata1$i39_vaccine_eligible==1 & inddata1$i39a_va
 vacc.refuse.elig.reason <- inddata1[!is.na(inddata1$i39_vac_whynot),c("hrhhid","participant_code","i39_vaccine_eligible","i39a_vac_consent","i39_vac_whynot")]
 ```
 
-##### Individual characteristics
+```{r echo=FALSE, warning=FALSE,  echo=F, eval=F}
+inddata1$novacc_reason[inddata1$i39_vac_whynot=="le papa a dit qu'ils sont en bonne santê il ne voit pas l'importance de se Faire vacciner"] <- "Papa refusé, bonne santé, pas important"
+inddata1$novacc_reason[inddata1$i39_vac_whynot=="le papa a refuse tour vaccine chest ses enfants"] <- "Papa refusé, pas important"
+inddata1$novacc_reason[inddata1$i39_vac_whynot=="le papa a refusé tour vaccin chez ses enfants"] <- "Papa refusé, pas important"
+inddata1$novacc_reason[inddata1$i39_vac_whynot=="le papa a  refuse tour vaccine chez ses enfants"] <- "Papa refusé, pas important"
+"le papa a refuse tour vaccin chez ses enfants"
+"Le Monsieur a dit qu'il est negative au test;il ne voit pas l'importance de de faire vacciner"
+"Refuse le vaccin car Elle reside en France et venue just pour in congé au Congo et elle suppose qu'Elle aurait deja au ce vaccin en france"
+"Il est venu just pour voir la famille et renter  dans son province  Il a dit y'aura pas moyen de de faire vacciner car il reste à l'interieur du pays"
+"Elle va d abord reflechir,on Lui laisse du temps"
+"La maman va reflechir,on leur laisse le temps pour reflechir"
+"Elle etait venu pour les soins, elle rentre dans sa province a Mbandaka la semaine prochaine"
+"L'enfant a ete dena vaccine Dan's l'etude Avert"
+"Callendrie vaccinal en cour"
+"N'a pas confiance au vaccin"
+"Son uncle a refuse"
+"Refus du chef de menage"
+"Refus du chef  de menage"
+
+
+inddata1 %>% group_by(i39_vac_whynot) %>% summarize(n=n())
+
+
+
+```
+
+##### Individual characteristics (Les caractéristiques des individus)
 
 ```{r echo=FALSE, warning=FALSE, out.width="50%", echo=TRUE}
 #primary residence 
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(hr5_primary_residence_f=factor(
-    inddata1$hr5_primary_residence, 
-    levels = c(0, 1, 99),
-    labels = c("No", "Yes", "Refused")))
-
 ggplot(inddata1, aes(fill=hr5_primary_residence_f, x=h10_hbv_rdt_f))+
-  geom_bar(position = "dodge")+
-  labs(x="Index mother HBV status", fill="")+
-  scale_fill_manual(values = c('#73a2c6','#f4777f','#ffffe0','#00429d'))+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
+  labs(x="Index mother HBV status\nLe statut de VHB de la mère index", fill="")+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f','#ffffe0','#00429d'))+
+  scale_fill_manual(values = c('#669999','#ff6666','#ff9966','#33cccc','#ffcc66','#00429d'))+
   #scale_fill_manual(values = hbvcolors)+
-  ggtitle("Primary residence of enrolled individuals")+
+  ggtitle("Primary residence of enrolled individuals\nLa residence principale")+
   theme(panel.background = element_blank())
 
 # slept in this hh last night
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(hr6_last_night_residence_f=factor(
-    inddata1$hr6_last_night_residence, 
-    levels = c(0, 1, 99),
-    labels = c("No", "Yes", "Refused")))
-
-ggplot(inddata1, aes(fill=hr6_last_night_residence_f, x=h10_hbv_rdt_f))+
-  geom_bar(position = "dodge")+
+inddata1 %>% 
+  dplyr::filter(!is.na(hr6_last_night_residence_f)) %>% 
+  ggplot(aes(x=h10_hbv_rdt_f,  fill=hr6_last_night_residence_f))+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
   labs(x="Index mother HBV status", fill="")+
-  scale_fill_manual(values = c('#73a2c6','#f4777f','#ffffe0','#00429d'))+
-  ggtitle("Slept in this household last night")+
+  scale_fill_manual(values = c('#669999','#ff6666','#ff9966','#33cccc','#ffcc66','#00429d'))+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f','#ffffe0','#00429d'))+
+  ggtitle("Slept in this household last night\nA dormi dans ce ménage hier soir")+
   theme(panel.background = element_blank())
 
 # occupation
 
 #past positive test
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(i2_past_hbv_dx_f=factor(
-    inddata1$i2_past_hbv_dx, 
-    levels = c(0, 1, 3,98,99),
-    labels = c("No", "Yes", "Never tested", "Don't know", "Refused")))
-
 #scale_fill_manual(values = c('#73a2c6','#f4777f','#ffffe0','#00429d','#93003a'))+
 
 ggplot(inddata1, aes(fill=i2_past_hbv_dx_f, x=h10_hbv_rdt_f))+
-  geom_bar(position = "dodge")+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
   labs(x="Index mother HBV status", fill="")+
-  scale_fill_manual(values = c('#73a2c6','#f4777f','#ffffe0','#00429d','#93003a'))+
+  scale_fill_manual(values = c('#669999','#ff6666','#ff9966','#33cccc','#ffcc66'))+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f','#ffffe0','#00429d','#93003a'))+
   #scale_fill_manual(values = c('#00429d', '#73a2c6', '#ffffe0', '#f4777f', '#93003a'))+
-  ggtitle("Past HBV diagnosis")+
+  ggtitle("Past HBV diagnosis\nDéjà été informé dans le passé que vous aviez l'hépatite B")+
   theme(panel.background = element_blank())
 
 #table(inddata1$hr6_last_night_residence)
 
 #past positive test
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(i1_hbv_positive_f=factor(
-    inddata1$i1_hbv_positive, 
-    levels = c(0, 1,2, 3,98,99),
-    labels = c("No", "Yes, once","Yes, more than once", "Never tested", "Don't know", "Refused")))
-
 ggplot(inddata1, aes(fill=i1_hbv_positive_f, x=h10_hbv_rdt_f))+
-  geom_bar(position = "dodge")+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
   labs(x="Index mother HBV status", fill="")+
-  scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#ffffe0','#00429d'))+
-  ggtitle("Past HBV positive test")+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#ffffe0','#99ffea','#00429d'))+
+  scale_fill_manual(values = c('#669999','#ff6666','#ff9966','#33cccc','#ffcc66','#00429d'))+
+  ggtitle("Past HBV positive test\nDéjà eu un resultat positif au test de l'hépatite B")+
   theme(panel.background = element_blank())
 
 # past HIV diagnosis
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(i3_hiv_pos_test_f=factor(
-    inddata1$i3_hiv_pos_test, 
-    levels = c(0, 1, 3,98,99),
-    labels = c("No", "Yes", "Never tested", "Don't know", "Refused")))
-
-ggplot(inddata1, aes(fill=i3_hiv_pos_test_f, x=h10_hbv_rdt_f))+
-  geom_bar(position = "dodge")+
+inddata1 %>% 
+  dplyr::filter(!is.na(i3_hiv_pos_test_f)) %>% 
+  ggplot(aes(x=h10_hbv_rdt_f,  fill=i3_hiv_pos_test_f))+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
   labs(x="Index mother HBV status", fill="")+
-  scale_fill_manual(values = c('#73a2c6','#f4777f','#ffffe0','#00429d','#93003a'))+
-  ggtitle("Past positive HIV test")+
+  scale_fill_manual(values = c('#669999','#ff6666','#ff9966','#33cccc','#00429d'))+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f','#ffffe0','#00429d','#93003a'))+
+  ggtitle("Past positive HIV test\nDéjà eu un resultat positif au test d'VIH")+
   theme(panel.background = element_blank())
 
 #hiv treatment
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(i3a_hiv_treatment_f=factor(
-    inddata1$i3a_hiv_treatment, 
-    levels = c(0, 1, 98,99),
-    labels = c("No", "Yes", "Don't know", "Refused")))
-
 ggplot(inddata1[!is.na(inddata1$i3a_hiv_treatment_f),], aes(fill=i3a_hiv_treatment_f, x=h10_hbv_rdt_f))+
   geom_bar(position = "dodge")+
   labs(x="Index mother HBV status", fill="")+
-  scale_fill_manual(values = c('#73a2c6','#f4777f','#ffffe0','#00429d','#93003a'))+
-  ggtitle("For HIV+, currently being treated")+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f','#ffffe0','#00429d','#93003a'))+
+  scale_fill_manual(values = c('#669999','#ff6666','#ff9966','#33cccc','#ffcc66','#00429d'))+
+  ggtitle("For HIV+, currently being treated\nSi VIH+, sous traitement actuellement")+
   theme(panel.background = element_blank())
 
 
 ```
 
 If being treated for HIV, current medications:
+S'ils reçoivent, les medicaments contre l'VIH:
 
 ```{r echo=F,out.width="50%", echo=TRUE}
 table(inddata1$i3b_hiv_medications)
 
 # have you had a fever in past week
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(i4_fever_f=factor(
-    inddata1$i4_fever, 
-    levels = c(0, 1, 98,99),
-    labels = c("No", "Yes", "Don't know", "Refused")))
-
 ggplot(inddata1, aes(fill=i4_fever_f, x=h10_hbv_rdt_f))+
-  geom_bar(position = "dodge")+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
   labs(x="Index mother HBV status", fill="")+
-    scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
-#scale_fill_manual(values = c('#73a2c6','#f4777f','#ffffe0'))+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
+    scale_fill_manual(values = c('#669999','#ff6666','#ff9966','#33cccc','#ffcc66','#00429d'))+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f','#ffffe0'))+
   #scale_fill_manual(values = c('#00429d', '#73a2c6', '#ffffe0', '#f4777f', '#93003a'))+
-  ggtitle("Fever in past week")+
+  ggtitle("Fever in past week\nLa fièvre au cours de la dernèire semaine")+
   theme(panel.background = element_blank())
 
 # currently pregnant
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(i5_pregnancy_f=factor(
-    inddata1$i5_pregnancy, 
-    levels = c(0, 1, 98,99),
-    labels = c("No", "Yes", "Don't know", "Refused")))
-
 ggplot(inddata1[!is.na(inddata1$i5_pregnancy_f),], aes(fill=i5_pregnancy_f, x=h10_hbv_rdt_f))+
-  geom_bar(position = "dodge")+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
   labs(x="Index mother HBV status", fill="")+
   #scale_fill_manual(values = c('#73a2c6','#f4777f','#ffffe0'))+
-  scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
-#scale_fill_manual(values = c('#00429d', '#73a2c6', '#ffffe0', '#f4777f', '#93003a'))+
-  ggtitle("Currently pregnant")+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
+  scale_fill_manual(values = c('#669999','#ff6666','#ff9966','#00429d'))+
+  #scale_fill_manual(values = c('#00429d', '#73a2c6', '#ffffe0', '#f4777f', '#93003a'))+
+  ggtitle("Currently pregnant\nÊtre enceinte")+
   theme(panel.background = element_blank())
 
 # antenatal visit
@@ -642,85 +939,69 @@ ggplot(inddata1[!is.na(inddata1$i5_pregnancy_f),], aes(fill=i5_pregnancy_f, x=h1
 
 
 
-##### HBV potential exposures
+##### HBV potential exposures (Les facteurs de risque de l'hépatite B)
 
-```{r echo=F,out.width="50%", echo=TRUE, warning=F}
+```{r out.width="50%", echo=TRUE, warning=F}
 # Shared razors
-# inddata1$i14_shared_razor <- as.factor(inddata1$i14_shared_razor)
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(i14_shared_razor_f=factor(
-    inddata1$i14_shared_razor, 
-    levels = c(0, 1, 99),
-    labels = c("No", "Yes", "Refused")))
-
-ggplot(inddata1, aes(fill=i14_shared_razor_f, x=h10_hbv_rdt_f))+
-  geom_bar(position = "dodge")+
+inddata1 %>% 
+  dplyr::filter(!is.na(i14_shared_razor_f)) %>% 
+  ggplot(aes(x=h10_hbv_rdt_f,  fill=i14_shared_razor_f))+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
   labs(x="Index mother HBV status", fill="")+
  # scale_fill_manual(values = hbvcolors)+   
-  scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
-  ggtitle("Shared razors by hh HBV status")+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
+  scale_fill_manual(values = c('#669999','#ff6666','#00429d'))+
+  ggtitle("Shared razors\nRasoirs partagés")+
   theme(panel.background = element_blank())
 
 # shared nail clippers
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(i15_shared_nailclippers_f=factor(
-    inddata1$i15_shared_nailclippers, 
-    levels = c(0, 1, 99),
-    labels = c("No", "Yes", "Refused")))
-
-ggplot(inddata1, aes(fill=i15_shared_nailclippers_f, x=h10_hbv_rdt_f))+
-  geom_bar(position = "dodge")+
+inddata1 %>% 
+  dplyr::filter(!is.na(i15_shared_nailclippers_f)) %>% 
+  ggplot(aes(x=h10_hbv_rdt_f,  fill=i15_shared_nailclippers_f))+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
   labs(x="Index mother HBV status", fill="")+
-  scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
-  ggtitle("Shared nail clippers by hh HBV status")+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
+  scale_fill_manual(values = c('#669999','#ff6666','#ff9966','#33cccc','#ffcc66','#00429d'))+
+  ggtitle("Shared nail clippers\nCoup-ongles/lime partagé")+
   theme(panel.background = element_blank())
 
 # Transfusion 
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(i8_transfusion_f=factor(
-    inddata1$i8_transfusion, 
-    levels = c(0, 1, 99),
-    labels = c("No", "Yes", "Refused")))
-ggplot(inddata1, aes(fill=i8_transfusion_f, x=h10_hbv_rdt_f))+
-  geom_bar(position = "dodge")+
+inddata1 %>% 
+  dplyr::filter(!is.na(i8_transfusion_f)) %>% 
+  ggplot(aes(x=h10_hbv_rdt_f,  fill=i8_transfusion_f))+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
   labs(x="Index mother HBV status", fill="")+
-  scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
-  ggtitle("Transfusion by hh HBV status")+
+  scale_fill_manual(values = c('#669999','#ff6666','#00429d'))+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
+  ggtitle("Transfusion\nÉté transfué")+
   theme(panel.background = element_blank())
 
 #  i9_iv_drug_use
-
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(i9_iv_drug_use_f=factor(
-    inddata1$i9_iv_drug_use, 
-    levels = c(0, 1, 99),
-    labels = c("No", "Yes", "Refused")))
-ggplot(inddata1, aes(fill=i9_iv_drug_use_f, x=h10_hbv_rdt_f))+
-  geom_bar(position = "dodge")+
+inddata1 %>% 
+  dplyr::filter(!is.na(i9_iv_drug_use_f)) %>% 
+  ggplot(aes(x=h10_hbv_rdt_f,  fill=i9_iv_drug_use_f))+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
   labs(x="Index mother HBV status", fill="")+
-  scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
-  ggtitle("IVDU by hh HBV status")+
+  scale_fill_manual(values = c('#669999','#ff6666','#ff9966','#00429d'))+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
+  ggtitle("IVDU\nLes drogues intra-veineuses/injectées")+
   theme(panel.background = element_blank())
 # which drug
 table(inddata1$i9a_iv_durg_use_list)
 
 #  i10_street_salon
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(i10_street_salon_f=factor(
-    inddata1$i10_street_salon, 
-    levels = c(0, 1, 99),
-    labels = c("No", "Yes", "Refused")))
-ggplot(inddata1, aes(fill=i10_street_salon_f, x=h10_hbv_rdt_f))+
-  geom_bar(position = "dodge")+
+inddata1 %>% 
+  dplyr::filter(!is.na(i10_street_salon_f)) %>% 
+  ggplot(aes(fill=i10_street_salon_f, x=h10_hbv_rdt_f))+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
   labs(x="Index mother HBV status", fill="")+
-  scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
-  ggtitle("Street salon by hh HBV status")+
+  scale_fill_manual(values = c('#669999','#ff6666','#00429d'))+
+  ggtitle("Salon visits\nUtilisé les salons de coiffures")+
   theme(panel.background = element_blank())
-
 
 #  i10_street_salon times per month
 # table(inddata1$i10a_street_salon_number, inddata1$participant_code)
-# inddata1$i10a_street_salon_number_num <- as.numeric(inddata1$i10a_street_salon_number)
+ inddata1$i10a_street_salon_number_num <- as.numeric(inddata1$i10a_street_salon_number)
 # table(inddata1$i10a_street_salon_number_num)
 ##NEEDS FIXING
 # ggplot(inddata1, aes(fill=i10a_street_salon_number_num, x=h10_hbv_rdt_f))+
@@ -731,56 +1012,43 @@ ggplot(inddata1, aes(fill=i10_street_salon_f, x=h10_hbv_rdt_f))+
 #  theme(panel.background = element_blank())
 
 # i11_manucure outside home
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(i11_manucure_f=factor(
-    inddata1$i11_manucure, 
-    levels = c(0, 1, 99),
-    labels = c("No", "Yes", "Refused")))
-ggplot(inddata1, aes(fill=i11_manucure_f, x=h10_hbv_rdt_f))+
-  geom_bar(position = "dodge")+
+inddata1 %>% 
+  dplyr::filter(!is.na(i11_manucure_f)) %>% 
+  ggplot(aes(fill=i11_manucure_f, x=h10_hbv_rdt_f))+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
   labs(x="Index mother HBV status", fill="")+
-  scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
-  ggtitle("Manicure outside home by hh HBV status")+
+  scale_fill_manual(values = c('#669999','#ff6666','#ff9966','#33cccc','#ffcc66','#00429d'))+
+  ggtitle("Manicure outside home\nManucure/pédicure à l'exterior de la maison")+
   theme(panel.background = element_blank())
 
 # i12_food_first_chew
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(i12_food_first_chew_f=factor(
-    inddata1$i12_food_first_chew, 
-    levels = c(0, 1, 99),
-    labels = c("No", "Yes", "Refused")))
-ggplot(inddata1, aes(fill=i12_food_first_chew_f, x=h10_hbv_rdt_f))+
-  geom_bar(position = "dodge")+
+inddata1 %>% 
+  dplyr::filter(!is.na(i12_food_first_chew_f)) %>% 
+  ggplot(aes(fill=i12_food_first_chew_f, x=h10_hbv_rdt_f))+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
   labs(x="Index mother HBV status", fill="")+
-  scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
-  ggtitle("Chewed food/gum by hh HBV status")+
+  scale_fill_manual(values = c('#669999','#ff6666','#ff9966','#33cccc','#ffcc66','#00429d'))+
+  ggtitle("Chewed food/gum\nAvez-vous déjà nourri quelqu'un avec de la nourriture que vous avez mâchée\nd'abord dans votre bouche ou avec du chewing-gum partagé")+
   theme(panel.background = element_blank())
 
 # i13_shared_toothbrush
-
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(i13_shared_toothbrush_f=factor(
-    inddata1$i13_shared_toothbrush, 
-    levels = c(0, 1, 99),
-    labels = c("No", "Yes", "Refused")))
-ggplot(inddata1, aes(fill=i13_shared_toothbrush_f, x=h10_hbv_rdt_f))+
-  geom_bar(position = "dodge")+
+inddata1 %>% 
+  dplyr::filter(!is.na(i13_shared_toothbrush_f)) %>% 
+  ggplot(aes(fill=i13_shared_toothbrush_f, x=h10_hbv_rdt_f))+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
   labs(x="Index mother HBV status", fill="")+
-  scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
-  ggtitle("Shared toothbrush by hh HBV status")+
+  scale_fill_manual(values = c('#669999','#ff6666','#ff9966','#33cccc','#ffcc66','#00429d'))+
+  ggtitle("Shared toothbrush\nLes brosses des dents partagés")+
   theme(panel.background = element_blank())
 
 # i16_traditional_scarring
-inddata1 <- inddata1 %>% 
-  dplyr::mutate(i16_traditional_scarring_f=factor(
-    inddata1$i16_traditional_scarring, 
-    levels = c(0, 1, 99),
-    labels = c("No", "Yes", "Refused")))
-ggplot(inddata1, aes(fill=i16_traditional_scarring_f, x=h10_hbv_rdt_f))+
-  geom_bar(position = "dodge")+
+inddata1 %>% 
+  dplyr::filter(!is.na(i16_traditional_scarring_f)) %>% 
+  ggplot(aes(fill=i16_traditional_scarring_f, x=h10_hbv_rdt_f))+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
   labs(x="Index mother HBV status", fill="")+
-  scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
-  ggtitle("Traditional scarring by hh HBV status")+
+  scale_fill_manual(values = c('#669999','#ff6666','#ff9966','#33cccc','#ffcc66','#00429d'))+
+  ggtitle("Traditional scarring\nScarifié d’une cérémonie traditionalle/religieuse")+
   theme(panel.background = element_blank())
 
 # Sexual history
@@ -789,7 +1057,213 @@ ggplot(inddata1, aes(x=i22_sex_hx_age_1st, fill=h10_hbv_rdt_f))+
   #geom_bar(position = "dodge")+
   labs(x="Age (years)", fill="")+
   scale_fill_manual(values = hbvcolors)+
-  ggtitle("Age of sexual debut \n 0=Never had sex, >95 = Refused")+
+  ggtitle("Age of sexual debut \n 0=Never had sex, >95 = Refused\nL'âge de premier rapport sexuel")+
   theme(panel.background = element_blank())
 
+
 ```
+
+
+#### Good maps
+```{r eval=F, echo=F,out.width="50%", warning=F}
+inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid","hycoord_edit","hxcoord_edit")], by ="hrhhid")
+
+# table(hhdata1$hxcoord_edit)
+# hhdata1 <- subset(hhdata1, select = -c(hycoord_edit))
+
+ind_gps_risks = st_as_sf(inddata1[!is.na(inddata1$hxcoord_edit) &!is.na(inddata1$hycoord_edit),], coords = c("hycoord_edit", "hxcoord_edit"), crs = 4326)  
+
+ind_gps_risks <- ind_gps_risks[order(ind_gps_risks$i27a_rdt_result_f),]
+
+ind_gps_risks_jitt<- st_jitter(ind_gps_risks,  factor = 0.01)
+
+```
+
+#### Combining lab results
+
+```{r eval=F, echo=F,out.width="50%", warning=F}
+library(readxl)
+getwd()
+labresults <- read_excel("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HBV Lab work/HBV_RT_HOVER03.2022.xlsx", sheet = "rtpcr_03312022")[,c(1,2,5,6,10)]
+
+inddata1 <- merge(inddata1, labresults, by = c("hrhhid", "participant_code"), all.x = T)
+
+table(inddata1$i27a_rdt_result_f, inddata1$qpcr_ind)
+table(inddata1$indexmom, inddata1$qpcr_ind)
+```
+
+
+#### Other analysis
+
+```{r eval=F, echo=F,out.width="50%", warning=F}
+# Sexual partners in last 3 mo
+#inddata1 <- select(inddata1, -c("i23_sex_hx_part_past3mo_f"))
+
+addmargins(table(hhdata1$maternity, hhdata1$h10_hbv_rdt, useNA = "always"))
+
+addmargins(table(inddata1$i10_street_salon_f, inddata1$i27a_rdt_result_f,inddata1$hr4_sex_f))
+
+i27a_rdt_result_faddmargins(table(inddata1$i25_sex_hx_receive_money_f, inddata1$i27a_rdt_result_f,inddata1$hr4_sex_f))
+
+inddata1$i23_sex_hx_part_past3mo_f <- ifelse(inddata1$i23_sex_hx_part_past3mo=="98","Don't know", ifelse(inddata1$i23_sex_hx_part_past3mo=="99","Refused",inddata1$i23_sex_hx_part_past3mo))
+
+table(inddata1$i23_sex_hx_part_past3mo_f, useNA = "always")
+table(inddata1$i23_sex_hx_part_past3mo, useNA = "always")
+# table(inddata1$i22_sex_hx_age_1st, useNA = "always")
+sexualdebut<- inddata1 %>% 
+  dplyr::filter(i22_sex_hx_age_1st>0 & i22_sex_hx_age_1st<95) 
+
+table(sexualdebut$i23_sex_hx_part_past3mo_f, sexualdebut$i23_sex_hx_part_past3mo, useNA = "always")
+
+ggplot(sexualdebut, aes(fill=i23_sex_hx_part_past3mo_f, x=h10_hbv_rdt_f))+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
+  labs(x="Index mother HBV status", fill="")+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
+  ggtitle("Number of sexual partners in last 3 months")+
+  theme(panel.background = element_blank())
+
+# number of new partners in last 3 months
+ggplot(sexualdebut, aes(fill=i23a_sex_hx_past3mo_num, x=h10_hbv_rdt_f))+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
+  labs(x="Index mother HBV status", fill="")+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
+  ggtitle("Number of new sexual partners in last 3 months")+
+  theme(panel.background = element_blank())
+
+# number of partners in last year
+ggplot(inddata1, aes(fill=i24_sex_hx_part_past1yr, x=h10_hbv_rdt_f))+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
+  labs(x="Index mother HBV status", fill="")+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
+  ggtitle("Number of sexual partners in last year")+
+  theme(panel.background = element_blank())
+
+# number of new partners in last year
+ggplot(inddata1, aes(fill=i24a_sex_hx_past1yr_num, x=h10_hbv_rdt_f))+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
+  labs(x="Index mother HBV status", fill="")+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
+  ggtitle("Number of new sexual partners in last year")+
+  theme(panel.background = element_blank())
+
+# received money for sex
+ggplot(inddata1, aes(fill=i25_sex_hx_receive_money_f, x=h10_hbv_rdt_f))+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
+  labs(x="Index mother HBV status", fill="")+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
+  ggtitle("Number of new sexual partners in last year")+
+  theme(panel.background = element_blank())
+
+# given money for sex
+ggplot(inddata1, aes(fill=i26_sex_hx_given_money_f, x=h10_hbv_rdt_f))+
+  geom_bar(position = position_dodge2(width = 0.9, preserve = "single"))+
+  labs(x="Index mother HBV status", fill="")+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f','#93003a','#00429d'))+ # yellow not visible '#ffffe0'
+  ggtitle("Number of new sexual partners in last year")+
+  theme(panel.background = element_blank())
+
+#matgps <- st_as_sf(maternities, coords = c("long","lat"), crs= 4326)
+
+# inddata1 <- select(inddata1, -c("hycoord_edit.x", "hycoord_edit.y","hxcoord_edit.x", "hxcoord_edit.y"))
+inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid","hycoord_edit","hxcoord_edit")], by ="hrhhid")
+
+# table(hhdata1$hxcoord_edit)
+# hhdata1 <- subset(hhdata1, select = -c(hycoord_edit))
+
+ind_gps_risks = st_as_sf(inddata1[!is.na(inddata1$hxcoord_edit) &!is.na(inddata1$hycoord_edit),], coords = c("hycoord_edit", "hxcoord_edit"), crs = 4326)  
+
+ind_gps_risks <- ind_gps_risks[order(ind_gps_risks$i27a_rdt_result_f),]
+
+class(inddata1$i27a_rdt_result_f)
+# ind_gps_risks <- subset(ind_gps_risks, select=c( "h10_hbv_rdt_f" , "hrhhid","geometry","maternity"))
+# hover_gps$h10_hbv_rdt <-as.factor(hover_gps$h10_hbv_rdt)
+# interactive map
+ tmap_mode("view")
+# tmap_mode("plot")
+tm_basemap("OpenStreetMap") +
+  tm_shape(st_jitter(ind_gps_risks, factor=0.005)) + 
+    tm_dots(col = "i27a_rdt_result_f", palette=c('#00429d', '#93003a'), id="hrhhid") #palette=c('#00429d', '#93003a'),
+
+ind_gps_risks_nmiss <- ind_gps_risks[!is.na(ind_gps_risks$i25_sex_hx_receive_money_f),]
+tm_basemap("OpenStreetMap") +
+  tm_shape(st_jitter(ind_gps_risks_nmiss, factor=0.005)) + 
+    tm_dots(col = "i25_sex_hx_receive_money_f", palette=c('#2570A8',"#F5B24E","#A87323"), id="hrhhid") #palette=c('#00429d', '#93003a'),
+
+tm_basemap("OpenStreetMap") +
+  tm_shape(st_jitter(ind_gps_risks, factor=0.005)) + 
+    tm_dots(col = "i8_transfusion", id="hrhhid") #palette=c('#00429d', '#93003a'),
+
+drc_healthzone_correctkinshasa = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/drc_healthzone_adm2_correctkinshasa/RDC_Zone_de_sante_09092019.shp", stringsAsFactors = F) %>% st_transform(4326)
+
+
+drc_healthzone_kinshasa <- subset(drc_healthzone_correctkinshasa, PROVINCE == "Kinshasa")
+congo_br = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/congo_adm0/cog_admbnda_adm0_gaul_20190617.shp", stringsAsFactors = F) %>% st_transform(4326)
+
+congo_br$ADM0_FR <- as.character(congo_br$ADM0_FR) 
+congo_br$ADM0_FR[congo_br$ADM0_FR == "Congo (le)"] <- "Congo"
+congo_br$ADM0_FR[congo_br$ADM0_FR == "Congo"] <- "Brazzaville"
+#hover_sexmoney <-
+ind_gps_risks_jitt<- st_jitter(ind_gps_risks,  factor = 0.01)
+ind_gps_risks_jitt$i27a_rdt_result_f
+# individual clustering
+ggplot(drc_healthzone_kinshasa) +
+  geom_sf(alpha=0.75)+
+  geom_sf(data=congo_br, fill = "gray75")+
+  geom_sf(data=ind_gps_risks_jitt, aes(fill=i27a_rdt_result_f, color=i27a_rdt_result_f))+
+  scale_fill_manual(values = c('#878787','#f4a582','ghostwhite'))+
+  scale_color_manual(values = c('#878787','#f4a582','ghostwhite'))+
+#  scale_fill_manual(values = c('#665191',"#F5B24E","#A87323"))+
+#  scale_color_manual(values = c('#665191',"#F5B24E","#A87323"))+  #2570A8
+  geom_sf_text(data=congo_br, aes(label = ADM0_FR), size=3)+
+  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)+
+  theme(panel.background = element_rect(fill = "aliceblue"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank()  )
+
+inddata1$i26_sex_hx_given_money_f
+
+ggplot(drc_healthzone_kinshasa) +
+  geom_sf(alpha=0.75)+
+  geom_sf(data=congo_br, fill = "gray75")+
+  geom_sf(data=ind_gps_risks_jitt[!is.na(ind_gps_risks_jitt$i26_sex_hx_given_money_f),], aes(fill=i26_sex_hx_given_money_f, color=i26_sex_hx_given_money_f))+
+  scale_fill_manual(values = c('#665191','#F5B24E','ghostwhite'))+
+  scale_color_manual(values = c('#665191','#F5B24E','ghostwhite'))+
+#  scale_fill_manual(values = c('#665191',"#F5B24E","#A87323"))+
+#  scale_color_manual(values = c('#665191',"#F5B24E","#A87323"))+  #2570A8
+  geom_sf_text(data=congo_br, aes(label = ADM0_FR), size=3)+
+  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)+
+  theme(panel.background = element_rect(fill = "aliceblue"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank()  )
+
+# household
+hover_gps_full_jitt <-st_jitter(hover_gps_full,  factor = 0.01)
+hover_gps_full_jitt$h10_hbv_rdt_f
+
+ggplot(drc_healthzone_kinshasa) +
+  geom_sf(alpha=0.75)+
+  geom_sf(data=congo_br, fill = "dark gray")+
+  geom_sf(data=hover_gps_full_jitt, aes(fill=h10_hbv_rdt_f, color=h10_hbv_rdt_f))+
+  scale_fill_manual(values = c('#E0453A',"#7FA4DF"))+#7FA4DF blue #E0627F red
+  scale_color_manual(values = c('#E0453A',"#7FA4DF"))+   
+  geom_sf_text(data=congo_br, aes(label = ADM0_FR), size=3)+
+  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)+
+  theme(panel.background = element_rect(fill = "aliceblue"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank()  )
+
+```
+
+
