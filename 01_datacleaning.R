@@ -101,3 +101,113 @@ inddata1 = subset(inddata1, select = -c(totalpositive.x,totalpositive.y) )
 clusters <- inddata1[inddata1$totalpositive >1, ]
 table(clusters$hrhhid)
 
+# Cleaning household variables
+
+#roof type - create indicator for modern or not, following Molly DF's DHS coding, 
+# reflective of divide by expensive vs cheaper for wealth index
+# Modern roof: metal, zinc/cement, tiles/slate, or cement (options=7, 9, 10, 11, 12 )
+# 1, 01 = Chaume/palme/feuilles | 2, 02 = Mottes de terre | 3, 03 = Nattes | 4, 04 = Palmes/bambou | 5, 05 = Planches en bois | 6, 06 = Carton | 7, 07 = Tôle | 8, 08 = Bois | 9, 09 = Zinc/fibre de ciment | 10, 10 = Tuiles | 11, 11 = Béton (ciment) | 12, 12 = Shingles | 97, 97 = Autre | 98, 98 = Ne sait pas | 99, 99 = Refusé(e)
+
+hhdata2 = hhdata2 %>%
+  mutate(modernroof = case_when(
+    h1_roof_type___7 == 1  ~ 1, #sheet metal
+    h1_roof_type___9 >= 1  ~ 1, # zinc fiber
+    h1_roof_type___10 == 1  ~ 1, # tiles
+    h1_roof_type___11 == 1  ~ 1, #ciment
+    h1_roof_type___12 == 1  ~ 1, # shingles
+    h1_roof_type___7 == 1  ~ 1,
+    h1_roof_type___1 == 1  ~ 0, # palm/leaves
+    h1_roof_type___2 == 1  ~ 0, # clods of earth
+    h1_roof_type___3 == 1  ~ 0, # Mats
+    h1_roof_type___4 == 1  ~ 0, # bamboo
+    h1_roof_type___5 == 1  ~ 0, # wooden planks
+    h1_roof_type___6 == 1  ~ 0, # cardboard/plywood
+    h1_roof_type___8 == 1  ~ 0, # Wood
+    # no 97, 98, 99, and other
+    TRUE ~ NA_real_
+  ) %>% as.numeric()
+  )
+addmargins(table(hhdata2$modernroof,useNA = "always"))
+# select out missing obs to check with Patrick
+# do these truly not have rooves?
+missingroof <- hhdata2 %>% 
+  dplyr::select( "hrhhid","h10_hbv_rdt", "maternity" ,"hdov", starts_with("h1_roof")) %>% 
+  filter(is.na(hhdata2$modernroof))
+
+# Walls
+# Modern wall: cement, stone, bricks, or covered adobe (31, 32, 33, 34, 35)
+
+hhdata2 = hhdata2 %>%
+  mutate(modernwalls = case_when(
+    h1_walls_type___1 == 1  ~ 0, #earth
+    h1_walls_type___2 == 1  ~ 0, # bamboo/palms/trunks
+    h1_walls_type___3 == 1  ~ 0, # bamboo w mud
+    h1_walls_type___4 == 1  ~ 1, #stones with mud #****check this
+    h1_walls_type___5 == 1  ~ 0, # uncovered adobe
+    h1_walls_type___6 == 1  ~ 0, # plywood
+    h1_walls_type___7 == 1  ~ 0, # cardboard
+    h1_walls_type___8 == 1  ~ 0, # reclaimed wood
+    h1_walls_type___9 == 1  ~ 1, # cement
+    h1_walls_type___10 == 1  ~ 1, # stones with cement
+    h1_walls_type___11 == 1  ~ 1, # bricks
+    h1_walls_type___12 == 1  ~ 1, # cement blocks
+    h1_walls_type___13 == 1  ~ 1, # covered adobe
+    h1_walls_type___14 == 1  ~ 1, # wood planks/shingles
+    h1_walls_otherlist == "Tol"  ~ 0, # tol/tole = sheet metal - not modern
+    h1_walls_otherlist == "Tole"  ~ 0, # tol/tole = sheet metal
+    h1_walls == 0 ~ 0, 
+    # no 98, 99, and other
+    TRUE ~ NA_real_
+  ) %>% as.numeric()
+  )
+addmargins(table(hhdata2$modernwalls,useNA = "always"))
+# select out missing obs to check with Patrick
+missingwalls <- hhdata2 %>% 
+  dplyr::select( "hrhhid","h10_hbv_rdt", "maternity" ,"hdov", starts_with("h1_walls")) %>% 
+  filter(h1_walls == 0)
+
+# Flooring
+# Modern floor: vinyl, asphalt, ceramic tiles, cement, or carpet
+hhdata2 = hhdata2 %>%
+  mutate(modernfloor = case_when(
+    h1_floor_type___1 == 1  ~ 0, #earth
+    h1_floor_type___2 == 1  ~ 0, # dung, none
+    h1_floor_type___3 == 1  ~ 0, # wooden planks
+    h1_floor_type___4 == 1  ~ 0, # bamboo/palm leaves
+    h1_floor_type___5 == 1  ~ 1, # parquet/polished wood
+    h1_floor_type___6 == 1  ~ 1, # vinyl/asphalt
+    h1_floor_type___7 == 1  ~ 1, # tiles
+    h1_floor_type___8 == 1  ~ 1, # cement
+    h1_floor_type___9 == 1  ~ 1, # carpet
+    # no 97, 98, 99, and other
+    TRUE ~ NA_real_
+  ) %>% as.numeric()
+  )
+addmargins(table(hhdata2$modernfloor,useNA = "always"))
+# no missing
+
+# Windows
+# Modern windows: glass or screens
+table(hhdata2$h1_windows_otherlist, hhdata2$h1_windows_type___99, useNA = "always")
+
+hhdata2 = hhdata2 %>%
+  mutate(modernwindow = case_when(
+    h1_windows_type___1 == 1  ~ 1, #window
+    h1_windows_type___2 == 1  ~ 1, # screen
+    h1_windows_type___3 == 1  ~ 0, # open
+    h1_windows_type___4 == 1  ~ 0, # plastic/paper/carton
+    h1_windows_type___5 == 1  ~ 0, # planks
+    h1_windows_type___98 == 98 ~ 0, # don't know: count as don't know since screen/glass only one
+    TRUE ~ NA_real_ 
+  ) %>% as.numeric()
+  )
+addmargins(table(hhdata2$modernfloor,useNA = "always"))
+
+
+
+
+
+
+
+
+
