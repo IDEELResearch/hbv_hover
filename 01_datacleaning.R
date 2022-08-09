@@ -101,14 +101,15 @@ inddata1 = subset(inddata1, select = -c(totalpositive.x,totalpositive.y) )
 clusters <- inddata1[inddata1$totalpositive >1, ]
 table(clusters$hrhhid)
 
-# Cleaning household variables
+# Cleaning household variables--------------------------------------------------------------------------------
 
+# Roof ----------------------------------------
 #roof type - create indicator for modern or not, following Molly DF's DHS coding, 
 # reflective of divide by expensive vs cheaper for wealth index
 # Modern roof: metal, zinc/cement, tiles/slate, or cement (options=7, 9, 10, 11, 12 )
 # 1, 01 = Chaume/palme/feuilles | 2, 02 = Mottes de terre | 3, 03 = Nattes | 4, 04 = Palmes/bambou | 5, 05 = Planches en bois | 6, 06 = Carton | 7, 07 = Tôle | 8, 08 = Bois | 9, 09 = Zinc/fibre de ciment | 10, 10 = Tuiles | 11, 11 = Béton (ciment) | 12, 12 = Shingles | 97, 97 = Autre | 98, 98 = Ne sait pas | 99, 99 = Refusé(e)
 
-hhdata2 = hhdata2 %>%
+hhdata2 = hhdata1 %>%
   mutate(modernroof = case_when(
     h1_roof_type___7 == 1  ~ 1, #sheet metal
     h1_roof_type___9 >= 1  ~ 1, # zinc fiber
@@ -134,7 +135,7 @@ missingroof <- hhdata2 %>%
   dplyr::select( "hrhhid","h10_hbv_rdt", "maternity" ,"hdov", starts_with("h1_roof")) %>% 
   filter(is.na(hhdata2$modernroof))
 
-# Walls
+# Walls----------------------------------------
 # Modern wall: cement, stone, bricks, or covered adobe (31, 32, 33, 34, 35)
 
 hhdata2 = hhdata2 %>%
@@ -166,7 +167,7 @@ missingwalls <- hhdata2 %>%
   dplyr::select( "hrhhid","h10_hbv_rdt", "maternity" ,"hdov", starts_with("h1_walls")) %>% 
   filter(h1_walls == 0)
 
-# Flooring
+# Flooring----------------------------------------
 # Modern floor: vinyl, asphalt, ceramic tiles, cement, or carpet
 hhdata2 = hhdata2 %>%
   mutate(modernfloor = case_when(
@@ -186,22 +187,119 @@ hhdata2 = hhdata2 %>%
 addmargins(table(hhdata2$modernfloor,useNA = "always"))
 # no missing
 
-# Windows
+# Windows----------------------------------------
 # Modern windows: glass or screens
-table(hhdata2$h1_windows_otherlist, hhdata2$h1_windows_type___99, useNA = "always")
+table(hhdata2$h1_windows, hhdata2$modernwindow,useNA = "always")
+table(hhdata2$h1_windows_otherlist, hhdata2$h1_windows_type___98, useNA = "always")
 
 hhdata2 = hhdata2 %>%
   mutate(modernwindow = case_when(
-    h1_windows_type___1 == 1  ~ 1, #window
+    h1_windows == 0 ~ 0, # no windows
+    is.na(h1_windows) ~ 0, # no windows
+    h1_windows_type___1 == 1  ~ 1, #glass
     h1_windows_type___2 == 1  ~ 1, # screen
     h1_windows_type___3 == 1  ~ 0, # open
     h1_windows_type___4 == 1  ~ 0, # plastic/paper/carton
     h1_windows_type___5 == 1  ~ 0, # planks
-    h1_windows_type___98 == 98 ~ 0, # don't know: count as don't know since screen/glass only one
+    h1_windows_type___97 == 1 ~ 0, # all 'other' are wood or metal
+    h1_windows_type___98 == 1 ~ 0, # don't know: count as don't know since screen/glass only one
     TRUE ~ NA_real_ 
   ) %>% as.numeric()
   )
-addmargins(table(hhdata2$modernfloor,useNA = "always"))
+addmargins(table(hhdata2$modernwindow,useNA = "always"))
+
+missingwindow <- hhdata2 %>% 
+  dplyr::select( "hrhhid","h10_hbv_rdt", "maternity" ,"hdov", "modernwindow",starts_with("h1_wind")) %>% 
+  filter(is.na(modernwindow))
+
+# Holes in wall/house----------------------------------------
+addmargins(table(hhdata2$h2_walls_holes, hhdata2$modernwalls, useNA = "always"))
+
+# Modern housing: modernroof==1, modernwalls==1, modernfloor==1, modernwindows==1, h2_walls_holes==0
+hhdata2 = hhdata2 %>%
+  mutate(modernhousing = case_when(
+    modernroof == 1 & modernwalls == 1  & modernfloor == 1  & modernwindow == 1  & h2_walls_holes == 0 ~ 1,
+    TRUE ~ 0 
+  ) %>% as.numeric()
+  )
+addmargins(table(hhdata2$modernhousing, useNA = "always"))
+addmargins(table(hhdata2$modernhousing, hhdata2$modernfloor ,useNA = "always")) 
+addmargins(table(hhdata2$modernhousing, useNA = "always"))
+
+
+# wealth objects of hh--------------------------------------------------
+hhdata2 <- hhdata2 %>% 
+  rename(h3_hh_wealth_electr = h3_hh_wealth___1,
+         h3_hh_wealth_toilet = h3_hh_wealth___2,
+         h3_hh_wealth_radio = h3_hh_wealth___3,
+         h3_hh_wealth_tv = h3_hh_wealth___4,
+         h3_hh_wealth_fridge = h3_hh_wealth___5,
+         h3_hh_wealth_cooktop = h3_hh_wealth___6,
+         h3_hh_wealth_generator = h3_hh_wealth___7,
+         h3_hh_wealth_beds = h3_hh_wealth___8,
+         h3_hh_wealth_lamps = h3_hh_wealth___9,
+         h3_hh_wealth_over = h3_hh_wealth___10,
+         h3_hh_wealth_hoes = h3_hh_wealth___11,
+         h3_hh_wealth_sewing = h3_hh_wealth___12)
+
+table(hhdata2$h3_hh_wealth___98) # one reports don't know      
+table(hhdata2$h3_hh_wealth___99)       
+
+# wealth objects of members--------------------------------------------------
+table(hhdata2$h4_hh_member_wealth___1)       
+
+hhdata2 <- hhdata2 %>% 
+  rename(h4_hh_member_wealth_watch = h4_hh_member_wealth___1,
+         h4_hh_member_wealth_cellph = h4_hh_member_wealth___2,
+         h4_hh_member_wealth_canoe = h4_hh_member_wealth___3,
+         h4_hh_member_wealth_moto = h4_hh_member_wealth___4,
+         h4_hh_member_wealth_car = h4_hh_member_wealth___5,
+         h4_hh_member_wealth_animalcart = h4_hh_member_wealth___6,         
+         h4_hh_member_wealth_motorboat = h4_hh_member_wealth___7,
+         h4_hh_member_wealth_bike = h4_hh_member_wealth___8,
+         h4_hh_member_wealth_comp = h4_hh_member_wealth___9,
+         h4_hh_member_wealth_houserent = h4_hh_member_wealth___10)
+
+ 
+table(hhdata2$h4_hh_member_wealth___98) # one reports don't know      
+table(hhdata2$h4_hh_member_wealth___99)       
+
+
+
+# #cultivatable land--------------------------------------------------
+addmargins(table(hhdata2$h5_cultivable_land, useNA = "always"))
+addmargins(table(hhdata2$h5a_cultivable_land_hect, useNA = "always"))
+
+hhdata2 <- hhdata2 %>% 
+  dplyr::mutate(h5_cultivable_land_f=factor(
+    hhdata1$h5_cultivable_land, 
+    levels = c(0, 1, 99),
+    labels = c("No", "Yes", "Refused")))
+
+hhdata2$h5a_cultivable_land_hect_num <- as.numeric(hhdata2$h5a_cultivable_land_hect)
+class(hhdata2$h5a_cultivable_land_hect_num)
+
+# Water source------------------------------------------------------
+
+
+
+# Cooking source------------------------------------------------------
+
+
+# Make wealth index------------------------------------------------------
+
+
+# sharing nail clippers
+table(hhdata2$h8_nail_cutting)
+
+table(hhdata2$h8a_nail_clippers_owned)
+table(hhdata2$h8b_nail_filer_owned)
+
+# sharing razors
+table(hhdata2$h9_razor)
+table(hhdata2$h8a_razer_owned)
+
+# 
 
 
 

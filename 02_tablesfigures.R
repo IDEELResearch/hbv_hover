@@ -9,13 +9,13 @@ hhdata2 <- merge(hhdata1, hhIDs, by = c("hrhhid"), all.x = T)
 
 
 
-summary(hhdata1)
+summary(hhdata2)
 
 # all vars
-tab1varcleaned <- c("adultmalaria", "hv009","hv014","hv105","sex",  "treatedbednet", "modernhousing", "hv270_f", "urbanrural", "landown_f", "hv024_f", "animalown", "cattle", "horses", "goats", "sheep", "chickens", "pigs", "ducks")
+tab1varcleaned <- c("modernfloor", "modernroof","modernwindow","modernwall","modernhousing", "h5_cultivable_land_f", "h5_cultivable_land_f")
 
-numericvars <- c("hhsize", "hv014","hv009") # age, under 5s in hh, total hh members
+numericvars <- c("hhsize", "hv014","hv009", "≈") # age, under 5s in hh, total hh members
 
-catvars <- c("adultmalaria", "sex",  "treatedbednet", "modernhousing", "hv270_f","urbanrural", "landown_f", "hv024_f", "animalown", "cattle", "horses","goats","sheep","chickens","pigs","ducks")
+catvars <- c("modernfloor", "modernroof","modernwindow","modernwall","modernhousing", "h5_cultivable_land_f")
 
-animalariatab1 <- CreateTableOne(vars = tab1varcleaned, factorVars = catvars, data=dhs, strata = "adultmalaria", addOverall = T)
+hover_hh_tab1 <- CreateTableOne(vars = tab1varcleaned, factorVars = catvars, data=hhdata2, strata = "h10_hbv_rdt_f", addOverall = T)
