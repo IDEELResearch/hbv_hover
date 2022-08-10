@@ -95,7 +95,7 @@ totalhbsagpositive <- inddata1 %>%
 hhdata1 <- left_join(hhdata1, totalhbsagpositive, by = "hrhhid")
 inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid","totalpositive")],  by = "hrhhid")
 
-inddata1 = subset(inddata1, select = -c(totalpositive.x,totalpositive.y) )
+# inddata1 = subset(inddata1, select = -c(totalpositive.x,totalpositive.y) )
 
 
 clusters <- inddata1[inddata1$totalpositive >1, ]
@@ -280,12 +280,54 @@ hhdata2$h5a_cultivable_land_hect_num <- as.numeric(hhdata2$h5a_cultivable_land_h
 class(hhdata2$h5a_cultivable_land_hect_num)
 
 # Water source------------------------------------------------------
+# explore frequency of different water sources
+table(hhdata2$h6_water_access___3, hhdata2$h6_water_access___1)
+table(hhdata2$h6_water_access___6, hhdata2$h6_water_access___3) 
+table(hhdata2$h6_water_access___99) #97 = other, 98 = don't know, 99 = refused
+table(hhdata2$h6_water_access_otherlist, hhdata2$h6_water_access___4) #97 = other, 98 = don't know, 99 = refused
+# forage, Forage, Forrage = borehole
+
+# not uncommon to have multiple sources - could reflect wealth to have access to multiple. 
+# if only or at least one source is piped to house, code as 3 (best)
+# if piped to neighbor, code as 2 (next best)
+# if communal tap/protected borehole, code as 1 (next best to have some distinction in wealth index)
+# if only spring or no source, 0.
 
 
+
+test = hhdata2 %>%
+  mutate(privatewater = case_when(
+    h6_water_access___1 == 1 ~ 3, #private piped water
+    h6_water_access___2 == 1 ~ 2, # piped water from neighbor
+    h6_water_access___3 == 1 ~ 1, # communal tap
+    h6_water_access___4 == 1 ~ 1, # protected well
+    h6_water_access___6 == 1 ~ 0, #  spring water
+    h6_water_access_otherlist == "forage" ~ 1,
+    h6_water_access_otherlist == "Forage" ~ 1,
+    h6_water_access_otherlist == "Forrage" ~ 1,
+    TRUE ~ NA_real_ 
+  ) %>% as.numeric()
+  )
+
+table(test$privatewater, useNA = "always")
+table(test$privatewater, test$h6_water_access___6)
 
 # Cooking source------------------------------------------------------
+addmargins(table(hhdata2$h7_cooking_fuel___1,hhdata2$h7_cooking_fuel___2,hhdata2$h7_cooking_fuel___3  ))
 
-
+hhdata2 = hhdata2 %>%
+  mutate(cookfuel = case_when(
+    h7_cooking_fuel___1 == 1 & h7_cooking_fuel___2 == 0 & h7_cooking_fuel___3 == 0 ~ 0, # charcoal only
+    h7_cooking_fuel___1 == 1 & h7_cooking_fuel___2 == 1 & h7_cooking_fuel___3 == 0 ~ 1, # charcoal plus gas 
+    h7_cooking_fuel___1 == 1 & h7_cooking_fuel___2 == 0 & h7_cooking_fuel___3 == 1 ~ 1, # charcoal plus electric 
+    h7_cooking_fuel___1 == 1 & h7_cooking_fuel___2 == 1 & h7_cooking_fuel___3 == 1 ~ 2, # all 3
+    h7_cooking_fuel___1 == 0 & h7_cooking_fuel___2 == 1 & h7_cooking_fuel___3 == 0 ~ 3, # gas only, none with this
+    h7_cooking_fuel___1 == 0 & h7_cooking_fuel___2 == 0 & h7_cooking_fuel___3 == 1 ~ 3, # electric only
+    h7_cooking_fuel___1 == 0 & h7_cooking_fuel___2 == 1 & h7_cooking_fuel___3 == 1 ~ 3, # electric or gas 
+    TRUE ~ NA_real_ 
+  ) %>% as.numeric()
+  )
+table(hhdata2$cookfuel, useNA = "always")
 # Make wealth index------------------------------------------------------
 
 
