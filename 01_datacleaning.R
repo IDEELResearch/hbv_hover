@@ -276,6 +276,15 @@ hhdata2 <- hhdata2 %>%
     levels = c(0, 1, 99),
     labels = c("No", "Yes", "Refused")))
 
+hhdata2 <- hhdata2 %>% 
+  dplyr::mutate(h5_cultivable_land_wi = case_when(
+    h5_cultivable_land == 0 ~ 0,
+    h5_cultivable_land == 1 ~ 1,
+    h5_cultivable_land == 99 ~ NA_real_, # assigning to missing so not included in wealth index
+    TRUE ~ h5_cultivable_land))
+
+table(hhdata2$h5_cultivable_land_wi, hhdata2$h5a_cultivable_land_hect_num ,useNA = "always")
+
 hhdata2$h5a_cultivable_land_hect_num <- as.numeric(hhdata2$h5a_cultivable_land_hect)
 class(hhdata2$h5a_cultivable_land_hect_num)
 
@@ -293,9 +302,7 @@ table(hhdata2$h6_water_access_otherlist, hhdata2$h6_water_access___4) #97 = othe
 # if communal tap/protected borehole, code as 1 (next best to have some distinction in wealth index)
 # if only spring or no source, 0.
 
-
-
-test = hhdata2 %>%
+hhdata2 = hhdata2 %>%
   mutate(privatewater = case_when(
     h6_water_access___1 == 1 ~ 3, #private piped water
     h6_water_access___2 == 1 ~ 2, # piped water from neighbor
@@ -309,8 +316,8 @@ test = hhdata2 %>%
   ) %>% as.numeric()
   )
 
-table(test$privatewater, useNA = "always")
-table(test$privatewater, test$h6_water_access___6)
+table(hhdata2$privatewater, useNA = "always")
+table(hhdata2$privatewater, test$h6_water_access___6)
 
 # Cooking source------------------------------------------------------
 addmargins(table(hhdata2$h7_cooking_fuel___1,hhdata2$h7_cooking_fuel___2,hhdata2$h7_cooking_fuel___3  ))
@@ -328,10 +335,116 @@ hhdata2 = hhdata2 %>%
   ) %>% as.numeric()
   )
 table(hhdata2$cookfuel, useNA = "always")
+
+# People in household per bed--------------------------------------------------
+table(hhdata2$n, useNA = "always")
+table(hhdata2$h3_hh_wealth_beds, useNA = "always")
+
 # Make wealth index------------------------------------------------------
+# subset dataset for prcomp()
+wealthpca_hoverhh <- hhdata2[, c("hrhhid", "n","cookfuel", "privatewater", "modernwalls", "modernfloor", "modernroof", "modernwindow",
+                                 "h5_cultivable_land_wi",
+                                     "h3_hh_wealth_electr" ,
+                                     "h3_hh_wealth_toilet",
+                                     "h3_hh_wealth_radio",
+                                     "h3_hh_wealth_tv" ,
+                                     "h3_hh_wealth_fridge" ,
+                                     "h3_hh_wealth_cooktop",
+                                     "h3_hh_wealth_generator", 
+                                     "h3_hh_wealth_beds" ,
+                                     "h3_hh_wealth_lamps" ,
+                                     "h3_hh_wealth_over",
+                                     "h3_hh_wealth_hoes" ,
+                                     "h3_hh_wealth_sewing", 
+     "h4_hh_member_wealth_watch", "h4_hh_member_wealth_cellph",  "h4_hh_member_wealth_canoe",   
+  "h4_hh_member_wealth_moto", "h4_hh_member_wealth_car", "h4_hh_member_wealth_animalcart","h4_hh_member_wealth_motorboat", "h4_hh_member_wealth_bike", "h4_hh_member_wealth_comp", "h4_hh_member_wealth_houserent")]
+
+summary(wealthpca_hoverhh) # look at the distributions of all possible variables to include
+##observations##
+# few have animal cart h4_hh_member_wealth_animalcart
+# few have motorboat h4_hh_member_wealth_motorboat
+# no one has a canoe
+# is radio necessary - remove?
+
+# drop variables
+wealthpca_hoverhh <- wealthpca_hoverhh %>% select(-c(h4_hh_member_wealth_animalcart,h4_hh_member_wealth_motorboat, h4_hh_member_wealth_canoe))
 
 
-# sharing nail clippers
+# complete case?
+# decide for cultivatable land if the 2 NA should be coded as 0
+# other variables with missing?
+
+wealthpca_hoverhh_nomiss <- wealthpca_hoverhh[complete.cases(wealthpca_hoverhh), ]
+
+pca_hover <- prcomp(as.matrix(wealthpca_hoverhh_nomiss[, 3:28]), scale=TRUE)
+summary(pca_hover) # first component explains 23% of variance
+# this feels low (Odum Institute, talking with other students, and the internet suggest that you could include multiple components, to reach closer to 80%, but Marcel's group (see papers cited in AVERT supplement) only used the first component, so we followed that precedent).
+pca_R_output <- as.data.frame(pca_hover$x)
+# pca_R_output$subject_id <- rownames(pca_R_output)
+
+pca_R_output <- cbind(pca_R_output, wealthpca_hoverhh_nomiss$hrhhid)
+#Create percentiles and wealth index
+summary(pca_R_output$PC1)
+
+ggplot(pca_R_output)+
+  geom_histogram( aes(PC1), binwidth = 0.5)+
+  ggtitle("Distribution of values for Principal Component 1")+
+  xlab("Principal component 1")+
+  ylab("Count of participants")+
+  theme_bw()+
+  theme(plot.title = element_text(size = 20),
+        axis.title = element_text(size = 15),
+        axis.text = element_text(size = 15)
+  )
+
+hist(pca_R_output$PC1, breaks=seq(-6,6,0.5))+title("Value of Principal Component 1")
+quantile(pca_R_output$PC1, probs = c(0.25, 0.5,0.75, 1), na.rm = T)
+
+# Graphical displays for supplementary material
+var_explained_df <- data.frame(PC= paste0("PC", 1:26),
+                               var_explained=(pca_hover$sdev)^2/sum((pca_hover$sdev)^2))
+
+head(var_explained_df)
+var_explained_df$PC <- factor(var_explained_df$PC, levels = var_explained_df$PC[order(-var_explained_df$var_explained)])
+
+var_explained_df %>%
+  ggplot(aes(x=PC,y=var_explained, group=1))+
+  geom_point(size=4)+
+  geom_line()+
+  labs(title="Scree plot: PCA on scaled data")+
+  ylab("Variance explained by each component")+
+  xlab("Principal component")+
+  theme_bw()+
+  theme(plot.title = element_text(size = 20),
+        axis.title = element_text(size = 15),
+        axis.text = element_text(size = 15)
+  )
+
+quantile(pca_R_output$PC1, probs = c(0.25, 0.5,0.75, 1), na.rm = T)
+
+# Wealth variable used in Table 1
+# when enrollment is complete, update these percentiles
+pca_R_output$wealth_R <- as.numeric(0)
+pca_R_output = pca_R_output %>%
+  mutate(wealth_R = case_when(
+    PC1 <= -1.309517 ~ 0,
+    PC1 > -1.309517 & PC1 <= -0.273219 ~ 1,
+    PC1 > -0.273219 & PC1 <= 1.287901 ~ 2,
+    PC1 > 1.287901  ~ 3,
+    TRUE ~ wealth_R
+  ) %>% as.numeric()
+  )
+
+table(pca_R_output$wealth_R, useNA = "always")
+# rename PID variable so it matches enrollment and merge will work in next step
+pca_R_output <- pca_R_output %>% rename(hrhhid = `wealthpca_hoverhh_nomiss$hrhhid`)
+# add new wealth variable back onto main enrollment dataset
+hhdata2 <- inner_join(hhdata2, pca_R_output[, c("hrhhid", "wealth_R")], by = c("hrhhid"))
+# check new variable
+table(hhdata2$wealth_R, hhdata2$maternity, useNA = "always")
+
+
+# sharing nail clippers---------------------------
 table(hhdata2$h8_nail_cutting)
 
 table(hhdata2$h8a_nail_clippers_owned)
@@ -341,7 +454,26 @@ table(hhdata2$h8b_nail_filer_owned)
 table(hhdata2$h9_razor)
 table(hhdata2$h8a_razer_owned)
 
-# 
+# make new shared clipper/razor variables
+hhdata2 <- hhdata2 %>% 
+  dplyr::mutate(h8_nail_cutting_f=factor(
+    hhdata2$h8_nail_cutting, 
+    levels = c(0, 1, 98, 99),
+    labels = c("No", "Yes", "Don't know", "Refused")))
+# count of nail clipper and filers owned
+hhdata2$h8a_nail_clippers_owned <- as.factor(as.numeric(hhdata2$h8a_nail_clippers_owned))
+hhdata2$h8b_nail_filer_owned <- as.factor(as.numeric(hhdata2$h8b_nail_filer_owned))
+
+hhdata2 <- hhdata2 %>% 
+  dplyr::mutate(h9_razor_f=factor(
+    hhdata2$h9_razor, 
+    levels = c(0, 1, 98, 99),
+    labels = c("No", "Yes", "Don't know", "Refused")))
+
+hhdata2$h8a_razer_owned <- as.factor(as.numeric(hhdata2$h8a_razer_owned))
+
+table(hhdata2$h9_razor_f ,hhdata2$h8a_razer_owned) # what does 96 mean
+
 
 
 
