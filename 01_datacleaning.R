@@ -102,6 +102,11 @@ clusters <- inddata1[inddata1$totalpositive >1, ]
 table(clusters$hrhhid)
 
 # Cleaning household variables--------------------------------------------------------------------------------
+hhdata1 <- hhdata1 %>% 
+  dplyr::mutate(h10_hbv_rdt_f=factor(
+    hhdata1$h10_hbv_rdt, 
+    levels = c(0, 1),
+    labels = c("HBV-", "HBV+")))
 
 # Roof ----------------------------------------
 #roof type - create indicator for modern or not, following Molly DF's DHS coding, 
@@ -474,7 +479,262 @@ hhdata2$h8a_razer_owned <- as.factor(as.numeric(hhdata2$h8a_razer_owned))
 
 table(hhdata2$h9_razor_f ,hhdata2$h8a_razer_owned) # what does 96 mean
 
+#Clean individual survey variables------------------------
 
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(h10_hbv_rdt_f=factor(
+    inddata1$h10_hbv_rdt, 
+    levels = c(0, 1),
+    labels = c("HBV-", "HBV+")))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i27a_rdt_result_f=factor(
+    inddata1$i27a_rdt_result, 
+    levels = c(0, 1,4),
+    labels = c("Negatif", "Positif","Indéterminé")))
+#labels = c("Negative", "Positive")))
+
+inddata1$hr7_age_mois <- as.numeric(inddata1$hr7_age_mois)
+inddata1$age_combined <- round(ifelse(as.numeric(inddata1$hr7a_month_year==0), as.numeric(inddata1$hr7_age_year), as.numeric(inddata1$hr7_age_mois)/12),2)
+
+# age group <15 vs > 15 (birth in 2007)
+# sens analysis with 2021 vs 2022 enrollments, potential birth at beginning vs end of year
+inddata1 = inddata1 %>%
+  mutate(agegrp15_2 = case_when(
+    age_combined < 15 ~ 0,
+    age_combined >= 15 ~ 1,
+    TRUE ~ 0
+  ) %>% as.numeric()
+  )
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr3_relationship_f=factor(
+    inddata1$hr3_relationship, 
+    levels = c(0, 1,2,3,4,5,6,7,8,9,10,11,12,13,97,98,99),
+    labels = c("Sans parenté", "Mère index","Femme ou mari", "Fils/fille", "Gendre/belle fille", "Petit-fils/fille","Père/mère","Beaux-parents","Frère/soeur","Neveu/nièce","Neveu/nièce par alliance","Enfant adopté/ garde/de la femme/du mari","Tante/oncle","Grandpère/mère","Autre","Ne sait pas", "Refusé")))    
+#labels = c("Unrelated", "Index mother","Spouse","Son/daughter","Step-son/daughter","Grandson/daughter","Father/mother","In-laws","Brother/sister","Nephew/niece","Nephew/niece by marriage","Adopted/in custody","Aunt/uncle","Grandmother/father","Other","Don't know", "Refused")))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr4_sex_f=factor(
+    inddata1$hr4_sex, 
+    levels = c(0, 1),
+    labels = c("Masculin", "Féminin")))
+#labels = c("Male", "Female")))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr5_primary_residence_f=factor(
+    inddata1$hr5_primary_residence, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+#labels = c("No", "Yes", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr6_last_night_residence_f=factor(
+    inddata1$hr6_last_night_residence, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+#labels = c("No", "Yes", "Refused")))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr8_marital_status_f=factor(
+    inddata1$hr8_marital_status, 
+    levels = c(0, 1, 2,3,96),
+    labels = c("Never married", "Married or living together", "Divorced", "Widow(er)", "N/A")))
+
+#ISSUE: education-------
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr9_school_gr = case_when(
+    hr9_schooling == 0 ~ 0,
+    hr9_schooling == 1 ~ 1,
+    hr9_schooling == 2 ~ 2, 
+    hr9_schooling == 3 ~ 3, # 1er cycle d'orientation
+    hr9_schooling == 4 ~ 3, # 2ème cycle d'orientation
+    hr9_schooling == 5 ~ 4, # some secondary ed
+    hr9_schooling == 6 ~ 4, 
+    hr9_schooling == 7 ~ 4, 
+    hr9_schooling == 8 ~ 5, # finished secondary school 
+    hr9_schooling == 9 ~ 6, # 3-yr uni
+    hr9_schooling == 10 ~ 7, # 5-yr uni
+    hr9_schooling == 11 ~ 8, # doctorat
+    hr9_schooling == 96 ~ 96, 
+    hr9_schooling == 97 ~ 97, # other but no opp to specify
+    hr9_schooling == 98 ~ 98,
+    hr9_schooling == 99 ~ 99,
+   TRUE ~ NA_real_))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr9_school_gr_f=factor(
+    inddata1$hr9_school_gr, 
+    levels = c(0, 1, 2,3,4,5,6,7,8,96,97,98,99),
+    labels = c("No schooling", "Primary school not finished", "Finished primary school",
+               "1st/2nd orientation", "Some secondary school","Finished secondary school","3 years of university",
+               "5 years of university", "Doctorate","N/A","Other","Don't know","Refused")))
+# occupation
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr10_occupation_gr = case_when(# divide salaried, self-employed, student
+    hr10_occupation == 0 ~ 0, # no occupation
+    hr10_occupation == 1 ~ 1, # civil servant - salaried
+    hr10_occupation == 2 ~ 1, # soldier/police - salaried
+    hr10_occupation == 3 ~ 1, # private employee - salaried
+    hr10_occupation == 4 ~ 2, # farmer - self
+    hr10_occupation == 5 ~ 2, # fisherman - self
+    hr10_occupation == 6 ~ 2, # driver - self 
+    hr10_occupation == 7 ~ 3, # hotel employee - works for someone else 
+    hr10_occupation == 8 ~ 3, # sweeper - works for someone else 
+    hr10_occupation == 9 ~ 2, # market vendor - self
+    hr10_occupation == 10 ~ 2, # shop owner - self
+    hr10_occupation == 11 ~ 2, # street vendor - self
+    hr10_occupation == 12 ~ 2, # money changer - self
+    hr10_occupation == 13 ~ 2, # Artist - self
+    hr10_occupation == 14 ~ 2, # tailor - self
+    hr10_occupation == 15 ~ 2, # small business - self
+    hr10_occupation == 16 ~ 4, # student
+    hr10_occupation == 96 ~ NA_real_, # set as missing
+    hr10_occupation == 97 ~ 97, # other
+    hr10_occupation == 98 ~ 98, # don't know/refused
+    hr10_occupation == 99 ~ 98, # don't know/refused
+    TRUE ~ NA_real_))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr10_occupation_gr_f=factor(
+    inddata1$hr10_occupation_gr, 
+    levels = c(0, 1, 2,3,4,97,98),
+    labels = c("No occupation", "Salaried", "Self-employed",
+               "Works for someone else", "Student","Other","Don't know/refused")))
+# RELIGION
+# look at religion by household 
+## table(inddata1$hr11_religion, useNA = "always")
+## table(inddata1$hr11_religion, inddata1$hrhhid, useNA = "always")
+# mostly the same within households - consider putting under household
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr11_religion_f=factor(
+    inddata1$hr11_religion, 
+    levels = c(0, 1, 2,3,4,5,6,7,8,9,97,98,99),
+    labels = c("No religion", "Traditional", "Catholic",
+               "Evangelical", "Revivalist","Adventist","Protestant", "Muslim","Kimbanguism",
+               "Salvation Army", "Other","Don't know","Refused")))
+
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i2_past_hbv_dx_f=factor(
+    inddata1$i2_past_hbv_dx, 
+    levels = c(0, 1, 3,98,99),
+    labels = c("Non", "Oui", "Jamais testé", "Ne sait pas", "Refusé")))
+#labels = c("No", "Yes", "Never tested", "Don't know", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i1_hbv_positive_f=factor(
+    inddata1$i1_hbv_positive, 
+    levels = c(0, 1,2, 3,98,99),
+    labels = c("Non", "Oui, une fois","Oui, plus d'une fois", "Jamais testé", "Ne sait pas", "Refusé")))
+#labels = c("No", "Yes, once","Yes, more than once", "Never tested", "Don't know", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i3_hiv_pos_test_f=factor(
+    inddata1$i3_hiv_pos_test, 
+    levels = c(0, 1, 3,98,99),
+    labels = c("Non", "Oui", "Jamais testé", "Ne sait pas", "Refusé")))
+#labels = c("No", "Yes", "Never tested", "Don't know", "Refused")))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i3a_hiv_treatment_f=factor(
+    inddata1$i3a_hiv_treatment, 
+    levels = c(0, 1, 98,99),
+    labels = c("Non", "Oui", "Ne sait pas","Refusé")))
+#labels = c("No", "Yes", "Don't know", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i4_fever_f=factor(
+    inddata1$i4_fever, 
+    levels = c(0, 1, 98,99),
+    labels = c("Non", "Oui", "Ne sait pas","Refusé")))
+#labels = c("No", "Yes", "Don't know", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i5_pregnancy_f=factor(
+    inddata1$i5_pregnancy, 
+    levels = c(0, 1, 98,99),
+    labels = c("Non", "Oui", "Ne sait pas","Refusé")))
+#labels = c("No", "Yes", "Don't know", "Refused")))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i14_shared_razor_f=factor(
+    inddata1$i14_shared_razor, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+#labels = c("No", "Yes", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i15_shared_nailclippers_f=factor(
+    inddata1$i15_shared_nailclippers, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+#labels = c("No", "Yes", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i8_transfusion_f=factor(
+    inddata1$i8_transfusion, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+#labels = c("No", "Yes", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i9_iv_drug_use_f=factor(
+    inddata1$i9_iv_drug_use, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+#labels = c("No", "Yes", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i10_street_salon_f=factor(
+    inddata1$i10_street_salon, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+#labels = c("No", "Yes", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i11_manucure_f=factor(
+    inddata1$i11_manucure, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+#labels = c("No", "Yes", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i12_food_first_chew_f=factor(
+    inddata1$i12_food_first_chew, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+#labels = c("No", "Yes", "Refused")))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i13_shared_toothbrush_f=factor(
+    inddata1$i13_shared_toothbrush, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+#labels = c("No", "Yes", "Refused")))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i16_traditional_scarring_f=factor(
+    inddata1$i16_traditional_scarring, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+#labels = c("No", "Yes", "Refused")))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i25_sex_hx_receive_money_f=factor(
+    inddata1$i25_sex_hx_receive_money, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+#labels = c("No", "Yes", "Refused")))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i26_sex_hx_given_money_f=factor(
+    inddata1$i26_sex_hx_given_money, 
+    levels = c(0, 1, 99),
+    labels = c("Non", "Oui", "Refusé")))
+#labels = c("No", "Yes", "Refused")))
+
+inddata1$indexmom <- ifelse(inddata1$hr3_relationship==1,1,0)
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(indexmom=factor(
+    inddata1$indexmom, 
+    levels = c(0, 1),
+    # labels = c("Household member", "Index mother")))
+    labels = c("Membre de ménage", "Mère index")))
+# necessary for individual survey?
+totalhbsagpositive <- inddata1 %>%
+  dplyr::group_by(hrhhid) %>%
+  dplyr::summarise(totalpositive = sum(i27a_rdt_result, na.rm=TRUE), n=n()) 
 
 
 
