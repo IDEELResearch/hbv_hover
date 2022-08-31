@@ -9,7 +9,7 @@ hhIDs <- inddata1 %>%
 
 hhdata2 <- merge(hhdata1, hhIDs, by = c("hrhhid"), all.x = T)
 
-summary(hhdata2)
+# summary(hhdata2)
 
 #organize variables for table 1
 # all vars
@@ -24,7 +24,7 @@ hover_hh_tab1 <- CreateTableOne(vars = tab1varcleaned, factorVars = catvars, dat
 
 tab1hhexport <- print(hover_hh_tab1 ,quote = FALSE, noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE, formatOptions = list(big.mark = ","))
 tab1hhexport
-
+write.csv(tab1hhexport, file = "tab1hhexport.csv")
 # TODO
 
 # -add factor for exposed vs unexposed
@@ -44,11 +44,50 @@ catvars_ind <- c("i27a_rdt_result_f","indexmom","hr3_relationship_f","agegrp15_2
                  "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f", "i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
                   "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f", "i26_sex_hx_given_money_f")
 #first step in create table 1
-hover_ind_tab1 <- CreateTableOne(vars = tab1_ind, factorVars = catvars_ind, data=inddata1, strata = c("h10_hbv_rdt_f","i27a_rdt_result_f"), addOverall = T)
+hover_ind_tab1 <- CreateTableOne(vars = tab1_ind, factorVars = catvars_ind, data=inddata1, strata = c("i27a_rdt_result_f", "h10_hbv_rdt_f"), addOverall = T)
 
 tab1ind_exp <- print(hover_ind_tab1 ,quote = FALSE, noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE, formatOptions = list(big.mark = ","))
 tab1ind_exp
+write.csv(tab1ind_exp, file = "tab1ind_exp.csv")
 
 ## To_DO on ind questions
 # - education - distinguish those currently in school (eg secondary school) from adults who are out of school but only completed part of secondary school
+
+## misc for CROI abstract------------------------------------------------------------------------
+nrow(inddata1 %>% filter(age_combined < 18)) # how many under 18
+nrow(inddata1 %>% filter(age_combined < 18))/nrow(inddata1) # %  under 18
+addmargins(table(inddata1$hr3_relationship_f)) # how many direct offspring
+addmargins(table(inddata1$hr3_relationship_f))/nrow(inddata1) # %  direct offspring
+table(inddata1$i27a_rdt_result_f, inddata1$indexmom)
+
+#how many serostatus changes
+inddata1 %>% filter(indexmom=="Mère index") %>% group_by(h10_hbv_rdt_f ,i27a_rdt_result_f) %>% count()
+6/195
+
+# how many new positives (non-index mothers)
+inddata1 %>% filter(indexmom=="Membre de ménage") %>% group_by(h10_hbv_rdt_f ,i27a_rdt_result_f) %>% count()
+19/(359+19+2)
+8/(413+8+2)
+
+#clusters of infections
+addmargins(table(hhdata1$totalpositive, hhdata1$h10_hbv_rdt_f))
+# why are there 5 eexposed households with no cases
+noexpcases <- hhdata1 %>% filter(totalpositive==0 & h10_hbv_rdt==1) %>% select(hrhhid)
+hhmemnoexpcases <- inddata1 %>% filter(hrhhid %in% noexpcases$hrhhid)
+
+table(hhmemnoexpcases$i27a_rdt_result_f, hhmemnoexpcases$hrhhid,useNA = "always")
+
+nrow(inddata1 %>% group_by(hrhhid) %>% count())
+
+mean(hhdata2$hhsize)
+# hiv among the sag+
+table(inddata1$i3_hiv_pos_test_f, inddata1$i27a_rdt_result_f)
+
+#prior HBV test
+table(inddata1$i1_hbv_positive_f, inddata1$i27a_rdt_result_f)
+
+
+
+
+
 

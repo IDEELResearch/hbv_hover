@@ -432,10 +432,10 @@ quantile(pca_R_output$PC1, probs = c(0.25, 0.5,0.75, 1), na.rm = T)
 pca_R_output$wealth_R <- as.numeric(0)
 pca_R_output = pca_R_output %>%
   mutate(wealth_R = case_when(
-    PC1 <= -1.309517 ~ 0,
-    PC1 > -1.309517 & PC1 <= -0.273219 ~ 1,
-    PC1 > -0.273219 & PC1 <= 1.287901 ~ 2,
-    PC1 > 1.287901  ~ 3,
+    PC1 <= -1.3199363 ~ 0,
+    PC1 > -1.3199363 & PC1 <= -0.2764219 ~ 1,
+    PC1 > -0.2764219 & PC1 <= 1.2951883 ~ 2,
+    PC1 > 1.2951883  ~ 3,
     TRUE ~ wealth_R
   ) %>% as.numeric()
   )
@@ -447,6 +447,8 @@ pca_R_output <- pca_R_output %>% rename(hrhhid = `wealthpca_hoverhh_nomiss$hrhhi
 hhdata2 <- inner_join(hhdata2, pca_R_output[, c("hrhhid", "wealth_R")], by = c("hrhhid"))
 # check new variable
 table(hhdata2$wealth_R, hhdata2$maternity, useNA = "always")
+## if reran wealth index after new obs and two vars added and need to drop them
+# hhdata2 <- hhdata2 %>% select(-c(wealth_R.x,wealth_R.y))
 
 
 # sharing nail clippers---------------------------
@@ -724,6 +726,9 @@ inddata1 <- inddata1 %>%
 #labels = c("No", "Yes", "Refused")))
 
 inddata1$indexmom <- ifelse(inddata1$hr3_relationship==1,1,0)
+
+inddata1$directoff <- ifelse(inddata1$hr3_relationship==3,1,0)
+
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(indexmom=factor(
