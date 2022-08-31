@@ -82,6 +82,7 @@ nrow(inddata1 %>% group_by(hrhhid) %>% count())
 mean(hhdata2$hhsize)
 # hiv among the sag+
 table(inddata1$i3_hiv_pos_test_f, inddata1$i27a_rdt_result_f)
+table(inddata1$i27a_rdt_result_f, inddata1$i3a_hiv_treatment_f, inddata1$i3_hiv_pos_test_f)
 
 #prior HBV test
 table(inddata1$i1_hbv_positive_f, inddata1$i27a_rdt_result_f)
