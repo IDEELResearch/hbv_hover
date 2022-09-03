@@ -87,13 +87,13 @@ inddata1 <- inddata1 %>% relocate("h10_hbv_rdt", .after = "participant_code")
 inddata1<- inddata1 %>% 
   dplyr::filter(!is.na(inddata1$participant_code))
 
-## Households with clusters
+## Households with clusters-----------
 totalhbsagpositive <- inddata1 %>%
   dplyr::group_by(hrhhid) %>%
   dplyr::summarise(totalpositive = sum(i27a_rdt_result, na.rm=TRUE), n=n()) 
 
 hhdata1 <- left_join(hhdata1, totalhbsagpositive, by = "hrhhid")
-inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid","totalpositive")],  by = "hrhhid")
+inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid","totalpositive", "n")],  by = "hrhhid")
 
 # inddata1 = subset(inddata1, select = -c(totalpositive.x,totalpositive.y) )
 
@@ -528,7 +528,7 @@ inddata1 <- inddata1 %>%
   dplyr::mutate(i27a_rdt_result_f=factor(
     inddata1$i27a_rdt_result, 
     levels = c(0, 1,4),
-    labels = c("Negatif", "Positif","Indéterminé")))
+    labels = c("HBsAg-", "HBsAg+","Indéterminé")))
 #labels = c("Negative", "Positive")))
 
 inddata1$hr7_age_mois <- as.numeric(inddata1$hr7_age_mois)
@@ -773,15 +773,6 @@ inddata1 <- inddata1 %>%
     # labels = c("Household member", "Index mother")))
     labels = c("Membre de ménage", "Mère index")))
 # necessary for individual survey?
-#total positives per hh--------------
-totalhbsagpositive <- inddata1 %>%
-  dplyr::group_by(hrhhid) %>%
-  dplyr::summarise(totalpositive = sum(i27a_rdt_result, na.rm=TRUE), n=n()) 
-
-hhdata1 <- left_join(hhdata1, totalhbsagpositive, by = "hrhhid")
-inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid","totalpositive","n")],  by = "hrhhid")
-
-
 
 
 

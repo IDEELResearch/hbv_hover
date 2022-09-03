@@ -8,7 +8,7 @@ library(tableone)
 hhIDs <- inddata1 %>%
   group_by(hrhhid) %>% summarize(hhsize=n())
 
-hhdata2 <- merge(hhdata1, hhIDs, by = c("hrhhid"), all.x = T)
+hhdata2 <- merge(hhdata2, hhIDs, by = c("hrhhid"), all.x = T)
 
 # summary(hhdata2)
 
@@ -104,7 +104,7 @@ indgps_2 = st_as_sf(indgps_2[!is.na(indgps_2$hxcoord_edit) &!is.na(indgps_2$hyco
 # order by hbsag result
 indgps_2 <- indgps_2[order(indgps_2$i27a_rdt_result_f),]
 # jitter points
-indgps_2_jitt<- st_jitter(indgps_2,  factor = 0.001)
+indgps_2_jitt<- st_jitter(indgps_2,  factor = 0.005)
 
 # surrounding polygons
 drc_healthzone_correctkinshasa = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/drc_healthzone_adm2_correctkinshasa/RDC_Zone_de_sante_09092019.shp", stringsAsFactors = F) %>% st_transform(4326)
@@ -141,14 +141,22 @@ st_crs(admin0) # view CRS
 
 DRC <- admin0 %>% filter(Country=='Democratic Republic of the Congo') # DRC
 
-output_points <- st_join(output, DRC, join = st_intersects) %>% filter(!is.na(Country))
-## Africa with DRC highlighted---------------
-
-
-
-
-## DRC with Kinshasa highlighted-------------
-
+## Africa with DRC highlighted and Kinshasa in red box
+africa <- st_read("./afr_simp/afr_g2014_2013_0.shp", stringsAsFactors = F) %>% st_transform(4326)
+A <- ggplot(africa) +
+    geom_sf(alpha=0.75, size = 0.1)+
+    geom_sf(data=DRC, fill = "gray75", size=0.2)+
+    geom_rect(aes(xmin = 15.2, xmax = 15.6, ymin = -4.48, ymax = -4.07),
+              fill = "transparent", color = "red", size = 1.5)+
+    theme(panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          plot.title = element_text(hjust = 0.5),
+          axis.title = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          legend.title = element_blank())
+  
 
 ## Base map----------
 base <- ggplot(drc_healtharea_Kin) +
@@ -161,7 +169,9 @@ base <- ggplot(drc_healtharea_Kin) +
         plot.title = element_text(hjust = 0.5),
         axis.title = element_blank(),
         axis.text = element_blank(),
-        axis.ticks = element_blank()  )
+        axis.ticks = element_blank(),
+        legend.title = element_blank(),
+        legend.position = c(0.15,0.9))
 
 ## Map: HH prev--------------------
 base +
@@ -177,7 +187,8 @@ hover_gps_full <- hover_gps_full %>%
     levels = c(0, 1),
     labels = c("Unexposed", "Exposed")))
 
-ggplot(drc_healtharea_Kin) +
+B <- 
+  ggplot(drc_healtharea_Kin) +
   geom_sf(alpha=0.75, size = 0.1)+
   geom_sf(data=congo_br, fill = "gray75", size=0.2,aes(label = ADM0_FR))+
   geom_sf(data=hover_gps_full, aes(fill=h10_hbv_rdt_f, color=h10_hbv_rdt_f), size=1)+
@@ -194,24 +205,64 @@ ggplot(drc_healtharea_Kin) +
         axis.title = element_blank(),
         axis.text = element_blank(),
         axis.ticks = element_blank(),
-        legend.title = element_blank())
+        legend.title = element_blank(),
+        legend.position = c(0.12,0.92))+
+    guides(color = guide_legend(override.aes = list(size = 2)))
+  
 
 
 
 ## Map: Hbsag results--------------------
-base + 
-  geom_sf(data=indgps_2_jitt, aes(fill=i27a_rdt_result_f, color=i27a_rdt_result_f), size = 0.5)+
+C <- 
+  base + 
+  geom_sf(data=indgps_2_jitt[!is.na(indgps_2_jitt$i27a_rdt_result_f),], aes(fill=i27a_rdt_result_f, color=i27a_rdt_result_f), size = 0.5)+
   scale_fill_manual(values = c('#878787','#f4a582','ghostwhite'))+
   scale_color_manual(values = c('#878787','#f4a582','ghostwhite'))+
-  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)
+  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)+
+  theme(legend.position = c(0.1,0.92))+
+  guides(color = guide_legend(override.aes = list(size = 2)))
+
   
 
 ##Map: Traditional scarring---------------------------------------------------------------
-base + 
-  geom_sf(data=indgps_2_jitt, aes(fill=i16_traditional_scarring_f, color=i16_traditional_scarring_f), size=0.5)+
-  scale_fill_manual(values = c('#878787','#f4a582','ghostwhite'))+
-  scale_color_manual(values = c('#878787','#f4a582','ghostwhite'))+
-  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)
+indgps_2_jitt <- indgps_2_jitt %>% 
+  dplyr::mutate(i16_traditional_scarring_f_map=factor(
+    indgps_2_jitt$i16_traditional_scarring, 
+    levels = c(0, 1, 99),
+    labels = c("No traditional scars", "Has traditional scars", "Refused")))
+D <-
+  base + 
+  geom_sf(data=indgps_2_jitt, aes(fill=i16_traditional_scarring_f_map, color=i16_traditional_scarring_f_map), size=0.5)+
+  #scale_fill_manual(values = c('#878787','#f4a582','ghostwhite'))+
+  #scale_color_manual(values = c('#878787','#f4a582','ghostwhite'))+
+  scale_color_manual(values = c('#665191',"#F5B24E","#A87323"))+   # purple and yellow and brown (refuse)
+  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)+
+  theme(legend.position = c(0.18,0.9))+
+    guides(color = guide_legend(override.aes = list(size = 2)))
+
+
+indgps_2_jitt <- indgps_2_jitt %>% 
+  dplyr::mutate(i26_sex_hx_given_money_f_map=factor(
+    indgps_2_jitt$i26_sex_hx_given_money, 
+    levels = c(0, 1, 99),
+    labels = c("Never given money for sex", "Given money for sex", "Refused")))
+E <-
+  base + 
+  geom_sf(data=indgps_2_jitt[!is.na(indgps_2_jitt$i26_sex_hx_given_money_f_map),], aes(fill=i26_sex_hx_given_money_f_map, color=i26_sex_hx_given_money_f_map), size=0.5)+
+  #scale_fill_manual(values = c('#878787','#f4a582','ghostwhite'))+
+  #scale_color_manual(values = c('#878787','#f4a582','ghostwhite'))+
+  scale_color_manual(values = c('#665191',"#F5B24E","#A87323"))+   # purple and yellow and brown (refuse)
+  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)+
+  theme(legend.position = c(0.23,0.9))+
+  guides(color = guide_legend(override.aes = list(size = 2)))
+
+# piece plots together using library(patchwork)
+grid <- B + C + D + E + plot_layout(nrow=2, ncol = 2) + plot_annotation(tag_levels = 'A')
+
+A + grid + plot_layout(nrow=1, ncol = 2) + plot_annotation(tag_levels = 'A')
+
+# output
+ggsave('./plots/prev_map.png', width=15, height=9)
 
 ## Kriging-------------
 # kriging using gstat: https://rpubs.com/nabilabd/118172 
