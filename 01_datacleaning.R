@@ -1,7 +1,7 @@
 # script to clean HOVER data and make new variables for analysis
 # adopted from HOVER_summary.Rmd file use throughout study enrollment
 
-# load packages----------------------------------------------------------------
+#Load packages----------------------------------------------------------------
 options(dplyr.summarise.inform = FALSE)
 
 library(tidyverse)
@@ -18,14 +18,14 @@ library(REDCapR)
 library(readr)
 library(lubridate)
 
-# establish colors----------------------------------------------------------------
+## establish colors----------------------------------------------------------------
 drc_colors <- c("#007fff", 	"#ce102f", 	"#f7d618")
 #hbvcolors <- c('#00429d', '#93003a',"#A0A0A0") #red and blue
 hbvcolors <- c('#33374b', '#e2738c',"#b7d1da",'ghostwhite') #navy and pink, and gray
 nounprojgraphcol <- c("#4D4D4D","#B2182B")
 # colors for responses https://www.color-hex.com/color-palette/1010756 
 
-# load data----------------------------------------------------------------
+#Load data----------------------------------------------------------------
 # API route
 data0 <- redcap_read_oneshot(redcap_uri = "https://global.redcap.unc.edu/api/",
                              token = read_file("/Users/camillem/Documents/GitHub/redcap_api/hover_api.txt"))$data
@@ -101,6 +101,36 @@ inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid","totalpositive")],  by = "h
 clusters <- inddata1[inddata1$totalpositive >1, ]
 table(clusters$hrhhid)
 
+# Clean GPS data--------------------------------------------------
+# latitudes are below equator, so need to be negative decimal degrees
+options(scipen = 999)
+#locations of Binza and Kingasani maternity centers
+centers <- c("Binza","Kingasani")
+lat <- c(-4.382935, -4.402250)
+long <- c(15.261066, 15.408503)
+maternities <- as.data.frame(cbind(centers, lat, long))
+matgps <- st_as_sf(maternities, coords = c("long","lat"), crs= 4326)
+# Binza -4.382935, 15.261066
+# Kingasani -4.402250, 15.408503
+# check GPS data formatting
+# test_2 <- subset(hhdata1, select = c("hrhhid", "hycoord", "hxcoord"))
+# floor(log10(test_2$hxcoord))
+hhdata1$hycoord_edit <- ifelse(floor(log10(hhdata1$hycoord))==7,
+                               hhdata1$hycoord/1000000,
+                               ifelse(floor(log10(hhdata1$hycoord))==6,hhdata1$hycoord/100000,
+                                      hhdata1$hycoord))
+hhdata1$hxcoord_edit <- ifelse(floor(log10(hhdata1$hxcoord))==5,
+                               hhdata1$hxcoord/100000,
+                               hhdata1$hxcoord)
+# table(hhdata1$hxcoord_edit)
+# hhdata1 <- subset(hhdata1, select = -c(hycoord_edit))
+
+hhdata1$hxcoord_edit <- (hhdata1$hxcoord_edit)*-1
+
+## prev in hh----------------
+hhdata1$hhprev <- ifelse(hhdata1$totalpositive==0,0,hhdata1$totalpositive/hhdata1$n)
+table(hhdata1$hhprev, useNA = "always")
+
 # Cleaning household variables--------------------------------------------------------------------------------
 hhdata1 <- hhdata1 %>% 
   dplyr::mutate(h10_hbv_rdt_f=factor(
@@ -108,7 +138,7 @@ hhdata1 <- hhdata1 %>%
     levels = c(0, 1),
     labels = c("HBV-", "HBV+")))
 
-# Roof ----------------------------------------
+## Roof ----------------------------------------
 #roof type - create indicator for modern or not, following Molly DF's DHS coding, 
 # reflective of divide by expensive vs cheaper for wealth index
 # Modern roof: metal, zinc/cement, tiles/slate, or cement (options=7, 9, 10, 11, 12 )
@@ -140,7 +170,7 @@ missingroof <- hhdata2 %>%
   dplyr::select( "hrhhid","h10_hbv_rdt", "maternity" ,"hdov", starts_with("h1_roof")) %>% 
   filter(is.na(hhdata2$modernroof))
 
-# Walls----------------------------------------
+## Walls----------------------------------------
 # Modern wall: cement, stone, bricks, or covered adobe (31, 32, 33, 34, 35)
 
 hhdata2 = hhdata2 %>%
@@ -172,7 +202,7 @@ missingwalls <- hhdata2 %>%
   dplyr::select( "hrhhid","h10_hbv_rdt", "maternity" ,"hdov", starts_with("h1_walls")) %>% 
   filter(h1_walls == 0)
 
-# Flooring----------------------------------------
+## Flooring----------------------------------------
 # Modern floor: vinyl, asphalt, ceramic tiles, cement, or carpet
 hhdata2 = hhdata2 %>%
   mutate(modernfloor = case_when(
@@ -192,7 +222,7 @@ hhdata2 = hhdata2 %>%
 addmargins(table(hhdata2$modernfloor,useNA = "always"))
 # no missing
 
-# Windows----------------------------------------
+## Windows----------------------------------------
 # Modern windows: glass or screens
 table(hhdata2$h1_windows, hhdata2$modernwindow,useNA = "always")
 table(hhdata2$h1_windows_otherlist, hhdata2$h1_windows_type___98, useNA = "always")
@@ -217,7 +247,7 @@ missingwindow <- hhdata2 %>%
   dplyr::select( "hrhhid","h10_hbv_rdt", "maternity" ,"hdov", "modernwindow",starts_with("h1_wind")) %>% 
   filter(is.na(modernwindow))
 
-# Holes in wall/house----------------------------------------
+## Holes in wall/house----------------------------------------
 addmargins(table(hhdata2$h2_walls_holes, hhdata2$modernwalls, useNA = "always"))
 
 # Modern housing: modernroof==1, modernwalls==1, modernfloor==1, modernwindows==1, h2_walls_holes==0
@@ -232,7 +262,7 @@ addmargins(table(hhdata2$modernhousing, hhdata2$modernfloor ,useNA = "always"))
 addmargins(table(hhdata2$modernhousing, useNA = "always"))
 
 
-# wealth objects of hh--------------------------------------------------
+## wealth objects of hh--------------------------------------------------
 hhdata2 <- hhdata2 %>% 
   rename(h3_hh_wealth_electr = h3_hh_wealth___1,
          h3_hh_wealth_toilet = h3_hh_wealth___2,
@@ -250,7 +280,7 @@ hhdata2 <- hhdata2 %>%
 table(hhdata2$h3_hh_wealth___98) # one reports don't know      
 table(hhdata2$h3_hh_wealth___99)       
 
-# wealth objects of members--------------------------------------------------
+## wealth objects of members--------------------------------------------------
 table(hhdata2$h4_hh_member_wealth___1)       
 
 hhdata2 <- hhdata2 %>% 
@@ -271,7 +301,7 @@ table(hhdata2$h4_hh_member_wealth___99)
 
 
 
-# #cultivatable land--------------------------------------------------
+## cultivatable land--------------------------------------------------
 addmargins(table(hhdata2$h5_cultivable_land, useNA = "always"))
 addmargins(table(hhdata2$h5a_cultivable_land_hect, useNA = "always"))
 
@@ -293,7 +323,7 @@ table(hhdata2$h5_cultivable_land_wi, hhdata2$h5a_cultivable_land_hect_num ,useNA
 hhdata2$h5a_cultivable_land_hect_num <- as.numeric(hhdata2$h5a_cultivable_land_hect)
 class(hhdata2$h5a_cultivable_land_hect_num)
 
-# Water source------------------------------------------------------
+## Water source------------------------------------------------------
 # explore frequency of different water sources
 table(hhdata2$h6_water_access___3, hhdata2$h6_water_access___1)
 table(hhdata2$h6_water_access___6, hhdata2$h6_water_access___3) 
@@ -324,7 +354,7 @@ hhdata2 = hhdata2 %>%
 table(hhdata2$privatewater, useNA = "always")
 table(hhdata2$privatewater, test$h6_water_access___6)
 
-# Cooking source------------------------------------------------------
+## Cooking source------------------------------------------------------
 addmargins(table(hhdata2$h7_cooking_fuel___1,hhdata2$h7_cooking_fuel___2,hhdata2$h7_cooking_fuel___3  ))
 
 hhdata2 = hhdata2 %>%
@@ -341,7 +371,7 @@ hhdata2 = hhdata2 %>%
   )
 table(hhdata2$cookfuel, useNA = "always")
 
-# People in household per bed--------------------------------------------------
+## People in household per bed--------------------------------------------------
 table(hhdata2$n, useNA = "always")
 table(hhdata2$h3_hh_wealth_beds, useNA = "always")
 
@@ -451,7 +481,7 @@ table(hhdata2$wealth_R, hhdata2$maternity, useNA = "always")
 # hhdata2 <- hhdata2 %>% select(-c(wealth_R.x,wealth_R.y))
 
 
-# sharing nail clippers---------------------------
+## sharing nail clippers---------------------------
 table(hhdata2$h8_nail_cutting)
 
 table(hhdata2$h8a_nail_clippers_owned)
@@ -480,6 +510,11 @@ hhdata2 <- hhdata2 %>%
 hhdata2$h8a_razer_owned <- as.factor(as.numeric(hhdata2$h8a_razer_owned))
 
 table(hhdata2$h9_razor_f ,hhdata2$h8a_razer_owned) # what does 96 mean
+
+# final hh spatial object with new variables
+hover_gps = st_as_sf(hhdata2[!is.na(hhdata2$hxcoord_edit) &!is.na(hhdata2$hycoord_edit),], coords = c("hycoord_edit", "hxcoord_edit"), crs = 4326)  
+hover_gps_full <- hover_gps
+hover_gps <- subset(hover_gps, select=c( "h10_hbv_rdt_f" , "hrhhid","geometry","maternity"))
 
 #Clean individual survey variables------------------------
 
@@ -542,7 +577,7 @@ inddata1 <- inddata1 %>%
     levels = c(0, 1, 2,3,96),
     labels = c("Never married", "Married or living together", "Divorced", "Widow(er)", "N/A")))
 
-#ISSUE: education-------
+#ISSUE: education---------------------------------------------------------------
 inddata1 <- inddata1 %>% 
   dplyr::mutate(hr9_school_gr = case_when(
     hr9_schooling == 0 ~ 0,
@@ -570,7 +605,7 @@ inddata1 <- inddata1 %>%
     labels = c("No schooling", "Primary school not finished", "Finished primary school",
                "1st/2nd orientation", "Some secondary school","Finished secondary school","3 years of university",
                "5 years of university", "Doctorate","N/A","Other","Don't know","Refused")))
-# occupation
+# occupation---------------------------------
 inddata1 <- inddata1 %>% 
   dplyr::mutate(hr10_occupation_gr = case_when(# divide salaried, self-employed, student
     hr10_occupation == 0 ~ 0, # no occupation
@@ -602,7 +637,7 @@ inddata1 <- inddata1 %>%
     levels = c(0, 1, 2,3,4,97,98),
     labels = c("No occupation", "Salaried", "Self-employed",
                "Works for someone else", "Student","Other","Don't know/refused")))
-# RELIGION
+# RELIGION---------------------------
 # look at religion by household 
 ## table(inddata1$hr11_religion, useNA = "always")
 ## table(inddata1$hr11_religion, inddata1$hrhhid, useNA = "always")
@@ -616,7 +651,7 @@ inddata1 <- inddata1 %>%
                "Evangelical", "Revivalist","Adventist","Protestant", "Muslim","Kimbanguism",
                "Salvation Army", "Other","Don't know","Refused")))
 
-
+# exposures/medical--------------
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i2_past_hbv_dx_f=factor(
     inddata1$i2_past_hbv_dx, 
@@ -725,6 +760,7 @@ inddata1 <- inddata1 %>%
     labels = c("Non", "Oui", "Refusé")))
 #labels = c("No", "Yes", "Refused")))
 
+#indic for indexmom/offspring----------------
 inddata1$indexmom <- ifelse(inddata1$hr3_relationship==1,1,0)
 
 inddata1$directoff <- ifelse(inddata1$hr3_relationship==3,1,0)
@@ -737,9 +773,13 @@ inddata1 <- inddata1 %>%
     # labels = c("Household member", "Index mother")))
     labels = c("Membre de ménage", "Mère index")))
 # necessary for individual survey?
+#total positives per hh--------------
 totalhbsagpositive <- inddata1 %>%
   dplyr::group_by(hrhhid) %>%
   dplyr::summarise(totalpositive = sum(i27a_rdt_result, na.rm=TRUE), n=n()) 
+
+hhdata1 <- left_join(hhdata1, totalhbsagpositive, by = "hrhhid")
+inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid","totalpositive","n")],  by = "hrhhid")
 
 
 

@@ -3,6 +3,7 @@
 # packages for this program
 library(tableone)
 
+# Table 1 Household--------------------------------------------------------------------------------
 # create table 1
 hhIDs <- inddata1 %>%
   group_by(hrhhid) %>% summarize(hhsize=n())
@@ -31,16 +32,16 @@ write.csv(tab1hhexport, file = "tab1hhexport.csv")
 # -add all hh back (check on wealth index)
 
 
-### Table 1 for individuals------------------------------
+# Table 1 for individuals------------------------------
 # all vars
-tab1_ind <- c("i27a_rdt_result_f","indexmom","hr3_relationship_f","age_combined","agegrp15_2", "hr4_sex_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
+tab1_ind <- c("i27a_rdt_result_f","indexmom","hr3_relationship_f","age_combined","agegrp15_2", "hr4_sex_f", "hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
               "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f","i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
               "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f","i26_sex_hx_given_money_f")
 
 # num vars
 numvars_ind <- c("age_combined") # age, under 5s in hh, total hh members
 # cat vars
-catvars_ind <- c("i27a_rdt_result_f","indexmom","hr3_relationship_f","agegrp15_2" ,"hr4_sex_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","i4_fever_f",
+catvars_ind <- c("i27a_rdt_result_f","indexmom","hr3_relationship_f","agegrp15_2" ,"hr4_sex_f", "hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","i4_fever_f",
                  "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f", "i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
                   "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f", "i26_sex_hx_given_money_f")
 #first step in create table 1
@@ -88,7 +89,190 @@ table(inddata1$i27a_rdt_result_f, inddata1$i3a_hiv_treatment_f, inddata1$i3_hiv_
 table(inddata1$i1_hbv_positive_f, inddata1$i27a_rdt_result_f)
 
 
+# Maps--------------------------------------------------------------------------------
+
+library(sf)
+library(gstat)
+library(stars)
+library(tidyverse)
+library(patchwork)
+
+# merge gps onto individual survey
+indgps_2 <- merge(inddata1, hhdata1[,c("hrhhid","hycoord_edit","hxcoord_edit")], by = "hrhhid")
+# make spatial object
+indgps_2 = st_as_sf(indgps_2[!is.na(indgps_2$hxcoord_edit) &!is.na(indgps_2$hycoord_edit),], coords = c("hycoord_edit", "hxcoord_edit"), crs = 4326)  
+# order by hbsag result
+indgps_2 <- indgps_2[order(indgps_2$i27a_rdt_result_f),]
+# jitter points
+indgps_2_jitt<- st_jitter(indgps_2,  factor = 0.001)
+
+# surrounding polygons
+drc_healthzone_correctkinshasa = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/drc_healthzone_adm2_correctkinshasa/RDC_Zone_de_sante_09092019.shp", stringsAsFactors = F) %>% st_transform(4326)
+# keep only Kin prov
+drc_healthzone_kinshasa <- subset(drc_healthzone_correctkinshasa, PROVINCE == "Kinshasa")
+
+# brazzaville polygon
+congo_br = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/congo_adm0/cog_admbnda_adm0_gaul_20190617.shp", stringsAsFactors = F) %>% st_transform(4326)
+# rename brazza labels
+congo_br$ADM0_FR <- as.character(congo_br$ADM0_FR) 
+congo_br$ADM0_FR[congo_br$ADM0_FR == "Congo (le)"] <- "Congo"
+congo_br$ADM0_FR[congo_br$ADM0_FR == "Congo"] <- "Brazzaville"
+
+# health areas
+drc_healtharea = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/rdc_aires-de-sante/RDC_Aires de sant‚.shp", stringsAsFactors = F) %>% st_transform(4326)
+# restrict to Kin
+drc_healtharea_Kin <- subset(drc_healtharea, Province == "Kinshasa")
+
+#provinces
+drcprov = st_read("./adm1/GLOBAL_ADM1.shp", stringsAsFactors = F) %>% st_transform(4326)
+# restrict to Kin and prov below kin (but prov shp covers river)
+drcprov_Kin <- subset(drcprov, ADM1_NAME == "KINSHASA")
+drcprov_KinKC <- subset(drcprov, ADM1_NAME == "KINSHASA" | ADM1_NAME == "KONGO CENTRAL" )
+
+##rivers - covered by adm0 and adm1 
+# rivers = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/congo_rivers_simp/congo_rivers_simp.shp", stringsAsFactors = F) %>% st_transform(4326)
+
+# read in data
+admin0 <- readRDS('./admin0.rds') %>%          # GADM admin0 boundaries
+  st_transform(4326) %>% # set at ESPG 4326
+  filter(grepl('Congo|Rwanda|Tanzania|Burundi|African Republic|Angola|Zambia|Uganda|Sudan|Gabon|Cameroon|Equatorial Guinea', Country)) 
+
+st_crs(admin0) # view CRS
+
+DRC <- admin0 %>% filter(Country=='Democratic Republic of the Congo') # DRC
+
+output_points <- st_join(output, DRC, join = st_intersects) %>% filter(!is.na(Country))
+## Africa with DRC highlighted---------------
 
 
+
+
+## DRC with Kinshasa highlighted-------------
+
+
+## Base map----------
+base <- ggplot(drc_healtharea_Kin) +
+  geom_sf(alpha=0.75, size = 0.1)+
+  geom_sf(data=congo_br, fill = "gray75", size=0.2)+
+  geom_sf_text(data=congo_br, aes(label = ADM0_FR), size=3)+
+  theme(panel.background = element_rect(fill = "aliceblue"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank()  )
+
+## Map: HH prev--------------------
+base +
+  geom_sf(data=hover_gps_full, aes(color=hhprev))+
+  scale_color_binned(type="viridis")+
+  #scale_color_continuous(type = "RdYlBu")+
+  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)
+
+## Map: Exp vs Unexp------------------
+hover_gps_full <- hover_gps_full %>% 
+  dplyr::mutate(h10_hbv_rdt_f=factor(
+    hover_gps_full$h10_hbv_rdt, 
+    levels = c(0, 1),
+    labels = c("Unexposed", "Exposed")))
+
+ggplot(drc_healtharea_Kin) +
+  geom_sf(alpha=0.75, size = 0.1)+
+  geom_sf(data=congo_br, fill = "gray75", size=0.2,aes(label = ADM0_FR))+
+  geom_sf(data=hover_gps_full, aes(fill=h10_hbv_rdt_f, color=h10_hbv_rdt_f), size=1)+
+  geom_sf(data=matgps, color = "gray39", fill="cornsilk2", shape = 21, aes(label = centers))+
+  #scale_fill_manual(values = c("#4D4D4D","#B2182B",'ghostwhite'))+
+  scale_color_manual(values = c("#4D4D4D","#B2182B",'ghostwhite'))+
+  geom_sf_text(data=congo_br, aes(label = ADM0_FR), size=1, hjust = 2, vjust = 44)+
+  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)+
+  #coord_sf(xlim = c(14.1, 15.6), ylim = c(-7.1, -3.1), expand = FALSE)+
+  theme(panel.background = element_rect(fill = "aliceblue"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.title = element_blank())
+
+
+
+## Map: Hbsag results--------------------
+base + 
+  geom_sf(data=indgps_2_jitt, aes(fill=i27a_rdt_result_f, color=i27a_rdt_result_f), size = 0.5)+
+  scale_fill_manual(values = c('#878787','#f4a582','ghostwhite'))+
+  scale_color_manual(values = c('#878787','#f4a582','ghostwhite'))+
+  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)
+  
+
+##Map: Traditional scarring---------------------------------------------------------------
+base + 
+  geom_sf(data=indgps_2_jitt, aes(fill=i16_traditional_scarring_f, color=i16_traditional_scarring_f), size=0.5)+
+  scale_fill_manual(values = c('#878787','#f4a582','ghostwhite'))+
+  scale_color_manual(values = c('#878787','#f4a582','ghostwhite'))+
+  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)
+
+## Kriging-------------
+# kriging using gstat: https://rpubs.com/nabilabd/118172 
+# https://mgimond.github.io/Spatial/interpolation-in-r.html#generate-the-variance-and-confidence-interval-maps
+
+
+output <- indgps_2_jitt %>% 
+  #group_by(hrhhid) %>%
+  # make variable for hh prev
+  mutate(hhprev = (totalpositive/n)*100)
+
+output <- hover_gps_full
+# remove points where geometry is outside of DRC outline (geometry=c(0,0))
+output_points <- st_join(output, drcprov_Kin, join = st_intersects)
+#%>% filter(!is.na(Country)) # from Hill's code
+
+# make variogram
+m.vgm <- gstat::variogram(hhprev~1, output_points)
+
+# fit a model to the sample variogram
+# https://gisgeography.com/semi-variogram-nugget-range-sill/
+m.fit <- gstat::fit.variogram(m.vgm, model=vgm(psill=1,"Exp",range=500, nugget=0))
+
+library(automap)
+variogram = autofitVariogram(hhprev~1,output_points)
+plot(variogram)
+
+# plot
+plot(m.vgm,m.fit)
+
+# simple kriging
+spDRC <- as_Spatial(DRC)
+grd <- makegrid(spDRC, n = 50000)# making grid of points
+colnames(grd) <- c('x','y')
+grd_pts <- SpatialPoints(coords = grd, 
+                         proj4string=CRS(proj4string(spDRC)))
+
+# find all points in `grd_pts` that fall within DRC outline
+grd_pts_in <- grd_pts[spDRC, ]
+
+# transform grd_pts_in back into a data frame
+gdf <- as.data.frame(coordinates(grd_pts_in)) 
+
+# conduct kriging: Pf prev
+m.kriged <- gstat::krige(prev~1, output_points, st_as_sf(grd_pts_in), model=m.fit)
+summary(m.kriged$var1.pred)
+
+# assign points into bins
+krige <- m.kriged %>% cbind(gdf$x, gdf$y) %>% mutate(
+  var1.pred = cut(var1.pred, breaks=seq(0,80,by=10)), 
+  se = sqrt(var1.var),
+  se = cut(se, breaks=seq(0,24,by=4))) %>% filter(!is.na(var1.pred))
+
+# conduct kriging: animal ownership
+m.kriged.own <- gstat::krige(ownership~1, output_points, st_as_sf(grd_pts_in), model=m.fit)
+summary(m.kriged.own$var1.pred)
+
+# assign points into bins
+krige_own <- m.kriged.own %>% cbind(gdf$x, gdf$y) %>% mutate(
+  var1.pred = cut(var1.pred, breaks=seq(0,90,by=10)), 
+  se = sqrt(var1.var),
+  se = cut(se, breaks=seq(0,24,by=4))) %>% filter(!is.na(var1.pred))
 
 
