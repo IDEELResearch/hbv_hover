@@ -88,6 +88,20 @@ table(inddata1$i27a_rdt_result_f, inddata1$i3a_hiv_treatment_f, inddata1$i3_hiv_
 #prior HBV test
 table(inddata1$i1_hbv_positive_f, inddata1$i27a_rdt_result_f)
 
+### Moran's i-------------
+library(ape)
+
+testmoran <- unique %>% filter(hycoord_edit > 15)
+
+test.hhdist <- as.matrix(dist(cbind(testmoran$hxcoord_edit, testmoran$hycoord_edit)))
+test.hhdist.inv  <- 1/test.hhdist
+diag(test.hhdist.inv) <- 0
+# view table of distances
+test.hhdist.inv[1:5, 1:5]
+max(test.hhdist.inv) # check not infinite
+
+
+Moran.I(testmoran$hhprev, test.hhdist.inv)
 
 # Maps--------------------------------------------------------------------------------
 
@@ -98,9 +112,9 @@ library(tidyverse)
 library(patchwork)
 
 # merge gps onto individual survey
-indgps_2 <- merge(inddata1, hhdata1[,c("hrhhid","hycoord_edit","hxcoord_edit")], by = "hrhhid")
+inddata1 <- merge(inddata1, hhdata1[,c("hrhhid","hycoord_edit","hxcoord_edit")], by = "hrhhid")
 # make spatial object
-indgps_2 = st_as_sf(indgps_2[!is.na(indgps_2$hxcoord_edit) &!is.na(indgps_2$hycoord_edit),], coords = c("hycoord_edit", "hxcoord_edit"), crs = 4326)  
+indgps_2 = st_as_sf(inddata1[!is.na(inddata1$hxcoord_edit) &!is.na(inddata1$hycoord_edit),], coords = c("hycoord_edit", "hxcoord_edit"), crs = 4326)  
 # order by hbsag result
 indgps_2 <- indgps_2[order(indgps_2$i27a_rdt_result_f),]
 # jitter points
@@ -237,18 +251,18 @@ D <-
   #scale_color_manual(values = c('#878787','#f4a582','ghostwhite'))+
   scale_color_manual(values = c('#665191',"#F5B24E","#A87323"))+   # purple and yellow and brown (refuse)
   coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)+
-  theme(legend.position = c(0.18,0.9))+
+  theme(legend.position = c(0.2,0.9))+
     guides(color = guide_legend(override.aes = list(size = 2)))
 
-
+# past transfusions
 indgps_2_jitt <- indgps_2_jitt %>% 
-  dplyr::mutate(i26_sex_hx_given_money_f_map=factor(
-    indgps_2_jitt$i26_sex_hx_given_money, 
+  dplyr::mutate(i8_transfusion_f_map=factor(
+    indgps_2_jitt$i8_transfusion, 
     levels = c(0, 1, 99),
-    labels = c("Never given money for sex", "Given money for sex", "Refused")))
+    labels = c("No transfusions", "Received transfusions", "Refused")))
 E <-
   base + 
-  geom_sf(data=indgps_2_jitt[!is.na(indgps_2_jitt$i26_sex_hx_given_money_f_map),], aes(fill=i26_sex_hx_given_money_f_map, color=i26_sex_hx_given_money_f_map), size=0.5)+
+  geom_sf(data=indgps_2_jitt[!is.na(indgps_2_jitt$i8_transfusion_f_map),], aes(fill=i8_transfusion_f_map, color=i8_transfusion_f_map), size=0.5)+
   #scale_fill_manual(values = c('#878787','#f4a582','ghostwhite'))+
   #scale_color_manual(values = c('#878787','#f4a582','ghostwhite'))+
   scale_color_manual(values = c('#665191',"#F5B24E","#A87323"))+   # purple and yellow and brown (refuse)
@@ -256,13 +270,29 @@ E <-
   theme(legend.position = c(0.23,0.9))+
   guides(color = guide_legend(override.aes = list(size = 2)))
 
+#money exchanged for sex
+indgps_2_jitt <- indgps_2_jitt %>% 
+  dplyr::mutate(i26_sex_hx_given_money_f_map=factor(
+    indgps_2_jitt$i26_sex_hx_given_money, 
+    levels = c(0, 1, 99),
+    labels = c("Never given money for sex", "Given money for sex", "Refused")))
+F <-
+  base + 
+  geom_sf(data=indgps_2_jitt[!is.na(indgps_2_jitt$i26_sex_hx_given_money_f_map),], aes(fill=i26_sex_hx_given_money_f_map, color=i26_sex_hx_given_money_f_map), size=0.5)+
+  #scale_fill_manual(values = c('#878787','#f4a582','ghostwhite'))+
+  #scale_color_manual(values = c('#878787','#f4a582','ghostwhite'))+
+  scale_color_manual(values = c('#665191',"#F5B24E","#A87323"))+   # purple and yellow and brown (refuse)
+  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)+
+  theme(legend.position = c(0.26,0.9))+
+  guides(color = guide_legend(override.aes = list(size = 2)))
+
 # piece plots together using library(patchwork)
-grid <- B + C + D + E + plot_layout(nrow=2, ncol = 2) + plot_annotation(tag_levels = 'A')
+A + B + C + D + E + F + plot_layout(nrow=2, ncol = 3) + plot_annotation(tag_levels = 'A')
 
 A + grid + plot_layout(nrow=1, ncol = 2) + plot_annotation(tag_levels = 'A')
 
 # output
-ggsave('./plots/prev_map.png', width=15, height=9)
+ggsave('./plots/croiabs.png', width=15, height=9)
 
 ## Kriging-------------
 # kriging using gstat: https://rpubs.com/nabilabd/118172 

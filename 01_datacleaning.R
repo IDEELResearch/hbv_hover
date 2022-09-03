@@ -775,7 +775,12 @@ inddata1 <- inddata1 %>%
 # necessary for individual survey?
 
 
-
+# Patrick data issues-----------------------------
+# hh w same GPS coords
+samegps <- hhdata2[duplicated(hhdata2[c('hxcoord_edit', 'hycoord_edit')]), c("hrhhid","hxcoord_edit","hycoord_edit")]
+write_csv(samegps, file = "samegps.csv")
+# for moran's i
+unique <- hhdata2[!duplicated(hhdata2[c('hxcoord_edit', 'hycoord_edit')]),]
 
 
 
