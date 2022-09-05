@@ -325,7 +325,7 @@ totalhbsagpositive <- inddata1 %>%
   dplyr::summarise(totalpositive = sum(i27a_rdt_result, na.rm=TRUE), n=n()) 
 
 hhdata1 <- left_join(hhdata1, totalhbsagpositive, by = "hrhhid")
-inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid","totalpositive")],  by = "hrhhid")
+inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid","totalpositive", "n")],  by = "hrhhid")
 
 ```
 

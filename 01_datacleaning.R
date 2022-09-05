@@ -34,7 +34,7 @@ data0 <- redcap_read_oneshot(redcap_uri = "https://global.redcap.unc.edu/api/",
 # remove duplicate Menage1 
 
 data1<- data0 %>% 
-  dplyr::filter(hrhhid!="HRB -1045" & hrhhid!="HRB -1048" & hrhhid!="HRB -1059") 
+  dplyr::filter(hrhhid!="HRB -1045" & hrhhid!="HRB -1048" & hrhhid!="HRB -1059" & hrhhid!="HRK-1101") 
 
 # per Patrick, HR2084 enrolled on April 17 remains HRK 2084 and HRK-2084 on April 30 should be HRK-2085
 data1$hrhhid <- ifelse(data1$hrhhid=="HRK-2084", "HRK-2085", data1$hrhhid)
@@ -200,7 +200,7 @@ addmargins(table(hhdata2$modernwalls,useNA = "always"))
 # select out missing obs to check with Patrick
 missingwalls <- hhdata2 %>% 
   dplyr::select( "hrhhid","h10_hbv_rdt", "maternity" ,"hdov", starts_with("h1_walls")) %>% 
-  filter(h1_walls == 0)
+  filter(is.na(hhdata2$h1_walls))
 
 ## Flooring----------------------------------------
 # Modern floor: vinyl, asphalt, ceramic tiles, cement, or carpet
@@ -221,6 +221,7 @@ hhdata2 = hhdata2 %>%
   )
 addmargins(table(hhdata2$modernfloor,useNA = "always"))
 # no missing
+
 
 ## Windows----------------------------------------
 # Modern windows: glass or screens
@@ -300,7 +301,6 @@ table(hhdata2$h4_hh_member_wealth___98) # one reports don't know
 table(hhdata2$h4_hh_member_wealth___99)       
 
 
-
 ## cultivatable land--------------------------------------------------
 addmargins(table(hhdata2$h5_cultivable_land, useNA = "always"))
 addmargins(table(hhdata2$h5a_cultivable_land_hect, useNA = "always"))
@@ -352,13 +352,14 @@ hhdata2 = hhdata2 %>%
   )
 
 table(hhdata2$privatewater, useNA = "always")
-table(hhdata2$privatewater, test$h6_water_access___6)
+table(hhdata2$privatewater, hhdata2$h6_water_access___6)
 
 ## Cooking source------------------------------------------------------
 addmargins(table(hhdata2$h7_cooking_fuel___1,hhdata2$h7_cooking_fuel___2,hhdata2$h7_cooking_fuel___3  ))
 
 hhdata2 = hhdata2 %>%
   mutate(cookfuel = case_when(
+    h7_cooking_fuel___1 == 0 & h7_cooking_fuel___2 == 0 & h7_cooking_fuel___3 == 0 ~ 0, # charcoal only
     h7_cooking_fuel___1 == 1 & h7_cooking_fuel___2 == 0 & h7_cooking_fuel___3 == 0 ~ 0, # charcoal only
     h7_cooking_fuel___1 == 1 & h7_cooking_fuel___2 == 1 & h7_cooking_fuel___3 == 0 ~ 1, # charcoal plus gas 
     h7_cooking_fuel___1 == 1 & h7_cooking_fuel___2 == 0 & h7_cooking_fuel___3 == 1 ~ 1, # charcoal plus electric 
@@ -377,8 +378,12 @@ table(hhdata2$h3_hh_wealth_beds, useNA = "always")
 
 # Make wealth index------------------------------------------------------
 # subset dataset for prcomp()
-wealthpca_hoverhh <- hhdata2[, c("hrhhid", "n","cookfuel", "privatewater", "modernwalls", "modernfloor", "modernroof", "modernwindow",
-                                 "h5_cultivable_land_wi",
+wealthpca_hoverhh <- hhdata2[, c("hrhhid", "n",
+                                 #"cookfuel", 
+                                 "privatewater", "modernwalls", "modernfloor", 
+                                 #"modernroof", 
+                                 "modernwindow",
+                                 #"h5_cultivable_land_wi",
                                      "h3_hh_wealth_electr" ,
                                      "h3_hh_wealth_toilet",
                                      "h3_hh_wealth_radio",
@@ -411,7 +416,11 @@ wealthpca_hoverhh <- wealthpca_hoverhh %>% select(-c(h4_hh_member_wealth_animalc
 
 wealthpca_hoverhh_nomiss <- wealthpca_hoverhh[complete.cases(wealthpca_hoverhh), ]
 
-pca_hover <- prcomp(as.matrix(wealthpca_hoverhh_nomiss[, 3:28]), scale=TRUE)
+# which IDs dropped
+notcompcase <- subset(wealthpca_hoverhh, !(wealthpca_hoverhh$hrhhid %in% wealthpca_hoverhh_nomiss$hrhhid))
+
+
+pca_hover <- prcomp(as.matrix(wealthpca_hoverhh_nomiss[, 3:25]), scale=TRUE)#change to 28
 summary(pca_hover) # first component explains 23% of variance
 # this feels low (Odum Institute, talking with other students, and the internet suggest that you could include multiple components, to reach closer to 80%, but Marcel's group (see papers cited in AVERT supplement) only used the first component, so we followed that precedent).
 pca_R_output <- as.data.frame(pca_hover$x)
@@ -436,7 +445,7 @@ hist(pca_R_output$PC1, breaks=seq(-6,6,0.5))+title("Value of Principal Component
 quantile(pca_R_output$PC1, probs = c(0.25, 0.5,0.75, 1), na.rm = T)
 
 # Graphical displays for supplementary material
-var_explained_df <- data.frame(PC= paste0("PC", 1:26),
+var_explained_df <- data.frame(PC= paste0("PC", 1:23), #or 26
                                var_explained=(pca_hover$sdev)^2/sum((pca_hover$sdev)^2))
 
 head(var_explained_df)
@@ -462,10 +471,10 @@ quantile(pca_R_output$PC1, probs = c(0.25, 0.5,0.75, 1), na.rm = T)
 pca_R_output$wealth_R <- as.numeric(0)
 pca_R_output = pca_R_output %>%
   mutate(wealth_R = case_when(
-    PC1 <= -1.3199363 ~ 0,
-    PC1 > -1.3199363 & PC1 <= -0.2764219 ~ 1,
-    PC1 > -0.2764219 & PC1 <= 1.2951883 ~ 2,
-    PC1 > 1.2951883  ~ 3,
+    PC1 <= -1.1631523 ~ 0,
+    PC1 > -1.1631523 & PC1 <= -0.2281012 ~ 1,
+    PC1 > -0.2281012 & PC1 <= 1.2379469 ~ 2,
+    PC1 > 1.2379469  ~ 3,
     TRUE ~ wealth_R
   ) %>% as.numeric()
   )
@@ -474,6 +483,7 @@ table(pca_R_output$wealth_R, useNA = "always")
 # rename PID variable so it matches enrollment and merge will work in next step
 pca_R_output <- pca_R_output %>% rename(hrhhid = `wealthpca_hoverhh_nomiss$hrhhid`)
 # add new wealth variable back onto main enrollment dataset
+
 hhdata2 <- inner_join(hhdata2, pca_R_output[, c("hrhhid", "wealth_R")], by = c("hrhhid"))
 # check new variable
 table(hhdata2$wealth_R, hhdata2$maternity, useNA = "always")
@@ -790,12 +800,29 @@ inddata1 <- full_join(inddata1, perprotexpsure[, c("hrhhid", "perprot_h10")], by
 table(perprotexpsure$perprot_h10, perprotexpsure$h10_hbv_rdt, useNA = "always")
 table(inddata1$perprot_h10, inddata1$h10_hbv_rdt, useNA = "always")
 
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(perprot_h10_f=factor(
+    inddata1$perprot_h10, 
+    levels = c(0, 1),
+    labels = c("HBsAg-", "HBsAg+")))
+#labels = c("Negative", "Positive")))
+
 # Patrick data issues-----------------------------
 # hh w same GPS coords
 samegps <- hhdata2[duplicated(hhdata2[c('hxcoord_edit', 'hycoord_edit')]), c("hrhhid","hxcoord_edit","hycoord_edit")]
 write_csv(samegps, file = "samegps.csv")
 # for moran's i
 unique <- hhdata2[!duplicated(hhdata2[c('hxcoord_edit', 'hycoord_edit')]),]
+
+# which hh don't have all wealth vars
+missingwealth <- subset(hhdata1, !(hhdata1$hrhhid %in% hhdata2$hrhhid))
+# ones with missing: h5_cultivable_land
+table(missingwealth$h5_cultivable_land, missingwealth$hrhhid, useNA = "always")
+
+
+
+
+
 
 
 

@@ -385,7 +385,25 @@ inddata1 %>%
         axis.text = element_text(size = 15),
         axis.title = element_text(size = 15))
 
+ggsave('./plots/relation.png', width=9, height=9)
+
 ##Perprot relation
+inddata1 %>%
+  dplyr::filter(inddata1$hr3_relationship!=1 & inddata1$i27a_rdt_result==1) %>% 
+  dplyr::group_by(hr3_relationship_f_eng, perprot_h10_f) %>% 
+  dplyr::summarise(n=n()) %>% 
+  ggplot(aes(fill=hr3_relationship_f_eng, x=perprot_h10_f, y=n))+
+  geom_col(position = position_dodge2(preserve = "single"))+
+  labs(x="Index mother HBV status", fill="", y="Individuals enrolled")+
+  scale_fill_brewer(palette = "Paired")+
+  #scale_fill_manual(values = c('#A6CEE3','#1F78B4','#FB9A99','#FF7F00'))+
+  #scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  ggtitle("HBsAg+ household members:\nRelationship to index mother by index mother HBV status")+
+  theme(panel.background = element_blank(),
+        plot.title = element_text(size = 30), #for presentation
+        legend.text = element_text(size = 15),
+        axis.text = element_text(size = 15),
+        axis.title = element_text(size = 15))
 
-
+ggsave('./plots/relationperprot.png', width=9, height=9)
 
