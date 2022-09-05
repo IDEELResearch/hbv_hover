@@ -110,6 +110,8 @@ library(gstat)
 library(stars)
 library(tidyverse)
 library(patchwork)
+library(ggsn)
+library(ggspatial)
 
 # merge gps onto individual survey
 inddata1 <- merge(inddata1, hhdata1[,c("hrhhid","hycoord_edit","hxcoord_edit")], by = "hrhhid")
@@ -201,11 +203,11 @@ hover_gps_full <- hover_gps_full %>%
     levels = c(0, 1),
     labels = c("Unexposed", "Exposed")))
 
-B <- 
+#B <- 
   ggplot(drc_healtharea_Kin) +
   geom_sf(alpha=0.75, size = 0.1)+
   geom_sf(data=congo_br, fill = "gray75", size=0.2,aes(label = ADM0_FR))+
-  geom_sf(data=hover_gps_full, aes(fill=h10_hbv_rdt_f, color=h10_hbv_rdt_f), size=1)+
+  geom_sf(data=hover_gps_full, aes(fill=h10_hbv_rdt_f, color=h10_hbv_rdt_f), size=3)+
   geom_sf(data=matgps, color = "gray39", fill="cornsilk2", shape = 21, aes(label = centers))+
   #scale_fill_manual(values = c("#4D4D4D","#B2182B",'ghostwhite'))+
   scale_color_manual(values = c("#4D4D4D","#B2182B",'ghostwhite'))+
@@ -220,11 +222,12 @@ B <-
         axis.text = element_blank(),
         axis.ticks = element_blank(),
         legend.title = element_blank(),
-        legend.position = c(0.12,0.92))+
-    guides(color = guide_legend(override.aes = list(size = 2)))
+        legend.position = c(0.12,0.92),
+        legend.text=element_text(size=20))+
+    guides(color = guide_legend(override.aes = list(size = 4)))+
+    annotation_scale(location = "br", plot_unit = "mi")
   
-
-
+ggsave('./plots/hh.png', width=9, height=9)
 
 ## Map: Hbsag results--------------------
 C <- 
@@ -355,5 +358,34 @@ krige_own <- m.kriged.own %>% cbind(gdf$x, gdf$y) %>% mutate(
   var1.pred = cut(var1.pred, breaks=seq(0,90,by=10)), 
   se = sqrt(var1.var),
   se = cut(se, breaks=seq(0,24,by=4))) %>% filter(!is.na(var1.pred))
+
+
+# Figures-----------------------
+## Relation to index mother-----
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr3_relationship_f_eng=factor(
+    inddata1$hr3_relationship, 
+    levels = c(0, 1,2,3,4,5,6,7,8,9,10,11,12,13,97,98,99),
+    labels = c("No relation", "Index mother","Spouse", "Child", "Son/daughter-in-law", "Grandchild","Parent","Parent-in-law","Sibling","Niece/nephew","Niece/nephew by marriage",
+               "Adopted child of spouse","Aunt/uncle","Grandparent","Other","Don't know", "Refused")))    
+inddata1 %>%
+  dplyr::filter(inddata1$hr3_relationship!=1 & inddata1$i27a_rdt_result==1) %>% 
+  dplyr::group_by(hr3_relationship_f_eng, h10_hbv_rdt_f) %>% 
+  dplyr::summarise(n=n()) %>% 
+  ggplot(aes(fill=hr3_relationship_f_eng, x=h10_hbv_rdt_f, y=n))+
+  geom_col(position = position_dodge2(preserve = "single"))+
+  labs(x="Index mother HBV status", fill="", y="Individuals enrolled")+
+  scale_fill_brewer(palette = "Paired")+
+  #scale_fill_manual(values = c('#A6CEE3','#1F78B4','#FB9A99','#FF7F00'))+
+  #scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
+  ggtitle("HBsAg+ household members:\nRelationship to index mother by index mother HBV status")+
+  theme(panel.background = element_blank(),
+        plot.title = element_text(size = 30), #for presentation
+        legend.text = element_text(size = 15),
+        axis.text = element_text(size = 15),
+        axis.title = element_text(size = 15))
+
+##Perprot relation
+
 
 

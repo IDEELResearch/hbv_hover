@@ -765,7 +765,6 @@ inddata1$indexmom <- ifelse(inddata1$hr3_relationship==1,1,0)
 
 inddata1$directoff <- ifelse(inddata1$hr3_relationship==3,1,0)
 
-
 inddata1 <- inddata1 %>% 
   dplyr::mutate(indexmom=factor(
     inddata1$indexmom, 
@@ -773,7 +772,23 @@ inddata1 <- inddata1 %>%
     # labels = c("Household member", "Index mother")))
     labels = c("Membre de ménage", "Mère index")))
 # necessary for individual survey?
+table(inddata1$indexmom, useNA = "always")
 
+# per protocol analysis (index mother's status at enrollment not ANC screening)----------
+
+perprotexpsure <- inddata1 %>% filter(indexmom=="Mère index") %>% 
+  mutate(perprot_h10 = case_when(
+  i27a_rdt_result == 1 ~ 1,
+  i27a_rdt_result == 0 ~ 0,
+  is.na(i27a_rdt_result) ~ 9
+))
+
+table(perprotexpsure$perprot_h10)
+
+inddata1 <- full_join(inddata1, perprotexpsure[, c("hrhhid", "perprot_h10")], by = c("hrhhid"))
+
+table(perprotexpsure$perprot_h10, perprotexpsure$h10_hbv_rdt, useNA = "always")
+table(inddata1$perprot_h10, inddata1$h10_hbv_rdt, useNA = "always")
 
 # Patrick data issues-----------------------------
 # hh w same GPS coords
