@@ -88,6 +88,37 @@ table(inddata1$i27a_rdt_result_f, inddata1$i3a_hiv_treatment_f, inddata1$i3_hiv_
 #prior HBV test
 table(inddata1$i1_hbv_positive_f, inddata1$i27a_rdt_result_f)
 
+## Table 1 without index mothers------------
+hhmemb <- inddata1 %>% filter(indexmom=="Membre de ménage")
+
+# all vars
+tab1_ind <- c("i27a_rdt_result_f","indexmom","hr3_relationship_f","age_combined","agegrp15_2", "hr4_sex_f", "hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
+              "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f","i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
+              "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f","i26_sex_hx_given_money_f")
+
+# num vars
+numvars_ind <- c("age_combined") # age, under 5s in hh, total hh members
+# cat vars
+catvars_ind <- c("i27a_rdt_result_f","indexmom","hr3_relationship_f","agegrp15_2" ,"hr4_sex_f", "hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","i4_fever_f",
+                 "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f", "i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
+                 "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f", "i26_sex_hx_given_money_f")
+#first step in create table 1
+hhmemonlytab1 <- CreateTableOne(vars = tab1_ind, factorVars = catvars_ind, data=hhmemb, strata = c("i27a_rdt_result_f", "h10_hbv_rdt_f"), addOverall = T)
+
+tab1hhmem <- print(hhmemonlytab1 ,quote = FALSE, noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE, formatOptions = list(big.mark = ","))
+tab1hhmem
+write.csv(tab1hhmem, file = "tab1hhmem.csv")
+
+
+
+
+
+
+
+
+
+
+
 ### Moran's i-------------
 library(ape)
 
@@ -192,9 +223,10 @@ base <- ggplot(drc_healtharea_Kin) +
 ## Map: HH prev--------------------
 base +
   geom_sf(data=hover_gps_full, aes(color=hhprev))+
-  scale_color_binned(type="viridis")+
+  scale_color_binned(type="viridis", breaks = c(0.1, 0.2, 0.3,0.4,0.5,0.6,0.7,0.8,0.9))+
   #scale_color_continuous(type = "RdYlBu")+
-  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)
+  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)+
+  guides(fill=guide_legend(title="Household prevalence (%)"))
 
 ## Map: Exp vs Unexp------------------
 hover_gps_full <- hover_gps_full %>% 
@@ -203,11 +235,11 @@ hover_gps_full <- hover_gps_full %>%
     levels = c(0, 1),
     labels = c("Unexposed", "Exposed")))
 
-#B <- 
+B <- 
   ggplot(drc_healtharea_Kin) +
   geom_sf(alpha=0.75, size = 0.1)+
   geom_sf(data=congo_br, fill = "gray75", size=0.2,aes(label = ADM0_FR))+
-  geom_sf(data=hover_gps_full, aes(fill=h10_hbv_rdt_f, color=h10_hbv_rdt_f), size=3)+
+  geom_sf(data=hover_gps_full, aes(fill=h10_hbv_rdt_f, color=h10_hbv_rdt_f), size=0.5)+ #or 3 for standalone
   geom_sf(data=matgps, color = "gray39", fill="cornsilk2", shape = 21, aes(label = centers))+
   #scale_fill_manual(values = c("#4D4D4D","#B2182B",'ghostwhite'))+
   scale_color_manual(values = c("#4D4D4D","#B2182B",'ghostwhite'))+
@@ -222,12 +254,13 @@ hover_gps_full <- hover_gps_full %>%
         axis.text = element_blank(),
         axis.ticks = element_blank(),
         legend.title = element_blank(),
-        legend.position = c(0.12,0.92),
-        legend.text=element_text(size=20))+
-    guides(color = guide_legend(override.aes = list(size = 4)))+
-    annotation_scale(location = "br", plot_unit = "mi")
+        legend.position = c(0.12,0.92)#,
+        #legend.text=element_text(size=20)
+        )
+    #guides(color = guide_legend(override.aes = list(size = 4)))+
+    #annotation_scale(location = "br", plot_unit = "mi")
   
-ggsave('./plots/hh.png', width=9, height=9)
+# ggsave('./plots/hh.png', width=9, height=9)
 
 ## Map: Hbsag results--------------------
 C <- 
@@ -368,42 +401,53 @@ inddata1 <- inddata1 %>%
     levels = c(0, 1,2,3,4,5,6,7,8,9,10,11,12,13,97,98,99),
     labels = c("No relation", "Index mother","Spouse", "Child", "Son/daughter-in-law", "Grandchild","Parent","Parent-in-law","Sibling","Niece/nephew","Niece/nephew by marriage",
                "Adopted child of spouse","Aunt/uncle","Grandparent","Other","Don't know", "Refused")))    
-inddata1 %>%
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(h10_hbv_rdt_f_2=factor(
+    inddata1$h10_hbv_rdt, 
+    levels = c(0, 1),
+    labels = c("HBsAg-", "HBsAg+")))
+#labels = c("Negative", "Positive")))
+
+cases_at <- inddata1 %>%
   dplyr::filter(inddata1$hr3_relationship!=1 & inddata1$i27a_rdt_result==1) %>% 
-  dplyr::group_by(hr3_relationship_f_eng, h10_hbv_rdt_f) %>% 
+  dplyr::group_by(hr3_relationship_f_eng, h10_hbv_rdt_f_2) %>% 
   dplyr::summarise(n=n()) %>% 
-  ggplot(aes(fill=hr3_relationship_f_eng, x=h10_hbv_rdt_f, y=n))+
+  ggplot(aes(fill=hr3_relationship_f_eng, x=h10_hbv_rdt_f_2, y=n))+
   geom_col(position = position_dodge2(preserve = "single"))+
-  labs(x="Index mother HBV status", fill="", y="Individuals enrolled")+
+  labs(x="Index mother HBV status at prenatal screening", fill="", y="Household members")+
   scale_fill_brewer(palette = "Paired")+
-  #scale_fill_manual(values = c('#A6CEE3','#1F78B4','#FB9A99','#FF7F00'))+
-  #scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
-  ggtitle("HBsAg+ household members:\nRelationship to index mother by index mother HBV status")+
+  ylim(0, 15)+
+  #ggtitle("HBsAg+ household members:\nRelationship to index mother by index mother HBV status")+
   theme(panel.background = element_blank(),
         plot.title = element_text(size = 30), #for presentation
-        legend.text = element_text(size = 15),
-        axis.text = element_text(size = 15),
+        #legend.text = element_text(size = 15),
+        legend.position = "none",
+        axis.text = element_text(size = 20),
         axis.title = element_text(size = 15))
 
-ggsave('./plots/relation.png', width=9, height=9)
+# ggsave('./plots/relation.png', width=9, height=9)
 
 ##Perprot relation
-inddata1 %>%
+cases_pp <- 
+  inddata1 %>%
   dplyr::filter(inddata1$hr3_relationship!=1 & inddata1$i27a_rdt_result==1) %>% 
   dplyr::group_by(hr3_relationship_f_eng, perprot_h10_f) %>% 
   dplyr::summarise(n=n()) %>% 
   ggplot(aes(fill=hr3_relationship_f_eng, x=perprot_h10_f, y=n))+
   geom_col(position = position_dodge2(preserve = "single"))+
-  labs(x="Index mother HBV status", fill="", y="Individuals enrolled")+
+  labs(x="Index mother HBV status at enrollment", fill="", y="")+ #Household members
   scale_fill_brewer(palette = "Paired")+
-  #scale_fill_manual(values = c('#A6CEE3','#1F78B4','#FB9A99','#FF7F00'))+
-  #scale_fill_viridis(option="magma", begin=0.1, end=0.58, discrete = T)+
-  ggtitle("HBsAg+ household members:\nRelationship to index mother by index mother HBV status")+
+   ylim(0, 15)+
+  #ggtitle("HBsAg+ household members:\nRelationship to index mother by index mother HBV status")+
   theme(panel.background = element_blank(),
         plot.title = element_text(size = 30), #for presentation
         legend.text = element_text(size = 15),
-        axis.text = element_text(size = 15),
+        axis.text = element_text(size = 20),
         axis.title = element_text(size = 15))
+#ggsave('./plots/relationperprot.png', width=9, height=9)
 
-ggsave('./plots/relationperprot.png', width=9, height=9)
+cases_at + cases_pp + plot_layout(nrow=1, ncol = 2) + plot_annotation(tag_levels = 'A')
 
+# output
+ggsave('./plots/relationsAB.png', width=15, height=9)

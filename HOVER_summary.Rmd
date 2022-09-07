@@ -804,7 +804,10 @@ table(inddata1$i39_vac_whynot) # need to code these reasons
 inddata1 %>% group_by(i39_vac_whynot) %>% summarize(n=n())
 
 vacc.refuse.elig <- inddata1[inddata1$i39_vaccine_eligible==1 & inddata1$i39a_vac_consent==0, c("hrhhid","participant_code","i39_vaccine_eligible","i39a_vac_consent","i39_vac_whynot")]
+
 vacc.refuse.elig.reason <- inddata1[!is.na(inddata1$i39_vac_whynot),c("hrhhid","participant_code","i39_vaccine_eligible","i39a_vac_consent","i39_vac_whynot")]
+
+
 ```
 
 ```{r echo=FALSE, warning=FALSE,  echo=F, eval=F}

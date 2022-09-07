@@ -807,6 +807,9 @@ inddata1 <- inddata1 %>%
     labels = c("HBsAg-", "HBsAg+")))
 #labels = c("Negative", "Positive")))
 
+serostatchange <- perprotexpsure %>% filter(h10_hbv_rdt != perprot_h10) %>% select("hrhhid", "h10_hbv_rdt","perprot_h10")
+
+
 # Patrick data issues-----------------------------
 # hh w same GPS coords
 samegps <- hhdata2[duplicated(hhdata2[c('hxcoord_edit', 'hycoord_edit')]), c("hrhhid","hxcoord_edit","hycoord_edit")]
