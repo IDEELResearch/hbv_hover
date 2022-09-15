@@ -54,11 +54,24 @@ write.csv(tab1ind_exp, file = "tab1ind_exp.csv")
 ## To_DO on ind questions
 # - education - distinguish those currently in school (eg secondary school) from adults who are out of school but only completed part of secondary school
 
+
+## misc for IRB renewal
+hhsincerenew <- (hhdata1 %>% filter(hdov > '2021-10-11'))
+#new members since last approval
+nrow(inddata1 %>% filter(hrhhid %in% hhsincerenew$hrhhid))
+#children
+nrow(inddata1 %>% filter(age_combined <18))
+#pregnant
+table(inddata1$i5_pregnancy_f)
+
 ## misc for CROI abstract------------------------------------------------------------------------
 nrow(inddata1 %>% filter(age_combined < 18)) # how many under 18
 nrow(inddata1 %>% filter(age_combined < 18))/nrow(inddata1) # %  under 18
 addmargins(table(inddata1$hr3_relationship_f)) # how many direct offspring
 addmargins(table(inddata1$hr3_relationship_f))/nrow(inddata1) # %  direct offspring
+addmargins(table(inddata1$hhmemcat_f)) # how many direct offspring
+addmargins(table(inddata1$indexmom)) # how many direct offspring
+
 table(inddata1$i27a_rdt_result_f, inddata1$indexmom)
 
 #how many serostatus changes

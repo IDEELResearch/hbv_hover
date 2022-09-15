@@ -318,10 +318,11 @@ hhdata2 <- hhdata2 %>%
     h5_cultivable_land == 99 ~ NA_real_, # assigning to missing so not included in wealth index
     TRUE ~ h5_cultivable_land))
 
-table(hhdata2$h5_cultivable_land_wi, hhdata2$h5a_cultivable_land_hect_num ,useNA = "always")
+table(hhdata2$h5_cultivable_land, hhdata2$h5a_cultivable_land_hect_num ,useNA = "always")
 
 hhdata2$h5a_cultivable_land_hect_num <- as.numeric(hhdata2$h5a_cultivable_land_hect)
-class(hhdata2$h5a_cultivable_land_hect_num)
+
+missingland <- hhdata2 %>% filter(is.na(h5_cultivable_land_wi))
 
 ## Water source------------------------------------------------------
 # explore frequency of different water sources
@@ -647,6 +648,7 @@ inddata1 <- inddata1 %>%
     levels = c(0, 1, 2,3,4,97,98),
     labels = c("No occupation", "Salaried", "Self-employed",
                "Works for someone else", "Student","Other","Don't know/refused")))
+table(inddata1$hr10_occupation_gr_f, inddata1$hr10_occupation, useNA = "always")
 # RELIGION---------------------------
 # look at religion by household 
 ## table(inddata1$hr11_religion, useNA = "always")
@@ -771,16 +773,32 @@ inddata1 <- inddata1 %>%
 #labels = c("No", "Yes", "Refused")))
 
 #indic for indexmom/offspring----------------
-inddata1$indexmom <- ifelse(inddata1$hr3_relationship==1,1,0)
-
-inddata1$directoff <- ifelse(inddata1$hr3_relationship==3,1,0)
+inddata1$indexmom_indic <- ifelse(inddata1$hr3_relationship==1,1,0)
+inddata1$directoff <- ifelse(inddata1$hr3_relationship==3,1,0) #for 03_models
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(indexmom=factor(
-    inddata1$indexmom, 
+    inddata1$indexmom_indic, 
     levels = c(0, 1),
     # labels = c("Household member", "Index mother")))
-    labels = c("Membre de ménage", "Mère index")))
+    labels = c("Household member", "Index mother")))
+
+inddata1 = inddata1 %>%
+  mutate(hhmemcat = case_when(
+    hr3_relationship == 1 ~ 2, #hh member is an index mother
+    hr3_relationship == 3 ~ 1, #hh member is direct offspring
+    TRUE ~ 0 # hh mmeber is all other types of relationships
+  ) %>% as.numeric()
+  )
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hhmemcat_f=factor(
+    inddata1$hhmemcat, 
+    levels = c(0, 1, 2),
+    # labels = c("Household member", "Index mother")))
+    labels = c("Other household member","Direct offspring" ,"Index mother")))
+
+
 # necessary for individual survey?
 table(inddata1$indexmom, useNA = "always")
 
@@ -811,6 +829,16 @@ serostatchange <- perprotexpsure %>% filter(h10_hbv_rdt != perprot_h10) %>% sele
 
 
 # Patrick data issues-----------------------------
+# hh without index mother
+#hh with index mom
+nomere <- subset(inddata1, (!(inddata1$hrhhid %in% perprotexpsure$hrhhid))) #HRK-2055
+
+# missing HBsAg result
+missingtest <- inddata1 %>% filter(is.na(i27a_rdt_result_f)) %>% select("hrhhid","participant_code","h10_hbv_rdt_f",
+                "hr3_relationship_f","age_combined","i27a_rdt_result","i27_rdt_done", "i27_rdt_notdone_reason","hrname_last","hrname_post","hrname_first")
+
+table(inddata1$i27_rdt_notdone_reason, useNA = "always")
+
 # hh w same GPS coords
 samegps <- hhdata2[duplicated(hhdata2[c('hxcoord_edit', 'hycoord_edit')]), c("hrhhid","hxcoord_edit","hycoord_edit")]
 write_csv(samegps, file = "samegps.csv")
