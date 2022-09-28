@@ -2,7 +2,7 @@
 
 # packages for this program
 library(tableone)
-
+library(tidyverse)
 # Table 1 Household--------------------------------------------------------------------------------
 # create table 1
 hhIDs <- inddata1 %>%
@@ -34,14 +34,14 @@ write.csv(tab1hhexport, file = "tab1hhexport.csv")
 
 # Table 1 for individuals------------------------------
 # all vars
-tab1_ind <- c("i27a_rdt_result_f","indexmom","hr3_relationship_f","age_combined","agegrp15_2", "hr4_sex_f", "hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
+tab1_ind <- c("i27a_rdt_result_f","hhmemcat_f","hr3_relationship_f","age_combined","agegrp15_2", "hr4_sex_f", "hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
               "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f","i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
               "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f","i26_sex_hx_given_money_f")
 
 # num vars
 numvars_ind <- c("age_combined") # age, under 5s in hh, total hh members
 # cat vars
-catvars_ind <- c("i27a_rdt_result_f","indexmom","hr3_relationship_f","agegrp15_2" ,"hr4_sex_f", "hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","i4_fever_f",
+catvars_ind <- c("i27a_rdt_result_f","hhmemcat_f","hr3_relationship_f","agegrp15_2" ,"hr4_sex_f", "hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","i4_fever_f",
                  "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f", "i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
                   "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f", "i26_sex_hx_given_money_f")
 #first step in create table 1
@@ -64,7 +64,7 @@ nrow(inddata1 %>% filter(age_combined <18))
 #pregnant
 table(inddata1$i5_pregnancy_f)
 
-## misc for CROI abstract------------------------------------------------------------------------
+# misc for CROI abstract------------------------------------------------------------------------
 nrow(inddata1 %>% filter(age_combined < 18)) # how many under 18
 nrow(inddata1 %>% filter(age_combined < 18))/nrow(inddata1) # %  under 18
 addmargins(table(inddata1$hr3_relationship_f)) # how many direct offspring
@@ -102,7 +102,7 @@ table(inddata1$i27a_rdt_result_f, inddata1$i3a_hiv_treatment_f, inddata1$i3_hiv_
 table(inddata1$i1_hbv_positive_f, inddata1$i27a_rdt_result_f)
 
 ## Table 1 without index mothers------------
-hhmemb <- inddata1 %>% filter(indexmom=="Membre de ménage")
+hhmemb <- inddata1 %>% filter(indexmom=="Household member")
 
 # all vars
 tab1_ind <- c("i27a_rdt_result_f","indexmom","hr3_relationship_f","age_combined","agegrp15_2", "hr4_sex_f", "hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
@@ -123,19 +123,9 @@ tab1hhmem
 write.csv(tab1hhmem, file = "tab1hhmem.csv")
 
 
-
-
-
-
-
-
-
-
-
 ### Moran's i-------------
 library(ape)
-
-testmoran <- unique %>% filter(hycoord_edit > 15)
+unique <- hhdata2[!duplicated(hhdata2[c('hxcoord_edit', 'hycoord_edit')]),]
 
 test.hhdist <- as.matrix(dist(cbind(testmoran$hxcoord_edit, testmoran$hycoord_edit)))
 test.hhdist.inv  <- 1/test.hhdist
@@ -144,8 +134,63 @@ diag(test.hhdist.inv) <- 0
 test.hhdist.inv[1:5, 1:5]
 max(test.hhdist.inv) # check not infinite
 
-
+table(testmoran$hhprev)
 Moran.I(testmoran$hhprev, test.hhdist.inv)
+
+# autocorr for risk factors
+#non missing traditiona scars
+table(inddata1$i16_traditional_scarring, useNA = "always")
+
+nonmissscar <- inddata1 %>% filter(i16_traditional_scarring != 99)
+nonmissscar1 <- nonmissscar %>%
+  dplyr::group_by(hrhhid) %>%
+  dplyr::summarise(totalscars = sum(i16_traditional_scarring, na.rm=TRUE), nscar=n()) 
+
+table(nonmissscar1$totalscars)
+
+nonmissscar1hh <- left_join(hhdata1, nonmissscar1, by = "hrhhid")
+nonmissscar1hh$scarprev <- ifelse(nonmissscar1hh$totalscars==0,0,nonmissscar1hh$totalscars/nonmissscar1hh$nscar)
+#check
+table(nonmissscar1hh$scarprev)
+
+uniquescar <- nonmissscar1hh[!duplicated(nonmissscar1hh[c('hxcoord_edit', 'hycoord_edit')]),]
+
+test.hhdist <- as.matrix(dist(cbind(uniquescar$hxcoord_edit, uniquescar$hycoord_edit)))
+test.hhdist.inv  <- 1/test.hhdist
+diag(test.hhdist.inv) <- 0
+# view table of distances
+test.hhdist.inv[1:5, 1:5]
+max(test.hhdist.inv) # check not infinite
+
+Moran.I(uniquescar$scarprev, test.hhdist.inv)
+
+#autocorre of infected hh members
+table(hhmemb$i27a_rdt_result, hhmemb$h10_hbv_rdt)
+othermember <- hhmemb %>% filter(hhmemcat==0)
+table(othermember$i27a_rdt_result, othermember$hrhhid)
+
+othmemprev <- othermember %>%
+  dplyr::group_by(hrhhid) %>%
+  dplyr::summarise(infhh = sum(i27a_rdt_result, na.rm=TRUE)) 
+
+addmargins(table(othmemprev$infhh))
+
+othmemprev2 <- left_join(hhdata1, othmemprev, by = "hrhhid")
+othmemprev2$othermemprev <- ifelse(is.na(othmemprev2$infhh),0,othmemprev2$infhh/othmemprev2$n)
+#check
+table(othmemprev2$othermemprev, useNA = "always")
+
+uniqueothprev <- othmemprev2[!duplicated(othmemprev2[c('hxcoord_edit', 'hycoord_edit')]),]
+table(uniqueothprev$othermemprev, useNA = "always")
+
+test.hhdist <- as.matrix(dist(cbind(uniqueothprev$hxcoord_edit, uniqueothprev$hycoord_edit)))
+test.hhdist.inv  <- 1/test.hhdist
+diag(test.hhdist.inv) <- 0
+# view table of distances
+test.hhdist.inv[1:5, 1:5]
+max(test.hhdist.inv) # check not infinite
+
+Moran.I(uniqueothprev$othermemprev, test.hhdist.inv)
 
 # Maps--------------------------------------------------------------------------------
 
@@ -248,7 +293,7 @@ hover_gps_full <- hover_gps_full %>%
     levels = c(0, 1),
     labels = c("Unexposed", "Exposed")))
 
-B <- 
+#B <- 
   ggplot(drc_healtharea_Kin) +
   geom_sf(alpha=0.75, size = 0.1)+
   geom_sf(data=congo_br, fill = "gray75", size=0.2,aes(label = ADM0_FR))+
@@ -269,8 +314,8 @@ B <-
         legend.title = element_blank(),
         legend.position = c(0.12,0.92)#,
         #legend.text=element_text(size=20)
-        )
-    #guides(color = guide_legend(override.aes = list(size = 4)))+
+        )+
+    guides(color = guide_legend(override.aes = list(size = 2)))
     #annotation_scale(location = "br", plot_unit = "mi")
   
 # ggsave('./plots/hh.png', width=9, height=9)
@@ -316,7 +361,7 @@ E <-
   #scale_color_manual(values = c('#878787','#f4a582','ghostwhite'))+
   scale_color_manual(values = c('#665191',"#F5B24E","#A87323"))+   # purple and yellow and brown (refuse)
   coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)+
-  theme(legend.position = c(0.23,0.9))+
+  theme(legend.position = c(0.213,0.9))+
   guides(color = guide_legend(override.aes = list(size = 2)))
 
 #money exchanged for sex
@@ -332,13 +377,13 @@ F <-
   #scale_color_manual(values = c('#878787','#f4a582','ghostwhite'))+
   scale_color_manual(values = c('#665191',"#F5B24E","#A87323"))+   # purple and yellow and brown (refuse)
   coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)+
-  theme(legend.position = c(0.26,0.9))+
+  theme(legend.position = c(0.245,0.9))+
   guides(color = guide_legend(override.aes = list(size = 2)))
 
 # piece plots together using library(patchwork)
 A + B + C + D + E + F + plot_layout(nrow=2, ncol = 3) + plot_annotation(tag_levels = 'A')
 
-A + grid + plot_layout(nrow=1, ncol = 2) + plot_annotation(tag_levels = 'A')
+#A + grid + plot_layout(nrow=1, ncol = 2) + plot_annotation(tag_levels = 'A')
 
 # output
 ggsave('./plots/croiabs.png', width=15, height=9)
@@ -404,6 +449,10 @@ krige_own <- m.kriged.own %>% cbind(gdf$x, gdf$y) %>% mutate(
   var1.pred = cut(var1.pred, breaks=seq(0,90,by=10)), 
   se = sqrt(var1.var),
   se = cut(se, breaks=seq(0,24,by=4))) %>% filter(!is.na(var1.pred))
+# Stats for proposal----------------------------
+table(inddata1$h10_hbv_rdt, inddata1$hhmemcat_f)
+
+table(inddata1$h10_hbv_rdt, inddata1$indexmom)
 
 
 # Figures-----------------------
@@ -431,7 +480,8 @@ cases_at <- inddata1 %>%
   labs(x="Index mother HBV status at prenatal screening", fill="", y="Household members")+
   scale_fill_brewer(palette = "Paired")+
   ylim(0, 15)+
-  #ggtitle("HBsAg+ household members:\nRelationship to index mother by index mother HBV status")+
+  geom_text(aes(label = ..count..), stat = "count", hjust = 0.5, vjust = -0.5, position = position_dodge(0.9))+
+  ggtitle("Intent-to-treat")+
   theme(panel.background = element_blank(),
         plot.title = element_text(size = 30), #for presentation
         #legend.text = element_text(size = 15),
@@ -452,7 +502,7 @@ cases_pp <-
   labs(x="Index mother HBV status at enrollment", fill="", y="")+ #Household members
   scale_fill_brewer(palette = "Paired")+
    ylim(0, 15)+
-  #ggtitle("HBsAg+ household members:\nRelationship to index mother by index mother HBV status")+
+  ggtitle("Per protocol")+
   theme(panel.background = element_blank(),
         plot.title = element_text(size = 30), #for presentation
         legend.text = element_text(size = 15),
@@ -464,3 +514,45 @@ cases_at + cases_pp + plot_layout(nrow=1, ncol = 2) + plot_annotation(tag_levels
 
 # output
 ggsave('./plots/relationsAB.png', width=15, height=9)
+
+## Household member broad categories
+obs <- ggplot(inddata1, aes(x=h10_hbv_rdt_f, fill=hhmemcat_f))+
+  geom_bar(position = "dodge")+
+  # labs(x="Index mother HBV status", fill="", y="Individuals enrolled")+
+  labs(x="Index mother status", fill="", y="Participants enrolled")+
+  scale_fill_manual(values = c('#ff9966','#669999','#ff6666','#ffcc66','#33cccc','#00429d'))+
+  #scale_fill_manual(values = c('#73a2c6','#f4777f'))+
+  ylim(c(0, 300))+
+  geom_text(aes(label = ..count..), stat = "count", hjust = 0.5, vjust = -0.5, position = position_dodge(0.9))+
+  ggtitle("Index mothers, offspring, and other household members")+
+  theme(panel.background = element_blank(),
+        plot.title = element_text(size = 15), #for presentation
+        legend.text = element_text(size = 15),
+        axis.text = element_text(size = 15),
+        axis.title = element_text(size = 15))
+
+# expected hh distribution
+expcounts <- data.frame(groups=c("Other household member","Direct offspring" ,"Index mother"),
+                  counts=c(300, 200, 100))
+
+# Assigning colors manually 
+#exp <- 
+  ggplot(data=expcounts, aes(x=reorder(groups, -counts), y=counts,fill=groups))+
+  geom_bar(stat="identity")+
+  scale_fill_manual(values=c("#669999",
+                             "#ff6666",
+                             "#ff9966"))+
+  ylim(c(0, 300))+
+  labs(x="", fill="", y="Expected enrollment")+
+  theme(panel.background = element_blank(),
+        plot.title = element_text(size = 15), #for presentation
+        #legend.text = element_text(size = 15),
+        #legend.position = "none",
+        axis.text.y = element_text(size = 15),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title = element_text(size = 15)) 
+exp     
+exp + obs + plot_layout(nrow=1, ncol = 2) + plot_annotation(tag_levels = 'A')
+
+         

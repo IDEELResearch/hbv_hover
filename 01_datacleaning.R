@@ -131,6 +131,7 @@ hhdata1$hxcoord_edit <- (hhdata1$hxcoord_edit)*-1
 hhdata1$hhprev <- ifelse(hhdata1$totalpositive==0,0,hhdata1$totalpositive/hhdata1$n)
 table(hhdata1$hhprev, useNA = "always")
 
+
 # Cleaning household variables--------------------------------------------------------------------------------
 hhdata1 <- hhdata1 %>% 
   dplyr::mutate(h10_hbv_rdt_f=factor(

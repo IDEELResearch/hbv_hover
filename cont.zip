@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html>
+<head>
+                    <title>Baruch Geoportal Home - Baruch Geoportal - Baruch College Confluence Service</title>
+    
+        
+
+                        
+    
+                        
+    
+
+                
+    
+    <meta http-equiv="X-UA-Compatible" content="IE=EDGE,chrome=IE7">
+<meta charset="UTF-8">
+<meta id="confluence-context-path" name="confluence-context-path" content="/confluence">
+<meta id="confluence-base-url" name="confluence-base-url" content="https://www.baruch.cuny.edu/confluence">
+
+    <meta id="atlassian-token" name="atlassian-token" content="74ca8bfd73ed581101accd695f4b9f71ea7086ec">
+
+
+<meta id="confluence-space-key" name="confluence-space-key" content="geoportal">
+<script type="text/javascript">
+        var contextPath = '/confluence';
+</script>
+
+    
+
+    <meta name="confluence-request-time" content="1662212649582">
+        
+    
+        
+            <style>.ia-fixed-sidebar, .ia-splitter-left {width: 285px;}.theme-default .ia-splitter #main {margin-left: 285px;}.ia-fixed-sidebar {visibility: hidden;}</style>
+            <meta name="ajs-use-keyboard-shortcuts" content="true">
+            <meta name="ajs-discovered-plugin-features" content="$discoveredList">
+            <meta name="ajs-keyboardshortcut-hash" content="76fcc2c7023e26d2ca27205d817c3d3e">
+            <meta name="ajs-team-calendars-display-time-format" content="displayTimeFormat12">
+            <meta id="team-calendars-display-week-number" content="false">
+            <meta id="team-calendars-user-timezone" content="America/New_York">
+            <script type="text/x-template" id="team-calendars-messages" title="team-calendars-messages"><fieldset class="i18n hidden"><input type="hidden" name="calendar3.month.long.july" value="July"><input type="hidden" name="calendar3.day.short.wednesday" value="Wed"><input type="hidden" name="calendar3.day.short.thursday" value="Thu"><input type="hidden" name="calendar3.month.short.march" value="Mar"><input type="hidden" name="calendar3.month.long.april" value="April"><input type="hidden" name="calendar3.month.long.october" value="October"><input type="hidden" name="calendar3.month.long.august" value="August"><input type="hidden" name="calendar3.month.short.july" value="Jul"><input type="hidden" name="calendar3.month.short.may" value="May"><input type="hidden" name="calendar3.month.short.november" value="Nov"><input type="hidden" name="calendar3.day.long.friday" value="Friday"><input type="hidden" name="calendar3.day.long.sunday" value="Sunday"><input type="hidden" name="calendar3.day.long.saturday" value="Saturday"><input type="hidden" name="calendar3.month.short.april" value="Apr"><input type="hidden" name="calendar3.day.long.wednesday" value="Wednesday"><input type="hidden" name="calendar3.month.long.december" value="December"><input type="hidden" name="calendar3.month.short.october" value="Oct"><input type="hidden" name="calendar3.day.long.monday" value="Monday"><input type="hidden" name="calendar3.month.short.june" value="Jun"><input type="hidden" name="calendar3.day.short.monday" value="Mon"><input type="hidden" name="calendar3.day.short.tuesday" value="Tue"><input type="hidden" name="calendar3.day.short.saturday" value="Sat"><input type="hidden" name="calendar3.month.long.march" value="March"><input type="hidden" name="calendar3.month.long.june" value="June"><input type="hidden" name="calendar3.month.short.february" value="Feb"><input type="hidden" name="calendar3.month.short.august" value="Aug"><input type="hidden" name="calendar3.month.short.december" value="Dec"><input type="hidden" name="calendar3.day.short.sunday" value="Sun"><input type="hidden" name="calendar3.month.long.february" value="February"><input type="hidden" name="calendar3.day.long.tuesday" value="Tuesday"><input type="hidden" name="calendar3.month.long.may" value="May"><input type="hidden" name="calendar3.month.long.september" value="September"><input type="hidden" name="calendar3.month.long.november" value="November"><input type="hidden" name="calendar3.month.short.january" value="Jan"><input type="hidden" name="calendar3.month.short.september" value="Sep"><input type="hidden" name="calendar3.day.long.thursday" value="Thursday"><input type="hidden" name="calendar3.month.long.january" value="January"><input type="hidden" name="calendar3.day.short.friday" value="Fri"></fieldset></script>
+            
+    
+    
+            <meta name="ajs-page-title" content="Baruch Geoportal Home">
+            <meta name="ajs-latest-published-page-title" content="Baruch Geoportal Home">
+            <meta name="ajs-space-name" content="Baruch Geoportal">
+            <meta name="ajs-page-id" content="26674926">
+            <meta name="ajs-latest-page-id" content="26674926">
+            <meta name="ajs-content-type" content="page">
+            <meta name="ajs-parent-page-id" content="">
+            <meta name="ajs-space-key" content="geoportal">
+            <meta name="ajs-max-number-editors" content="12">
+            <meta name="ajs-macro-placeholder-timeout" content="5000">
+            <meta name="ajs-jira-metadata-count" content="-1">
+            <meta name="ajs-from-page-title" content="">
+            <meta name="ajs-can-remove-page" content="false">
+            <meta name="ajs-can-remove-page-hierarchy" content="false">
+            <meta name="ajs-browse-page-tree-mode" content="view">
+            <meta name="ajs-context-path" content="/confluence">
+            <meta name="ajs-base-url" content="https://www.baruch.cuny.edu/confluence">
+            <meta name="ajs-version-number" content="7.18.1">
+            <meta name="ajs-build-number" content="8804">
+            <meta name="ajs-remote-user" content="">
+            <meta name="ajs-remote-user-key" content="">
+            <meta name="ajs-remote-user-has-licensed-access" content="false">
+            <meta name="ajs-remote-user-has-browse-users-permission" content="false">
+            <meta name="ajs-current-user-fullname" content="">
+            <meta name="ajs-current-user-avatar-url" content="">
+            <meta name="ajs-current-user-avatar-uri-reference" content="/confluence/images/icons/profilepics/anonymous.svg">
+            <meta name="ajs-static-resource-url-prefix" content="/confluence/s/k0gg2o/8804/1nmz4ib/_">
+            <meta name="ajs-global-settings-attachment-max-size" content="25000000">
+            <meta name="ajs-global-settings-quick-search-enabled" content="true">
+            <meta name="ajs-user-locale" content="en_GB">
+            <meta name="ajs-enabled-dark-features" content="site-wide.synchrony,site-wide.shared-drafts.disable,clc.quick.create,confluence.view.edit.transition,cql.search.screen,confluence-inline-comments-resolved,frontend.editor.v4,http.session.registrar,nps.survey.inline.dialog,confluence.efi.onboarding.new.templates,frontend.editor.v4.compatibility,atlassian.cdn.static.assets,pdf-preview,previews.sharing,previews.versions,file-annotations,confluence.efi.onboarding.rich.space.content,collaborative-audit-log,confluence.reindex.improvements,previews.conversion-service,editor.ajax.save,read.only.mode,graphql,previews.trigger-all-file-types,attachment.extracted.text.extractor,lucene.caching.filter,confluence.table.resizable,notification.batch,previews.sharing.pushstate,confluence-inline-comments-rich-editor,tc.tacca.dacca,site-wide.synchrony.opt-in,atlassian.webresource.twophase.js.i18n.disabled,confluence.denormalisedpermissions,file-annotations.likes,gatekeeper-ui-v2,v2.content.name.searcher,mobile.supported.version,confluence.editor.tinymce.tables,pulp,confluence-inline-comments,confluence-inline-comments-dangling-comment,quick-reload-inline-comments-flags,confluence.retention.rules">
+            <meta name="ajs-atl-token" content="74ca8bfd73ed581101accd695f4b9f71ea7086ec">
+            <meta name="ajs-confluence-flavour" content="VANILLA">
+            <meta name="ajs-user-date-pattern" content="dd MMM yyyy">
+            <meta name="ajs-access-mode" content="READ_WRITE">
+            <meta name="ajs-render-mode" content="READ_WRITE">
+            <meta name="ajs-date.format" content="MMM dd, yyyy">
+    
+    <link rel="shortcut icon" href="/confluence/s/-1we3y9/8804/1nmz4ib/1/_/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="/confluence/s/-1we3y9/8804/1nmz4ib/1/_/favicon.ico">
+
+<link rel="search" type="application/opensearchdescription+xml" href="/confluence/opensearch/osd.action" title="Baruch College Confluence Service"/>
+    
+                    
+            
+
+    <script>
+window.WRM=window.WRM||{};window.WRM._unparsedData=window.WRM._unparsedData||{};window.WRM._unparsedErrors=window.WRM._unparsedErrors||{};
+WRM._unparsedData["com.atlassian.analytics.analytics-client:programmatic-analytics-init.programmatic-analytics-data-provider"]="false";
+WRM._unparsedData["com.atlassian.confluence.plugins.confluence-license-banner:confluence-license-banner-resources.license-details"]="{\u0022daysBeforeLicenseExpiry\u0022:0,\u0022daysBeforeMaintenanceExpiry\u0022:0,\u0022showLicenseExpiryBanner\u0022:false,\u0022showMaintenanceExpiryBanner\u0022:false,\u0022renewUrl\u0022:null,\u0022salesUrl\u0022:null}";
+WRM._unparsedData["com.atlassian.plugins.atlassian-plugins-webresource-plugin:context-path.context-path"]="\u0022\u005C/confluence\u0022";
+WRM._unparsedData["com.atlassian.analytics.analytics-client:policy-update-init.policy-update-data-provider"]="false";
+WRM._unparsedData["com.atlassian.confluence.plugins.confluence-search-ui-plugin:confluence-search-ui-plugin-resources.i18n-data"]="{\u0022search.ui.recent.link.text\u0022:\u0022View more recently visited\u0022,\u0022search.ui.filter.space.category.input.label\u0022:\u0022Find space categories...\u0022,\u0022search.ui.search.results.empty\u0022:\u0022We couldn\u0027\u0027t find anything matching \u005C\u0022{0}\u005C\u0022.\u0022,\u0022search.ui.filter.clear.selected\u0022:\u0022Clear selected items\u0022,\u0022search.ui.content.name.search.items.panel.load.all.top.items.button.text\u0022:\u0022Show more app results...\u0022,\u0022search.ui.filter.space.archive.label\u0022:\u0022Search archived spaces\u0022,\u0022search.ui.filter.label\u0022:\u0022filter\u0022,\u0022search.ui.filter.contributor.button.text\u0022:\u0022Contributor\u0022,\u0022search.ui.filter.date.all.text\u0022:\u0022Any time\u0022,\u0022search.ui.filter.space.current.label\u0022:\u0022CURRENT\u0022,\u0022search.ui.clear.input.button.text\u0022:\u0022Clear text\u0022,\u0022search.ui.search.results.clear.button\u0022:\u0022clear your filters.\u0022,\u0022help.search.ui.link.title\u0022:\u0022Search tips\u0022,\u0022search.ui.container.close.text\u0022:\u0022Close\u0022,\u0022search.ui.filter.date.hour.text\u0022:\u0022The past day\u0022,\u0022search.ui.filters.heading\u0022:\u0022Filter by\u0022,\u0022search.ui.filter.label.input.label\u0022:\u0022Find labels...\u0022,\u0022search.ui.filter.date.month.text\u0022:\u0022The past month\u0022,\u0022search.ui.recent.items.anonymous\u0022:\u0022Start exploring. Your search results will appear here.\u0022,\u0022search.ui.input.label\u0022:\u0022Search\u0022,\u0022search.ui.input.aria.label\u0022:\u0022Search, when you type, your results will be displayed below.\u0022,\u0022search.ui.infinite.scroll.button.text\u0022:\u0022More results\u0022,\u0022search.ui.search.result\u0022:\u0022{0,choice,1#{0} search result|1\u003c{0} search results}\u0022,\u0022search.ui.filter.date.button.text\u0022:\u0022Date\u0022,\u0022search.ui.filter.date.week.text\u0022:\u0022The past week\u0022,\u0022search.ui.filter.label.button.text\u0022:\u0022Label\u0022,\u0022search.ui.result.subtitle.calendar\u0022:\u0022Team calendar\u0022,\u0022search.ui.input.alert\u0022:\u0022Hit enter to search\u0022,\u0022search.ui.filter.no.result.text\u0022:\u0022We can\u0027\u0027t find anything matching your search\u0022,\u0022search.ui.filter.date.heading\u0022:\u0022Last modified within\u0022,\u0022search.ui.result.subtitle.user\u0022:\u0022User profile\u0022,\u0022search.ui.filter.contributor.input.label\u0022:\u0022Find people...\u0022,\u0022search.ui.filter.content.type.button.text\u0022:\u0022Type\u0022,\u0022search.ui.filter.space.input.label\u0022:\u0022Find spaces...\u0022,\u0022search.ui.filter.date.year.text\u0022:\u0022The past year\u0022,\u0022search.ui.advanced.search.link.text\u0022:\u0022Advanced search\u0022,\u0022search.ui.filter.space.button.text\u0022:\u0022Space\u0022,\u0022search.ui.generic.error\u0022:\u0022Something went wrong. Refresh the page, or contact your admin if this keeps happening.\u0022,\u0022search.ui.recent.spaces\u0022:\u0022Recent Spaces\u0022,\u0022search.ui.search.results.clear.line2\u0022:\u0022Try a different search term or\u0022,\u0022search.ui.filter.space.category.button.text\u0022:\u0022Space category\u0022,\u0022search.ui.search.results.clear.line1\u0022:\u0022We couldn\u0027\u0027t find anything matching your search.\u0022,\u0022search.ui.content.name.search.items.panel.load.all.top.items.admin.button.text\u0022:\u0022Show more settings and app results...\u0022,\u0022search.ui.recent.pages\u0022:\u0022Recently visited\u0022,\u0022search.ui.search.result.anonymous\u0022:\u0022{0,choice,1#{0} search result|1\u003c{0} search results}. Have an account? {1}Log in{2} to expand your search.\u0022,\u0022search.ui.recent.items.empty\u0022:\u0022Start exploring. Pages and spaces you\u0027\u0027ve visited recently will appear here.\u0022,\u0022search.ui.result.subtitle.space\u0022:\u0022Space\u0022,\u0022search.ui.filter.space.init.heading\u0022:\u0022recent spaces\u0022}";
+WRM._unparsedData["com.atlassian.confluence.plugins.synchrony-interop:synchrony-status-banner-loader.synchrony-status"]="false";
+WRM._unparsedData["com.atlassian.confluence.plugins.confluence-feature-discovery-plugin:confluence-feature-discovery-plugin-resources.test-mode"]="false";
+if(window.WRM._dataArrived)window.WRM._dataArrived();</script>
+<link rel="stylesheet" href="/confluence/s/d977ba9c18adbc2984756ce75ddcc000-CDN/-1we3y9/8804/1nmz4ib/b0225493eda542fc499302c242f8aeaf/_/download/contextbatch/css/_super,-com.atlassian.plugins.atlassian-plugins-webresource-rest:data-collector-perf-observer/batch.css" data-wrm-key="_super,-com.atlassian.plugins.atlassian-plugins-webresource-rest:data-collector-perf-observer" data-wrm-batch-type="context" media="all">
+<link rel="stylesheet" href="/confluence/s/716f1846f5880c78cb2fa34c16da581f-CDN/-1we3y9/8804/1nmz4ib/659a979034856f5b0ecf573e7d7fd26c/_/download/contextbatch/css/page,viewcontent,main,atl.general,atl.confluence.plugins.pagetree-desktop,atl.comments,-_super/batch.css?gatekeeper-ui-v2=true&amp;highlightactions=true&amp;hostenabled=true" data-wrm-key="page,viewcontent,main,atl.general,atl.confluence.plugins.pagetree-desktop,atl.comments,-_super" data-wrm-batch-type="context" media="all">
+<script data-wrm-key="com.atlassian.plugins.atlassian-plugins-webresource-rest:data-collector-perf-observer" data-wrm-batch-type="resource" data-initially-rendered>
+!function(){"use strict";if("PerformanceObserver"in window){const e=[];window.__observedResources=e;const r=(e,r)=>"link"===e&&"css"===new URL(r).pathname,n=e=>"script"===e?"script":"css";new PerformanceObserver((i=>{i.getEntries().filter((({initiatorType:e,name:n})=>{const i="script"===e||r(e,n),s=new URL(location.href).origin===new URL(n).origin;return i&&s})).forEach((({name:r,transferSize:i,encodedBodySize:s,initiatorType:o})=>{e.push([i,s,r,n(o)])}))})).observe({type:"resource"})}}();
+
+</script>
+<script src="/confluence/s/83c7ebd70cbe839799393ea3e42f3b89-CDN/-1we3y9/8804/1nmz4ib/b0225493eda542fc499302c242f8aeaf/_/download/contextbatch/js/_super,-com.atlassian.plugins.atlassian-plugins-webresource-rest:data-collector-perf-observer/batch.js?locale=en-GB" data-wrm-key="_super,-com.atlassian.plugins.atlassian-plugins-webresource-rest:data-collector-perf-observer" data-wrm-batch-type="context" data-initially-rendered></script>
+<script src="/confluence/s/4604bea2d4ac852b2b61f0878034c2ae-CDN/-1we3y9/8804/1nmz4ib/659a979034856f5b0ecf573e7d7fd26c/_/download/contextbatch/js/page,viewcontent,main,atl.general,atl.confluence.plugins.pagetree-desktop,atl.comments,-_super/batch.js?gatekeeper-ui-v2=true&amp;highlightactions=true&amp;hostenabled=true&amp;locale=en-GB" data-wrm-key="page,viewcontent,main,atl.general,atl.confluence.plugins.pagetree-desktop,atl.comments,-_super" data-wrm-batch-type="context" data-initially-rendered></script>
+<script defer>WRM.requireLazily(["wr!com.atlassian.plugins.atlassian-plugins-webresource-rest:data-collector-async"])</script>
+    
+
+        
+    
+
+        
+        <meta name="ajs-site-title" content="Baruch College Confluence Service" />
+            
+    
+
+    
+                <link rel="canonical" href="https://www.baruch.cuny.edu/confluence/display/geoportal/Baruch+Geoportal+Home">
+        <link rel="shortlink" href="https://www.baruch.cuny.edu/confluence/x/7gaXAQ">
+    <meta name="wikilink" content="[geoportal:Baruch Geoportal Home]">
+    <meta name="page-version" content="71">
+    <meta name="ajs-page-version" content="71">
+
+</head>
+
+<style type="text/css">
+/* GRID CSS */
+.column, .span-1, .span-2, .span-3, .span-4, .span-5, .span-6, .span-7, .span-8, .span-9, .span-10, .span-11, .span-12, .span-13, .span-14, .span-15, .span-16, .span-17, .span-18, .span-19, .span-20, .span-21, .span-22, .span-23, .span-24 {float:left;margin-right:10px;}
+.last {margin-right:0;}
+.span-1 {width:30px;}
+.span-2 {width:70px;}
+.span-3 {width:110px;}
+.span-4 {width:150px;}
+.span-5 {width:190px;}
+.span-6 {width:230px;}
+.span-7 {width:270px;}
+.span-8 {width:310px;}
+.span-9 {width:350px;}
+.span-10 {width:390px;}
+.span-11 {width:430px;}
+.span-12 {width:470px;}
+.span-13 {width:510px;}
+.span-14 {width:550px;}
+.span-15 {width:590px;}
+.span-16 {width:630px;}
+.span-17 {width:670px;}
+.span-18 {width:710px;}
+.span-19 {width:750px;}
+.span-20 {width:790px;}
+.span-21 {width:830px;}
+.span-22 {width:870px;}
+.span-23 {width:910px;}
+.span-24 {width:950px;margin-right:0;}
+
+/* BARUCH CSS */
+.library-container{
+margin: 0 auto;
+text-align: left;
+min-width: 999px;
+}
+
+#library-topbar {
+min-width: 994px;
+height: 36px;
+background: #000000 url("https://www.baruch.cuny.edu/library_assets/global/images/topbarbg.png") 0 0 repeat-x;
+color: #fbff96;
+}
+
+#library-topbar img {
+vertical-align: middle;
+}
+
+#tb-container {
+height: 36px;
+padding-top: 6px;
+}
+
+#library-topbar ul {
+list-style-type: none;
+margin:0;
+padding:0;
+}
+
+#library-topbar li {
+float: right;
+font: normal bold 12px/16px Helvetica, Arial, sans-serif;
+border-right: 1px solid #999;
+height: 15px;
+}
+
+#library-topbar a:link, #library-topbar a:visited {
+color: #f4c430;
+text-decoration: none;
+}
+
+#library-topbar a:hover, #library-topbar a:focus {
+color: #fbff96;
+text-decoration: none;
+}
+
+#library-toplinks {
+padding-top:3px;
+}
+
+#library-toplinks a {
+padding: 0 12px;
+}
+
+#library-header {
+background: #0f1722 url("https://www.baruch.cuny.edu/library_assets/global/images/h-containerbg.png") center 0 repeat-x;
+height: 113px;
+border-bottom: 1px #191919 solid;
+overflow: hidden;
+}
+
+#h-container {
+height: 113px;
+min-width: 999px;
+background: transparent url("https://www.baruch.cuny.edu/library_assets/global/images/headerbg.jpg") center 0 no-repeat;
+}
+
+.library-space-container {
+width: 950px;
+margin: 0 auto;
+}
+
+#newmanlogo a {
+font: 200% Helvetica, Arial, sans-serif;
+color: #FBFF96;
+text-decoration: none;
+text-indent: -9999px;
+position: absolute;
+width: 440px;
+height: 60px;
+top: 60px;
+}
+
+#library-navigation {
+min-width: 994px;
+background: #0b1726 url("https://www.baruch.cuny.edu/library_assets/global/images/headerbg.jpg") center bottom no-repeat;
+font: normal bold 14px/26px Helvetica, Arial, sans-serif;
+font: normal 14px/26px Helvetica, Arial, sans-serif;
+border-top: 1px #ccc solid;
+overflow: hidden;
+}
+
+#library-globalnav {
+ margin:0;
+ padding:0;
+}
+
+#library-globalnav li {
+float: left;
+height: 36px;
+list-style-type:none;
+}
+
+/* Top-Level Text */
+#library-globalnav a, #library-globalnav a:link, #library-globalnav a:visited {
+    background-color:transparent;
+    color:#ffffff;
+    text-decoration:none;
+    display:block;
+    float:left;
+    padding:5px 0px 5px 6px;
+    margin-left:5px;
+}
+#library-globalnav a+span {float:left;display:block;width:6px;height:36px;}
+#library-globalnav a:hover {color:#225391;background:transparent url(http://www.baruch.cuny.edu/library_assets/global/images/navpill.png) left -36px no-repeat;}
+#library-globalnav a:hover+span {background:transparent url(http://www.baruch.cuny.edu/library_assets/global/images/navpill.png) right -36px no-repeat;}
+#library-globalnav a.dd:hover,#library-globalnav a.dd:hover+span {background-position:0 -72px;}
+
+/* Top-Level BG after cursor moves away */
+#library-globalnav li:hover {
+    background-color:transparent;
+}
+
+/* Top-Level Links after cursor moves away */
+#library-globalnav li:hover a.dd,
+#students   #library-globalnav li:hover a.dd,
+#alumni     #library-globalnav li:hover a.dd,
+#guests     #library-globalnav li:hover a.dd,
+#help       #library-globalnav li:hover a.dd,
+#news       #library-globalnav li:hover a.dd,
+#about      #library-globalnav li:hover a.dd {color:#225391;background:transparent url(http://www.baruch.cuny.edu/library_assets/global/images/navpill.png) left -72px no-repeat;}
+#library-globalnav li:hover a.dd+span,
+#students   #library-globalnav li:hover a.dd+span,
+#alumni     #library-globalnav li:hover a.dd+span,
+#guests     #library-globalnav li:hover a.dd+span,
+#help       #library-globalnav li:hover a.dd+span,
+#news       #library-globalnav li:hover a.dd+span,
+#about      #library-globalnav li:hover a.dd+span {background:transparent url(http://www.baruch.cuny.edu/library_assets/global/images/navpill.png) right -72px no-repeat;}
+
+#library-footer {
+min-width: 994px;
+margin: 0px auto;
+background: #000000 url("https://www.baruch.cuny.edu/library_assets/global/images/footerbg.jpg") center 0 no-repeat;
+border-top: 12px solid #225391;
+text-align: left;
+font-size: 11px;
+}
+
+#library-footer p {
+color: rgb(200,200,200);
+font-size: 11px;
+}
+
+#f-container {
+height: 200px;
+padding: 24px 22px;
+}
+
+#f-logos {
+text-align: right;
+}
+
+#f-logos img {
+margin-bottom: 9px;
+}
+
+#f-address p {
+line-height: 19px;
+padding: 3px 0 0 5px;
+margin: 0 0 10px 0;
+}
+
+#f-credits {
+padding-left: 57px;
+}
+
+#f-links {
+margin-top:0;
+}
+
+#f-links a {
+font-size: 11px;
+text-decoration: underline;
+font-weight: bold;
+color: #5c94cd;
+}
+
+#f-links li {
+padding-bottom: 5px;
+}
+
+.colborder {
+padding-right: 24px;
+margin-right: 25px;
+border-right: 1px solid #ddd;
+}
+
+#header {background-color:#000;}
+#header .cell {margin: 0 auto; width: 930px;}
+.page-metadata {display: none;}
+#breadcrumb-section {display: none;}
+#main-header #navigation {margin-top: 15px;}
+#title-heading h1 {font: 24px Helvetica, Arial, sans-serif !important; font-weight: bold !important; padding-top: 5px !important; padding-bottom: 5px !important;}
+#title-heading a {color: #225391 !important;}
+#page-metadata-banner {height:0;}
+
+</style>
+
+<body      id="com-atlassian-confluence" class="theme-default  aui-layout aui-theme-default">
+
+        
+            <div id='stp-licenseStatus-banner'></div>
+    <ul id="assistive-skip-links" class="assistive">
+    <li><a href="#title-heading">Skip to main content</a></li>
+    <li><a href="#breadcrumbs">assistive.skiplink.to.breadcrumbs</a></li>
+    <li><a href="#header-menu-bar">assistive.skiplink.to.header.menu</a></li>
+    <li><a href="#navigation">assistive.skiplink.to.action.menu</a></li>
+    <li><a href="#quick-search-query">assistive.skiplink.to.quick.search</a></li>
+</ul>
+
+<div class="library-container">
+<div id="library-topbar">
+        <div id="tb-container" class="library-space-container">
+            <div id="baruch" class="span-8">
+                <a href="http://www.baruch.cuny.edu/" target="_blank"><img src="https://www.baruch.cuny.edu/library_assets/global/images/Baruch.png" width="154" height="23" alt="Baruch College" class="baruchlogo"></a>
+            </div>
+
+             <div id="library-toplinks" class="span-14">
+                           </div>
+
+            <div id="library-social" class="lib-last">
+
+              </div>
+        </div>
+    </div>
+
+    <div id="library-header">
+        <div id="h-container">
+            <div id="newmanlogo" class="library-space-container">
+                <a href="http://www.baruch.cuny.edu/library/"><img src="https://www.baruch.cuny.edu/library_assets/global/images/newman_print.jpg" width="440" height="60" alt="The William and Anita Newman Library" id="printlogo"></a>
+            </div>
+       </div>
+    </div>
+
+</div>
+
+<div id="page">
+<div id="full-height-container">
+    <div id="header-precursor">
+        <div class="cell">
+             <!-- <div style="background-color:red; color:white; font-weight:bold; font-size: 16px; padding: 10px; text-align:center;" class="aui-message closeable"><p class="title"> Maintenance Notice</p><p>Confluence will be unavailable due to maintenance, Thursday, November 15, 2018 from approximately 4pm to 6pm.</p></div> -->
+
+<!--<div style="background-color:red; color:white; font-weight:bold; font-size: 16px; padding: 10px; text-align:center;">An upgrade of the Confluence service was completed 1/10/14. If you encounter any issues, please report them to the Help Desk at x1010.
+<br />
+Information on changes from the upgrade can be found at <a style="color:#205081" href="https://www.baruch.cuny.edu/confluence/display/baruchwiki/Confluence+User+Training+Guide#ConfluenceUserTrainingGuide-Confluence5Upgrade-Changes">https://www.baruch.cuny.edu/confluence/x/AoAJ</a></div>-->
+
+<!--
+<div style="background-color:red; color:white; font-weight:bold; font-size: 16px; padding: 10px; text-align:center;">Maintenance of the Confluence service was completed on 2/10/16. If you encounter any issues, please report them to the Help Desk at x1010.</div>-->
+                            </div>
+    </div>
+        
+
+
+
+
+
+<header id="header" role="banner">
+            <a class="aui-skip-link" href="https://www.baruch.cuny.edu/confluence/login.action?os_destination=%2Fdisplay%2Fgeoportal%2F">Log in</a>
+            <a class="aui-skip-link" href="#nav-sidebar">Skip to sidebar</a>
+        <a class="aui-skip-link" href="#main">Skip to main content</a>
+    <nav class="aui-header aui-dropdown2-trigger-group" aria-label="Site"><div class="aui-header-inner"><div class="aui-header-before"><button class=" aui-dropdown2-trigger app-switcher-trigger aui-dropdown2-trigger-arrowless" aria-controls="app-switcher" aria-haspopup="true" role="button" data-aui-trigger href="#app-switcher"><span class="aui-icon aui-icon-small aui-iconfont-appswitcher">Linked Applications</span></button><div id="app-switcher" class="aui-dropdown2 aui-style-default" role="menu" hidden data-is-user-admin="false" data-is-switcher="true"><div class="app-switcher-loading">Loading&hellip;</div></div></div><div class="aui-header-primary"><span id="logo" class="aui-header-logo aui-header-logo-confluence"><a href="/confluence/" aria-label="Go to home page"><span class="aui-header-logo-device">Baruch College Confluence Service</span></a></span><ul class="aui-nav">
+                            <li>
+            
+        
+        
+<a  id="space-directory-link" href="/confluence/spacedirectory/view.action"  class=" aui-nav-imagelink"   title="Spaces">
+            <span>Spaces</span>
+    </a>
+        </li>
+                                <li class="aui-buttons">
+            </li>
+</ul>
+</div><div class="aui-header-secondary"><ul class="aui-nav">
+                        <li>
+        <div id="search-ui" class="aui-quicksearch dont-default-focus header-quicksearch"><button id="quick-search-query-button" aria-label="Search" aria-haspopup= "dialog" aria-controls="search_drawer" ></button><input id="quick-search-query" aria-label="Search" placeholder="Search" type="text" aria-haspopup= "dialog" aria-controls="search_drawer" /><div id="quick-search-alert" role="alert">Hit enter to search</div><aui-spinner size="small"></aui-spinner></div>
+    </li>
+        <li>
+            
+        <a id="help-menu-link" class="aui-nav-link aui-dropdown2-trigger aui-dropdown2-trigger-arrowless" href="#" aria-haspopup="true" aria-owns="help-menu-link-content" title="Help">
+        <span class="aui-icon aui-icon-small aui-iconfont-question-filled">Help</span>
+    </a>
+    <nav id="help-menu-link-content" class="aui-dropdown2 aui-style-default">
+                    <div class="aui-dropdown2-section">
+                                <ul  id="help-menu-link-leading" class="aui-list-truncate section-leading first">
+                                            <li>
+        
+            
+<a  id="confluence-help-link" href="https://docs.atlassian.com/confluence/docs-718/" class="    "      title="Visit the Confluence documentation home"  target="_blank"
+>
+        Online Help
+</a>
+</li>
+                                            <li>
+    
+            
+<a  id="keyboard-shortcuts-link" href="/confluence" class="    "      title="View available keyboard shortcuts" >
+        Keyboard Shortcuts
+</a>
+</li>
+                                            <li>
+    
+            
+<a  id="feed-builder-link" href="/confluence/dashboard/configurerssfeed.action" class="    "      title="Create your custom RSS feed." >
+        Feed Builder
+</a>
+</li>
+                                            <li>
+    
+            
+<a  id="whats-new-menu-link" href="https://confluence.atlassian.com/display/DOC/Confluence+7.18+Release+Notes" class="    "      title="" >
+        What’s new
+</a>
+</li>
+                                            <li>
+    
+            
+<a  id="gadget-directory-link" href="/confluence" class="   user-item administration-link "      title="Browse gadgets provided by Confluence" >
+        Available Gadgets
+</a>
+</li>
+                                            <li>
+    
+            
+<a  id="confluence-about-link" href="/confluence/aboutconfluencepage.action" class="    "      title="Get more information about Confluence" >
+        About Confluence
+</a>
+</li>
+                                    </ul>
+            </div>
+            </nav>
+    
+    </li>
+        <li>
+                
+    
+    </li>
+        <li>
+            
+    </li>
+        <li>
+                                            <li>
+        
+            
+<a  id="login-link" href="/confluence/login.action?os_destination=%2Fdisplay%2Fgeoportal%2F" class="   user-item login-link "      title="" >
+        Log in
+</a>
+</li>
+                        
+    </li>
+    </ul>
+</div></div><!-- .aui-header-inner--></nav><!-- .aui-header -->
+    <br class="clear">
+</header>
+    
+
+    
+        <div class="ia-splitter">
+            <div class="ia-splitter-left">
+                <div class="ia-fixed-sidebar">
+                    
+	    	<div class="acs-side-bar ia-scrollable-section"><div class="acs-side-bar-space-info tipsy-enabled" data-configure-tooltip="Edit space details"><div class="avatar"><div class="space-logo" data-key="geoportal" data-name="Baruch Geoportal" data-entity-type="confluence.space"><div class="avatar-img-container"><div class="avatar-img-wrapper"><a href="/confluence/display/geoportal/Baruch+Geoportal+Home" title="Baruch Geoportal"><img class="avatar-img" src="/confluence/download/attachments/131074/global.logo?version=1&amp;modificationDate=1225898754000&amp;api=v2" alt="Baruch Geoportal"></a></div></div></div></div><div class="space-information-container"><div class="name"><a href="/confluence/display/geoportal/Baruch+Geoportal+Home" title="Baruch Geoportal">Baruch Geoportal</a></div><div class="flyout-handle icon aui-icon aui-icon-small aui-iconfont-edit"></div></div></div><div class="acs-side-bar-content"><div class="acs-nav-wrapper"><div class="acs-nav" data-has-create-permission="false" data-quick-links-state="null" data-page-tree-state="null" data-nav-type="page-tree"><div class="acs-nav-sections"><div class="main-links-section "><ul class="acs-nav-list"><li class="acs-nav-item wiki current-item" aria-current="true" data-collector-key="spacebar-pages"><a class="acs-nav-item-link tipsy-enabled" href="/confluence/collector/pages.action?key=geoportal" data-collapsed-tooltip="Pages"><span class="icon"></span><span class="acs-nav-item-label">Pages</span></a></li><li class="acs-nav-item blog" data-collector-key="spacebar-blogs"><a class="acs-nav-item-link tipsy-enabled" href="/confluence/pages/viewrecentblogposts.action?key=geoportal" data-collapsed-tooltip="Blog"><span class="icon"></span><span class="acs-nav-item-label">Blog</span></a></li></ul></div><div class="quick-links-wrapper"><h2 class="ia-quick-links-header-title">Space shortcuts</h2><div class="quick-links-section tipsy-enabled "><ul class="acs-nav-list"><li class="acs-nav-item pinned_page"><a class="acs-nav-item-link tipsy-enabled" href="/confluence/display/geoportal/GIS+Lab" data-collapsed-tooltip="null"><span class="icon"></span><span class="acs-nav-item-label">GIS Lab</span></a></li><li class="acs-nav-item pinned_page"><a class="acs-nav-item-link tipsy-enabled" href="/confluence/display/geoportal/GIS+Practicum" data-collapsed-tooltip="null"><span class="icon"></span><span class="acs-nav-item-label">GIS Practicum</span></a></li><li class="acs-nav-item pinned_page"><a class="acs-nav-item-link tipsy-enabled" href="/confluence/display/geoportal/NYC+Geodatabase" data-collapsed-tooltip="null"><span class="icon"></span><span class="acs-nav-item-label">NYC Geodatabase</span></a></li><li class="acs-nav-item pinned_page"><a class="acs-nav-item-link tipsy-enabled" href="/confluence/display/geoportal/NYC+Mass+Transit+Spatial+Layers" data-collapsed-tooltip="null"><span class="icon"></span><span class="acs-nav-item-label">NYC Mass Transit Layers</span></a></li><li class="acs-nav-item pinned_page"><a class="acs-nav-item-link tipsy-enabled" href="/confluence/display/geoportal/Census+Tutorials" data-collapsed-tooltip="null"><span class="icon"></span><span class="acs-nav-item-label">Census Tutorials</span></a></li></ul></div></div></div></div></div><div class="ia-secondary-container tipsy-enabled" data-tree-type="page-tree"><div class="ia-secondary-header"><h2 class="ia-secondary-header-title page-tree"><span class="icon"></span><span class="label">Page tree</span></h2></div><div class="ia-secondary-content">
+
+
+<div class="plugin_pagetree conf-macro output-inline" data-hasbody="false" data-macro-name="pagetree">
+
+        
+        
+    <div class="plugin_pagetree_children_list plugin_pagetree_children_list_noleftspace">
+        <div class="plugin_pagetree_children">
+        </div>
+    </div>
+
+    <fieldset class="hidden">
+        <input type="hidden" name="treeId" value="" />
+        <input type="hidden" name="treeRequestId" value="/confluence/plugins/pagetree/naturalchildren.action?decorator=none&amp;excerpt=false&amp;sort=position&amp;reverse=false&amp;disableLinks=false&amp;expandCurrent=true&amp;placement=sidebar" />
+        <input type="hidden" name="treePageId" value="26674926" />
+
+        <input type="hidden" name="noRoot" value="false" />
+        <input type="hidden" name="rootPageId" value="26674926" />
+
+        <input type="hidden" name="rootPage" value="" />
+        <input type="hidden" name="startDepth" value="0" />
+        <input type="hidden" name="spaceKey" value="geoportal" />
+
+        <input type="hidden" name="i18n-pagetree.loading" value="Loading..." />
+        <input type="hidden" name="i18n-pagetree.error.permission" value="Unable to load page tree. It seems that you do not have permission to view the root page." />
+        <input type="hidden" name="i18n-pagetree.eeror.general" value="There was a problem retrieving the page tree. Please check the server log file for more information." />
+        <input type="hidden" name="loginUrl" value="/confluence/login.action?os_destination=%2Fpages%2Fviewpage.action%3FspaceKey%3Dgeoportal%26title%3DBaruch%2BGeoportal%2BHome&amp;permissionViolation=true" />
+        <input type="hidden" name="mobile" value="false" />
+        <input type="hidden" name="placement" value="sidebar" />
+
+                <fieldset class="hidden">
+                            <input type="hidden" name="ancestorId" value="26674926" />
+                    </fieldset>
+    </fieldset>
+</div>
+</div></div></div><div class="hidden"><a href="/confluence/collector/pages.action?key=geoportal" id="space-pages-link"></a><script type="text/x-template" title="logo-config-content"><h2>Space Details</h2><div class="personal-space-logo-hint">Your profile picture is used as the logo for your personal space. <a href="/confluence/users/profile/editmyprofilepicture.action" target="_blank">Change your profile picture</a>.</div></script></div></div><div class="space-tools-section"><div id="space-tools-menu-additional-items" class="hidden"><div data-label="Browse pages" data-class="" data-href="/confluence/pages/reorderpages.action?key=geoportal">Browse pages</div></div><button id="space-tools-menu-trigger"  class=" aui-dropdown2-trigger aui-button aui-button-subtle tipsy-enabled aui-dropdown2-trigger-arrowless " aria-controls="space-tools-menu" aria-haspopup="true" role="button" data-aui-trigger><span class="aui-icon aui-icon-small aui-iconfont-configure">Configure</span><span class="aui-button-label">Space tools</span><span class="aui-icon "></span></button><div id="space-tools-menu" class="aui-dropdown2 aui-style-default space-tools-dropdown" role="menu" hidden data-aui-alignment="top left"></div><a href="#" role="button" class="expand-collapse-trigger aui-icon aui-icon-small aui-iconfont-chevron-double-left" aria-expanded="true"></a></div>
+    
+                </div>
+            </div>
+        <!-- \#header -->
+
+        
+        <div id="main" class=" aui-page-panel">
+                <div id="main-header">
+                    
+            <div id="title-heading" class="pagetitle with-breadcrumbs">
+                
+                                    <div id="breadcrumb-section">
+                        
+    
+    
+    <nav aria-label="Breadcrumbs">
+        <ol id="breadcrumbs">
+                                                            
+                                
+            <li class="first" >
+                                
+                                    <span class=""><a href="/confluence/collector/pages.action?key=geoportal">Pages</a></span>
+                                                                                                    </ol>
+    </nav>
+
+
+                    </div>
+                
+                
+        <a href="#page-banner-end" class="assistive">Skip to end of banner</a>
+<div id="page-banner-start" class="assistive"></div>
+
+                    
+            <div id="page-metadata-banner"><ul class="banner"><li id="system-content-items" class="noprint"><a href="" title="Unrestricted" id="content-metadata-page-restrictions-hidden" class="hidden"></a><a href="/confluence/pages/viewpageattachments.action?pageId=26674926&amp;metadataLink=true" title="2 attachments" id="content-metadata-attachments" class="aui-icon aui-icon-small aui-iconfont-attachment"></a></li><li class="page-metadata-item noprinthas-button"  id="content-metadata-jira-wrapper"><a href="" title="" id="content-metadata-jira" class="aui-button aui-button-subtle content-metadata-jira tipsy-disabled hidden"><span>Jira links</span></a></li></ul></div>
+            
+
+<a href="#page-banner-start" class="assistive">Go to start of banner</a>
+<div id="page-banner-end" class="assistive"></div>
+    
+
+                <h1 id="title-text" class="with-breadcrumbs">
+                                                <a href="/confluence/display/geoportal/Baruch+Geoportal+Home">Baruch Geoportal Home</a>
+                                    </h1>
+            </div>
+        </div><!-- \#main-header -->
+        
+        
+
+        <div id="sidebar-container">
+                                                </div><!-- \#sidebar-container -->
+
+        
+    
+
+        
+
+
+
+
+            
+    
+
+    
+    
+        
+    
+    
+                    
+    
+
+                        
+    
+    
+
+    
+
+
+
+
+
+
+
+<div id="content" class="page view">
+    
+
+
+<div id="action-messages">
+                        </div>
+
+
+
+            <script type="text/x-template" title="searchResultsGrid">
+    <table class="aui">
+        <thead>
+            <tr class="header">
+                <th class="search-result-title">Page Title</th>
+                <th class="search-result-space">Space</th>
+                <th class="search-result-date">Updated</th>
+            </tr>
+        </thead>
+    </table>
+</script>
+<script type="text/x-template" title="searchResultsGridCount">
+    <p class="search-result-count">{0}</p>
+</script>
+<script type="text/x-template" title="searchResultsGridRow">
+    <tr class="search-result">
+        <td class="search-result-title"><a href="{1}" class="content-type-{2}"><span>{0}</span></a></td>
+        <td class="search-result-space"><a class="space" href="/confluence/display/{4}/" title="{3}">{3}</a></td>
+        <td class="search-result-date"><span class="date" title="{6}">{5}</span></td>
+    </tr>
+</script>
+        
+    
+            
+
+        
+                            
+    
+
+                    
+
+        
+        <div class="page-metadata">
+    <ul>
+        <li class="page-metadata-modification-info">
+            
+        
+    
+    
+        
+    
+        
+            
+            Created by <span class='author'>     <a href="    /confluence/display/~admin
+"
+            aria-label="created by webadmins"                       class="url fn"
+                            >webadmins</a></span>, last modified by <span class='editor'>     <a href="    /confluence/display/~fdonnelly
+"
+            aria-label="modified by Francis Donnelly"                       class="url fn"
+                            >Francis Donnelly</a></span> on <a class='last-modified' aria-label='modified on Jan 23, 2021, select to show changes' title='Show changes' href='/confluence/pages/diffpagesbyversion.action?pageId=26674926&amp;selectedPageVersions=70&amp;selectedPageVersions=71'>Jan 23, 2021</a>
+            </li>
+    </ul>
+</div>
+        
+                                
+        <div id="main-content" class="wiki-content">
+                           
+        <div class="contentLayout2">
+<div class="columnLayout single" data-layout="single">
+<div class="cell normal" data-type="normal">
+<div class="innerCell">
+<p>The Baruch Geoportal is a repository maintained by the Newman Library at Baruch College, CUNY that provides geospatial data and resources. Many of these resources and datasets are publicly accessible, while some are restricted to Baruch College or CUNY affiliates. </p><p><a href="https://www.baruch.cuny.edu/confluence/pages/viewrecentblogposts.action?key=geoportal" rel="nofollow">Visit our blog</a> to see recent updates. Don't know what any of this stuff is? Take a look at the <a href="https://www.baruch.cuny.edu/confluence/display/geoportal/Spatial+Data+Formats" rel="nofollow">Spatial Data Formats</a> to find out.</p><div class="table-wrap"><table class="confluence-link confluenceTable"><tbody><tr><td class="confluenceTd"><h4 id="BaruchGeoportalHome-"><strong><br/></strong></h4><h4 id="BaruchGeoportalHome--GISandtabulardatasetsavailablefordownloadorbyrequest"><strong><a href="/confluence/display/geoportal/Datasets">Datasets</a></strong> - GIS and tabular datasets available for download or by request</h4><h4 id="BaruchGeoportalHome--tutorials,referencesources,crosswalks,andmaps"><strong><a href="/confluence/display/geoportal/Resources">Resources</a></strong> - tutorials, reference sources, crosswalks, and maps</h4><h4 id="BaruchGeoportalHome--informationaboutgeospatialservicesandtheGISLabatBaruch"><strong><a href="/confluence/display/geoportal/About+Us">About Us</a></strong> - information about geospatial services and the GIS Lab at Baruch</h4><h4 id="BaruchGeoportalHome-GISResearchGuide-forabasicintro(sitelocatedoutsidetheportal)"><strong><a href="http://guides.newman.baruch.cuny.edu/gis" class="external-link" rel="nofollow">GIS Research Guide</a></strong> - for a basic intro (site located outside the portal)</h4></td><td class="confluenceTd"><span class="confluence-embedded-file-wrapper confluence-embedded-manual-size"><img class="confluence-embedded-image" draggable="false" alt="NYC Mass Transit Spatial Layers" width="500" src="/confluence/download/attachments/26674926/nyc_masstransit_layers2.png?version=1&amp;modificationDate=1437681911533&amp;api=v2" data-image-src="/confluence/download/attachments/26674926/nyc_masstransit_layers2.png?version=1&amp;modificationDate=1437681911533&amp;api=v2" data-unresolved-comment-count="0" data-linked-resource-id="28278872" data-linked-resource-version="1" data-linked-resource-type="attachment" data-linked-resource-default-alias="nyc_masstransit_layers2.png" data-base-url="https://www.baruch.cuny.edu/confluence" data-linked-resource-content-type="image/png" data-linked-resource-container-id="26674926" data-linked-resource-container-version="71" title="NYC Mass Transit Spatial Layers"></span></td></tr></tbody></table></div><p>**If this site is inaccessible to you and you require GIS services or data, we ask that you contact Charles Terng at <span class="detail-info"><a href="mailto:charles.terng@baruch.cuny.edu" class="external-link" rel="nofollow">charles.terng@baruch.cuny.edu</a></span>**</p></div>
+</div>
+</div>
+<div class="columnLayout two-equal" data-layout="two-equal">
+<div class="cell normal" data-type="normal">
+<div class="innerCell">
+<h2 id="BaruchGeoportalHome-Recentspaceactivity">Recent space activity</h2><p>    
+
+<div class="recently-updated recently-updated-concise conf-macro output-block" data-hasbody="false" data-macro-name="recently-updated">
+
+            <div class="hidden parameters">
+    <input type="hidden" id="changesUrl" value="/confluence/plugins/recently-updated/changes.action?theme=concise&amp;pageSize=5&amp;spaceKeys=geoportal&amp;contentType=page, comment, blogpost" />
+</div>
+    <div class="results-container">
+        <ul>
+        <li class="update-item">
+        <div class="update-item-icon">
+            <span class="aui-icon content-type-blogpost"> </span>
+        </div>
+        <div class="update-item-content">
+                            <a href="/confluence/pages/viewpage.action?pageId=46174064" title="Baruch Geoportal">Farewell!</a>
+            
+            <div class="update-item-meta">
+                Jan 23, 2021<span class="separator"> • </span>created by <a class="url fn" data-username="fdonnelly" href="/confluence/display/~fdonnelly">Francis Donnelly</a>            </div>
+        </div>
+    </li>
+        <li class="update-item">
+        <div class="update-item-icon">
+            <span class="aui-icon content-type-blogpost"> </span>
+        </div>
+        <div class="update-item-content">
+                            <a href="/confluence/display/geoportal/2020/12/16/End+of+Year+2020+Updates" title="Baruch Geoportal">End of Year 2020 Updates</a>
+            
+            <div class="update-item-meta">
+                Dec 16, 2020<span class="separator"> • </span>created by <a class="url fn" data-username="fdonnelly" href="/confluence/display/~fdonnelly">Francis Donnelly</a>            </div>
+        </div>
+    </li>
+        <li class="update-item">
+        <div class="update-item-icon">
+            <span class="aui-icon content-type-blogpost"> </span>
+        </div>
+        <div class="update-item-content">
+                            <a href="/confluence/display/geoportal/2020/09/10/Remote+Workshops+Fall+2020%3A+Intro+to+GIS+and+Census+Data" title="Baruch Geoportal">Remote Workshops Fall 2020: Intro to GIS and Census Data</a>
+            
+            <div class="update-item-meta">
+                Sep 21, 2020<span class="separator"> • </span>updated by <a class="url fn" data-username="fdonnelly" href="/confluence/display/~fdonnelly">Francis Donnelly</a><span class="separator"> • </span><a class="changes-link" href="/confluence/pages/diffpagesbyversion.action?pageId=44401235&amp;selectedPageVersions=5&amp;selectedPageVersions=4">view change</a>            </div>
+        </div>
+    </li>
+        <li class="update-item">
+        <div class="update-item-icon">
+            <span class="aui-icon content-type-blogpost"> </span>
+        </div>
+        <div class="update-item-content">
+                            <a href="/confluence/display/geoportal/2020/08/13/Several+Dataset+Updates" title="Baruch Geoportal">Several Dataset Updates</a>
+            
+            <div class="update-item-meta">
+                Aug 13, 2020<span class="separator"> • </span>created by <a class="url fn" data-username="fdonnelly" href="/confluence/display/~fdonnelly">Francis Donnelly</a>            </div>
+        </div>
+    </li>
+        <li class="update-item">
+        <div class="update-item-icon">
+            <span class="aui-icon content-type-blogpost"> </span>
+        </div>
+        <div class="update-item-content">
+                            <a href="/confluence/display/geoportal/2020/05/18/NYC+Mass+Transit+Layers+COVID-19+Edition" title="Baruch Geoportal">NYC Mass Transit Layers COVID-19 Edition</a>
+            
+            <div class="update-item-meta">
+                May 18, 2020<span class="separator"> • </span>created by <a class="url fn" data-username="fdonnelly" href="/confluence/display/~fdonnelly">Francis Donnelly</a>            </div>
+        </div>
+    </li>
+    </ul>
+<div class="more-link-container">
+    <a class="more-link" href="/confluence/plugins/recently-updated/changes.action?theme=concise&amp;pageSize=5&amp;startIndex=5&amp;searchToken=22808&amp;spaceKeys=geoportal&amp;contentType=page, comment, blogpost">Show More</a>
+    <img class="waiting-image" alt="Please wait" src="/confluence/s/k0gg2o/8804/1nmz4ib/_/images/icons/wait.gif" />
+</div>
+    </div>
+</div>
+</p></div>
+</div>
+<div class="cell normal" data-type="normal">
+<div class="innerCell">
+<h2 id="BaruchGeoportalHome-Popularcontent(pagesviewed)">Popular content (pages viewed)</h2><p>    No popular content.
+</p><p> </p></div>
+</div>
+</div>
+<div class="columnLayout single" data-layout="single">
+<div class="cell normal" data-type="normal">
+<div class="innerCell">
+<p> </p></div>
+</div>
+</div>
+</div>
+
+                
+        
+    
+        </div>
+
+        #trackbackRdf ($trackbackUtils.getContentIdentifier($page) $page.title $trackbackUtils.getPingUrl($page))
+
+                    
+    
+    
+
+
+
+<div id="labels-section" class="pageSection group">
+    <div class="labels-section-content content-column" entityid="26674926" entitytype="page">
+	<div class="labels-content">
+		
+    <ul class="label-list label-list-right ">
+            <li class="no-labels-message">
+            No labels
+        </li>
+            </ul>
+
+    </div>
+</div>
+</div>
+        
+		
+            
+
+
+
+
+            
+        
+
+
+
+
+
+
+
+
+                        
+    
+<div id="comments-section" class="pageSection group">
+        
+    
+
+
+
+</div>
+        
+
+
+            
+</div>
+
+
+    
+
+
+
+
+    
+    
+
+    
+    
+    
+
+
+    
+<div id="space-tools-web-items" class="hidden">
+                <div data-label="Overview" data-href="/confluence/spaces/viewspacesummary.action?key=geoportal">Overview</div>
+            <div data-label="Content Tools" data-href="/confluence/pages/reorderpages.action?key=geoportal">Content Tools</div>
+            <div data-label="Activity" data-href="/confluence/spaces/usage/report.action?key=geoportal">Activity</div>
+    </div>
+        
+
+
+
+    </div><!-- \#main -->
+        
+    
+        
+            
+            
+
+<div id="footer" role="contentinfo">
+    <section class="footer-body">
+
+                                                    
+        
+
+        <ul id="poweredby">
+            <li class="noprint">Powered by <a href="https://www.atlassian.com/software/confluence" class="hover-footer-link" rel="nofollow">Atlassian Confluence</a> <span id='footer-build-information'>7.18.1</span></li>
+            <li class="print-only">Printed by Atlassian Confluence 7.18.1</li>
+            <li class="noprint"><a href="https://support.atlassian.com/confluence-server/" class="hover-footer-link" rel="nofollow">Report a bug</a></li>
+            <li class="noprint"><a href="https://www.atlassian.com/company" class="hover-footer-link" rel="nofollow">Atlassian News</a></li>
+        </ul>
+
+        
+
+        <div id="footer-logo"><a href="https://www.atlassian.com/" rel="nofollow">Atlassian</a></div>
+
+                    
+        
+    </section>
+</div>
+
+    
+</div>
+
+</div><!-- \#full-height-container -->
+</div><!-- \#page -->
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-28828849-8', 'auto');
+  ga('send', 'pageview');
+
+</script>
+
+<script type="text/javascript">
+$(document).ready(function(){
+    $('#main-content a').each(function(){
+        var url = $(this).attr("href");
+        var link_title = url.substring(url.lastIndexOf('/') + 1);
+        var link = url.replace(/http:\/\//gi, '');
+
+        if (url.match(/faculty.baruch.cuny.edu\/geoportal\//)){
+            $(this).click(function(){
+                ga('send', 'pageview', {
+                    'page': '/confluence/virtuallink/' + link,
+                    'title':  link_title
+                });
+            });
+        }
+    });
+ });
+</script>
+
+</body>
+</html>
