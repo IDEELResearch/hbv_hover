@@ -91,15 +91,26 @@ inddata1<- inddata1 %>%
 totalhbsagpositive <- inddata1 %>%
   dplyr::group_by(hrhhid) %>%
   dplyr::summarise(totalpositive = sum(i27a_rdt_result, na.rm=TRUE), n=n()) 
+## create variable to identify new screening/how recruited
+hhdata1$recruited <- ifelse(hhdata1$hdov > "2022-02-28","Nouveau screening","Étude précédente" )
+table(hhdata1$recruited, hhdata1$h10_hbv_rdt)
 
 hhdata1 <- left_join(hhdata1, totalhbsagpositive, by = "hrhhid")
-inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid","totalpositive", "n")],  by = "hrhhid")
+inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid","totalpositive", "n", "recruited")],  by = "hrhhid")
 
 # inddata1 = subset(inddata1, select = -c(totalpositive.x,totalpositive.y) )
 
-
 clusters <- inddata1[inddata1$totalpositive >1, ]
 table(clusters$hrhhid)
+
+# indicator for recruitment method--------------------
+
+library(readxl)
+priorstudies <- read_excel("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/Patrick data updates/HOVER etudes precedentes.xlsx", sheet = "forimport")
+View(priorstudies)   
+
+test <- merge(hhdata1, priorstudies, by = c("hrhhid"), all = T)
+
 
 # Clean GPS data--------------------------------------------------
 # latitudes are below equator, so need to be negative decimal degrees

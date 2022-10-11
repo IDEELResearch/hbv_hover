@@ -749,9 +749,10 @@ hover_gps <- subset(hover_gps, select=c( "h10_hbv_rdt_f" , "hrhhid","geometry","
 # tmap_mode("plot")
 tm_basemap("OpenStreetMap") +
   tm_shape(st_jitter(hover_gps, factor=0.005)) + 
-    tm_dots(col = "h10_hbv_rdt_f", palette=c('#33374b', '#e2738c'),id="hrhhid")+ # size = 0.25
+    tm_dots(col = "h10_hbv_rdt_f", palette=nounprojgraphcol,id="hrhhid")+ # c('#33374b', '#e2738c')
 #tm_basemap("OpenStreetMap") +
-  
+    #scale_fill_manual(values = nounprojgraphcol)+ 
+
   tm_shape(matgps)+
     tm_dots(col = "#ffffbf", id="centers", shapes = 23) #ffffe0 #size =0.3
 ```
