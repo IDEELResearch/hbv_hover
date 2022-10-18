@@ -1,19 +1,21 @@
 ## analyze hover data
 library(lme4)
 library(lmtest)
+library(geepack)
 ## Comparison 1: odds of infection of household members in exposed vs unexposed 
 hhmemb <- inddata1 %>% filter(indexmom=="Household member")
+#exclude those with missing results
+hhmemb_nomiss <- hhmemb %>% filter(i27a_rdt_result==0 | i27a_rdt_result==1)
 
-table(hhmemb$h10_hbv_rdt_f, hhmemb$i27a_rdt_result_f, useNA = "always")
-
-comp1 <- glm(i27a_rdt_result ~ h10_hbv_rdt, family = binomial(link = "logit"), data=hhmemb)
+# basic model not accounting for clustering
+comp1 <- glm(i27a_rdt_result ~ h10_hbv_rdt, family = binomial(link = "logit"), data=hhmemb_nomiss)
 summary(comp1)
 exp(comp1$coefficients)
 exp(confint(comp1))
 
 # account for clustering
-
-comp1mm <- glmer(i27a_rdt_result ~ h10_hbv_rdt + (1 | hrhhid), family = binomial(link = "logit"), data=hhmemb)
+# multi-level
+comp1mm <- glmer(i27a_rdt_result ~ h10_hbv_rdt + (1 | hrhhid), family = binomial(link = "logit"), data=hhmemb_nomiss)
 summary(comp1mm)
 fixef(comp1mm)
 exp(fixef(comp1mm))
@@ -29,8 +31,21 @@ exp(confint(comp1mm, method = c("boot"), boot.type=c("perc")))
 exp(confint(comp1mm, method = c("Wald")))
 exp(confint(comp1mm, method = c("profile")))
 
+# GEE
+comp1gee_ind <- geeglm(i27a_rdt_result ~ as.factor(h10_hbv_rdt), id=hrhhid, data=hhmemb_nomiss, family=binomial, corstr="ind")
+summary(comp1gee_ind)
+exp(comp1gee_ind$coefficients)
+(tidy(comp1gee_ind, conf.int = T)) # not working
 
 ## Comparison 2: odds of infection in exposed households comparing offspring vs non offspring
+hhmemb_nomiss %>% group_by(h10_hbv_rdt,directoff, i27a_rdt_result)%>%  count()
+# Kim suggestion--interaction term
+comp2_int <- glmer(i27a_rdt_result ~ h10_hbv_rdt +directoff+h10_hbv_rdt*directoff +(1 | hrhhid), family = binomial(link = "log"), data=hhmemb_nomiss)
+summary(comp2_int)
+fixef(comp2_int)
+exp(fixef(comp2_int))
+
+# before Kim's suggestion
 hhmemb_exp <- hhmemb %>% filter(h10_hbv_rdt==1)
 
 comp2 <- glm(i27a_rdt_result ~ directoff, family = binomial(link = "logit"), data=hhmemb_exp)
