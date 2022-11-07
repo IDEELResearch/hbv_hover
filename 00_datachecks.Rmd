@@ -1,7 +1,7 @@
 ---
-title: "hoverdatachecks"
+title: "Vérification des données d'HOVER"
 author: "Camille Morgan"
-date: "11/7/2022"
+date: "7 Nov 2022"
 
 output:
   html_document:
@@ -28,38 +28,36 @@ library(tidyverse)
 inddata1_dc <- readRDS("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/hoverdataanalysis/inddata.RDS")
 ```
 
-# Vérification des données
+### Vérification des données
 
-## Distribution d'age par relation avec la mère index
+#### Distribution d'age par relation avec la mère index
 
-```{r echo=FALSE, out.width="50%", echo=TRUE}
+```{r echo=FALSE, echo=TRUE}
 ggplot(inddata1_dc, aes(x = age_combined)) + geom_histogram() +facet_wrap( ~ hr3_relationship_f)
 ggplot(inddata1_dc, aes(x = age_combined)) + geom_boxplot() +facet_wrap( ~ hr3_relationship_f)
 ```
 
-## Grandparents
-### Les participants marqués comme grands-parents avec un âge < 45 ans
+#### Grandparents
+##### Les participants marqués comme grands-parents avec un âge < 45 ans
 
-```{r echo=FALSE, out.width="50%", echo=TRUE}
+```{r echo=FALSE, echo=TRUE}
 ## grandparents-----
 #below age 45 - 1 household
-inddata1_dc %>% filter(hr3_relationship == 13 & age_combined < 45) %>% summarise(hrhhid, participant_code, age_combined,hr4_sex_f,hrname_last, hrname_post, hrname_first) # 
+inddata1_dc %>% filter(hr3_relationship == 13 & age_combined < 45) %>% summarise(hrhhid, participant_code, age_combined,hr4_sex_f,hrname_last, hrname_post, hrname_first,hr3_relationship_f) # 
 
 ```
 
-## Maris
-### Les participants marqués comme mari avec un âge hors de la limite
+#### Maris
+##### Les participants marqués comme mari avec un âge hors de la limite
 
 ```{r echo=FALSE, out.width="50%", echo=TRUE}
 ## mari-------- 
 inddata1_dc %>% filter(hr3_relationship == 2) %>% summarise(min(age_combined), max(age_combined))
-inddata1_dc %>% filter(hr3_relationship == 2 & age_combined < 22) %>% summarise(hrhhid, participant_code, age_combined,hr4_sex_f,hrname_last, hrname_post, hrname_first) # 
+inddata1_dc %>% filter(hr3_relationship == 2 & age_combined < 22) %>% summarise(hrhhid, participant_code, age_combined,hr4_sex_f,hrname_last, hrname_post, hrname_first,hr3_relationship_f) # 
 
 ```
 
-## Mères indexes
-### 
-
+#### Mères indexes
 
 ```{r echo=FALSE, out.width="50%", echo=TRUE}
 ## index mother------
@@ -69,25 +67,121 @@ inddata1_dc %>% filter(hr3_relationship == 1 & age_combined < 20) %>% summarise(
 
 # inddata1_dc %>% filter(hr3_relationship == 1 & age_combined > 40) %>% summarise(hrhhid, participant_code, age_combined,hr4_sex_f,hrname_last, hrname_post, hrname_first) # 
 
-## check children's ages for mothers 
-## child's age - diff with index mother's----
-inddata1_dc <- inddata1_dc %>%  
-  mutate(agediff = case_when(
-  hr3_relationship == 3  ~ indexmotherage - age_combined, #calculate this variable only if the person is the direct offspring
-  TRUE ~ NA_real_
- ) %>% as.numeric()
-  )
-# table(inddata1$agediff, useNA = "always") # check this calculated correctly
+# use 01_datacleaning.R to find agediff created
+
 ```
 
-### Différences d'âge entre la mère index et les enfants qui sont en dehors de la limite
+##### Différences d'âge entre la mère index et les enfants qui sont en dehors de la limite
 
-```{r echo=FALSE, out.width="50%", echo=TRUE}
+```{r echo=FALSE, out.width="30%", echo=TRUE}
 #evaluate non-logical age differences 
 # most concerning
 inddata1_dc %>% filter(hr3_relationship == 3 & agediff < 15) %>% summarise(hrhhid, participant_code, age_combined, indexmotherage, agediff,hr4_sex_f,hrname_last, hrname_post, hrname_first) # 
 
 ```
+
+#### Parents
+##### âge des parents proche de la limite d'une limite appropriée
+
+```{r echo=FALSE, out.width="30%", echo=TRUE}
+## parents-------
+inddata1_dc %>% filter(hr3_relationship == 6 & age_combined < 50) %>% summarise(hrhhid, participant_code, hr3_relationship_f,hr4_sex_f,age_combined,hrname_last, hrname_post, hrname_first) # 
+```
+
+#### Petits-enfants
+
+```{r echo=FALSE, out.width="30%", echo=TRUE}
+## grandchildren
+inddata1_dc %>% filter(hr3_relationship == 5) %>% summarise(min(age_combined), max(age_combined))
+# see 01_datacleaning for agediff_grands variable
+
+table(inddata1_dc$agediff_grands)
+
+inddata1_dc %>% filter(hr3_relationship == 5) %>% summarise(hrhhid, participant_code, age_combined, indexmotherage, agediff_grands,hr4_sex_f,hrname_last, hrname_post, hrname_first,hr3_relationship_f) # 
+
+```
+
+#### Tante/oncle
+```{r echo=FALSE, out.width="30%", echo=TRUE}
+## aunts/uncles
+inddata1_dc %>% filter(hr3_relationship == 12) %>% summarise(min(age_combined), max(age_combined))
+
+inddata1_dc %>% filter(hr3_relationship == 12) %>% summarise(hrhhid, participant_code, age_combined, indexmotherage,hr4_sex_f,hrname_last, hrname_post, hrname_first,hr3_relationship_f) # 
+
+```
+
+#### Frères et soeurs
+
+##### L'âge des frères et sœurs si l'âge est inférieur à 10 ans
+```{r echo=FALSE, out.width="30%", echo=TRUE}
+## aunts/uncles
+inddata1_dc %>% filter(hr3_relationship == 8) %>% summarise(min(age_combined), max(age_combined))
+
+inddata1_dc %>% filter(hr3_relationship == 8 & age_combined < 10) %>% summarise(hrhhid, participant_code, age_combined, indexmotherage,hr4_sex_f,hrname_last, hrname_post, hrname_first) # 
+```
+
+#### Les ménages de ceux qui ont des frères et sœurs ont moins de 10 ans.
+#### HRB-1035
+```{r echo=FALSE, out.width="30%", echo=TRUE}
+inddata1_dc %>% filter(hrhhid == "HRB-1035") %>% summarise(hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, hrname_last, hrname_post, hrname_first,hrhhid, participant_code )
+```
+#### HRB-1083
+```{r echo=FALSE, out.width="30%", echo=TRUE}
+inddata1_dc %>% filter(hrhhid == "HRB-1083") %>% summarise(hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, hrname_last, hrname_post, hrname_first,hrhhid, participant_code ) %>% arrange(desc(hr3_relationship_f))
+```
+#### HRK-2018
+```{r echo=FALSE, out.width="30%", echo=TRUE}
+inddata1_dc %>% filter(hrhhid == "HRK-2018") %>% summarise(hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, hrname_last, hrname_post, hrname_first,hrhhid, participant_code ) %>% arrange(desc(hr3_relationship_f))
+```
+#### HRK2023
+```{r echo=FALSE, out.width="30%", echo=TRUE}
+inddata1_dc %>% filter(hrhhid == "HRK2023") %>% summarise(hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, hrname_last, hrname_post, hrname_first,hrhhid, participant_code ) %>% arrange(desc(hr3_relationship_f))
+```
+
+##### HRK2077: le frère doit-il être un fils ? 
+```{r echo=FALSE, out.width="30%", echo=TRUE}
+inddata1_dc %>% filter(hrhhid == "HRK2077") %>% summarise(hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, hrname_last, hrname_post, hrname_first,hrhhid, participant_code ) %>% arrange(desc(hr3_relationship_f))
+```
+
+##### HRK-2002 figure sur plusieurs de ces chèques.
+##### 1) l'âge de la mère index semble incorrect - elle a des enfants plus âgés qu'elle
+##### 2) il y a 3 parents - l'un d'eux est-il le mari ?
+##### 3) Est-il exact qu'il y a deux petits-enfants de la mère index ?
+```{r echo=FALSE, out.width="30%", echo=TRUE}
+inddata1_dc %>% filter(hrhhid == "HRK-2002") %>% summarise(hr3_relationship_f,age_combined, hr4_sex_f, agediff,agediff_grands )
+
+```
+
+#### Beaux-parents
+
+##### âge des parents proche de la limite d'une limite appropriée
+
+
+```{r echo=FALSE, out.width="30%", echo=TRUE}
+## aunts/uncles
+inddata1_dc %>% filter(hr3_relationship == 7) %>% summarise(min(age_combined), max(age_combined))
+
+inddata1_dc %>% filter(hr3_relationship == 7 & age_combined < 40) %>% summarise(hrhhid, participant_code, age_combined, indexmotherage,hr4_sex_f,hrname_last, hrname_post, hrname_first) # 
+```
+
+##### HRK-2018-04 est âgée de 18 ans mais est marquée comme belle-mère
+
+```{r echo=FALSE, out.width="30%", echo=TRUE}
+inddata1_dc %>% filter(hrhhid == "HRK-2018") %>% summarise(hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, hrname_last, hrname_post, hrname_first,hrhhid, participant_code ) %>% arrange(desc(hr3_relationship_f))
+```
+
+##### HRK-2011-05 est âgée de 2 ans mais est marquée comme belle-mère
+
+```{r echo=FALSE, out.width="30%", echo=TRUE}
+inddata1_dc %>% filter(hrhhid == "HRK2011") %>% summarise(hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, hrname_last, hrname_post, hrname_first,hrhhid, participant_code ) %>% arrange(desc(hr3_relationship_f))
+
+```
+
+
+
+
+
+
 
 
 

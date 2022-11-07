@@ -117,6 +117,25 @@ hhdata1 <- left_join(hhdata1, moms[, c("hrhhid", "indexmotherage")], by = "hrhhi
 
 inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid", "indexmotherage")], by = "hrhhid")
 
+# age difference variables
+## child's age - diff with index mother's----
+inddata1_dc <- inddata1_dc %>%  
+  mutate(agediff = case_when(
+    hr3_relationship == 3  ~ indexmotherage - age_combined, #calculate this variable only if the person is the direct offspring
+    TRUE ~ NA_real_
+  ) %>% as.numeric()
+  )
+# table(inddata1$agediff, useNA = "always") # check this calculated correctly
+# age difference between grandchildren and index mother
+inddata1 <- inddata1 %>%  
+  mutate(agediff_grands = case_when(
+    hr3_relationship == 5  ~ indexmotherage - age_combined, #calculate this variable only if the person is the direct offspring
+    TRUE ~ NA_real_
+  ) %>% as.numeric()
+  )
+table(inddata1$agediff_grands) #n=7 with grandchildren, might as well verify all
+
+
 
 # Clean GPS data--------------------------------------------------
 # latitudes are below equator, so need to be negative decimal degrees

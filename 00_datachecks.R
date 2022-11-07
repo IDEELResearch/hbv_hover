@@ -1,5 +1,7 @@
 # HOVER paper investigate
 library(tidyverse)
+
+inddata1 <- readRDS("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/hoverdataanalysis/inddata.RDS")
 # english version
 hhdata2 <- hhdata2 %>% 
   dplyr::mutate(recruited_f=factor(
@@ -53,5 +55,14 @@ inddata1 %>% filter(hr3_relationship == 3 & agediff < 15) %>% summarise(hrhhid, 
 ## parents-------
 inddata1 %>% filter(hr3_relationship == 6 & age_combined < 50) %>% summarise(hrhhid, participant_code, hr3_relationship_f,hr4_sex_f,age_combined,hrname_last, hrname_post, hrname_first) # 
 #look at all members in these
+inddata1 %>% filter(hrhhid == "HRB-1002") %>% summarise(hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, agediff)
+inddata1 %>% filter(hrhhid == "HRB -1012") %>% summarise(hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f,agediff)
+inddata1 %>% filter(hrhhid == "HRB-1023") %>% summarise(hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f,agediff)
+inddata1 %>% filter(hrhhid == "HRK-2002") %>% summarise(hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f,agediff)
 
+## grandchildren
+inddata1 %>% filter(hr3_relationship == 5) %>% summarise(min(age_combined), max(age_combined))
+
+
+inddata1 %>% filter(hrhhid == "HRB-1002") %>% summarise(hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, agediff)
 
