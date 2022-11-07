@@ -111,6 +111,12 @@ View(priorstudies)
 
 test <- merge(hhdata1, priorstudies, by = c("hrhhid"), all = T)
 
+# add index mother age to both datasets-------
+moms <- inddata1 %>% group_by(hrhhid) %>% filter(hr3_relationship == 1) %>% rename(indexmotherage = age_combined)
+hhdata1 <- left_join(hhdata1, moms[, c("hrhhid", "indexmotherage")], by = "hrhhid")
+
+inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid", "indexmotherage")], by = "hrhhid")
+
 
 # Clean GPS data--------------------------------------------------
 # latitudes are below equator, so need to be negative decimal degrees
@@ -815,8 +821,7 @@ inddata1 <- inddata1 %>%
 table(inddata1$indexmom, useNA = "always")
 
 # per protocol analysis (index mother's status at enrollment not ANC screening)----------
-
-perprotexpsure <- inddata1 %>% filter(indexmom=="Mère index") %>% 
+perprotexpsure <- inddata1 %>% filter(indexmom=="Index mother") %>% 
   mutate(perprot_h10 = case_when(
   i27a_rdt_result == 1 ~ 1,
   i27a_rdt_result == 0 ~ 0,
@@ -825,10 +830,14 @@ perprotexpsure <- inddata1 %>% filter(indexmom=="Mère index") %>%
 
 table(perprotexpsure$perprot_h10)
 
+# verify past version of perprot not on dataset and remove with code below if so
+# inddata1 <- inddata1 %>% select(-c(perprot_h10.x,perprot_h10.y))
+
 inddata1 <- full_join(inddata1, perprotexpsure[, c("hrhhid", "perprot_h10")], by = c("hrhhid"))
 
 table(perprotexpsure$perprot_h10, perprotexpsure$h10_hbv_rdt, useNA = "always")
 table(inddata1$perprot_h10, inddata1$h10_hbv_rdt, useNA = "always")
+
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(perprot_h10_f=factor(
@@ -838,6 +847,17 @@ inddata1 <- inddata1 %>%
 #labels = c("Negative", "Positive")))
 
 serostatchange <- perprotexpsure %>% filter(h10_hbv_rdt != perprot_h10) %>% select("hrhhid", "h10_hbv_rdt","perprot_h10")
+table(serostatchange$hrhhid)
+
+# household has another household member positive
+inddata1  <- inddata1 %>% 
+  dplyr::mutate(hhmempos= case_when(
+    indexmom_indic==0 & i27a_rdt_result==1 ~ 1, # ind is not an index mom and result is pos
+    TRUE ~ 0
+  ) %>% as.numeric()
+  )
+table(inddata1$hhmempos)
+
 
 
 # Patrick data issues-----------------------------

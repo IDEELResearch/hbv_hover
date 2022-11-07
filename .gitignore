@@ -44,3 +44,9 @@ samegps.csv
 tab1hhexport.csv
 tab1hhmem.csv
 tab1ind_exp.csv
+fogdata.xlsx
+fdatahbv.xlsx
+
+# Rmd output
+00_datachecks.html
+

@@ -1,0 +1,93 @@
+---
+title: "hoverdatachecks"
+author: "Camille Morgan"
+date: "11/7/2022"
+
+output:
+  html_document:
+    body_placement: left
+    code_folding: hide
+    toc_float:                                                             
+      collapse: true                                                      
+      smooth_scroll: true 
+header-includes:
+  - \usepackage{titling}
+  - \pretitle{\begin{flushleft}}
+  - \posttitle{\end{flushleft}}
+---
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(dplyr.summarise.inform = FALSE)
+library(tidyverse)
+
+#data
+#inddata1 <- saveRDS(inddata1, "/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/hoverdataanalysis/inddata.RDS")
+
+inddata1_dc <- readRDS("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/hoverdataanalysis/inddata.RDS")
+```
+
+# Vérification des données
+
+## Distribution d'age par relation avec la mère index
+
+```{r echo=FALSE, out.width="50%", echo=TRUE}
+ggplot(inddata1_dc, aes(x = age_combined)) + geom_histogram() +facet_wrap( ~ hr3_relationship_f)
+ggplot(inddata1_dc, aes(x = age_combined)) + geom_boxplot() +facet_wrap( ~ hr3_relationship_f)
+```
+
+## Grandparents
+### Les participants marqués comme grands-parents avec un âge < 45 ans
+
+```{r echo=FALSE, out.width="50%", echo=TRUE}
+## grandparents-----
+#below age 45 - 1 household
+inddata1_dc %>% filter(hr3_relationship == 13 & age_combined < 45) %>% summarise(hrhhid, participant_code, age_combined,hr4_sex_f,hrname_last, hrname_post, hrname_first) # 
+
+```
+
+## Maris
+### Les participants marqués comme mari avec un âge hors de la limite
+
+```{r echo=FALSE, out.width="50%", echo=TRUE}
+## mari-------- 
+inddata1_dc %>% filter(hr3_relationship == 2) %>% summarise(min(age_combined), max(age_combined))
+inddata1_dc %>% filter(hr3_relationship == 2 & age_combined < 22) %>% summarise(hrhhid, participant_code, age_combined,hr4_sex_f,hrname_last, hrname_post, hrname_first) # 
+
+```
+
+## Mères indexes
+### 
+
+
+```{r echo=FALSE, out.width="50%", echo=TRUE}
+## index mother------
+inddata1_dc %>% filter(hr3_relationship == 1) %>% summarise(min(age_combined), max(age_combined))
+
+inddata1_dc %>% filter(hr3_relationship == 1 & age_combined < 20) %>% summarise(hrhhid, participant_code, age_combined,hr4_sex_f,hrname_last, hrname_post, hrname_first) # 
+
+# inddata1_dc %>% filter(hr3_relationship == 1 & age_combined > 40) %>% summarise(hrhhid, participant_code, age_combined,hr4_sex_f,hrname_last, hrname_post, hrname_first) # 
+
+## check children's ages for mothers 
+## child's age - diff with index mother's----
+inddata1_dc <- inddata1_dc %>%  
+  mutate(agediff = case_when(
+  hr3_relationship == 3  ~ indexmotherage - age_combined, #calculate this variable only if the person is the direct offspring
+  TRUE ~ NA_real_
+ ) %>% as.numeric()
+  )
+# table(inddata1$agediff, useNA = "always") # check this calculated correctly
+```
+
+### Différences d'âge entre la mère index et les enfants qui sont en dehors de la limite
+
+```{r echo=FALSE, out.width="50%", echo=TRUE}
+#evaluate non-logical age differences 
+# most concerning
+inddata1_dc %>% filter(hr3_relationship == 3 & agediff < 15) %>% summarise(hrhhid, participant_code, age_combined, indexmotherage, agediff,hr4_sex_f,hrname_last, hrname_post, hrname_first) # 
+
+```
+
+
+
