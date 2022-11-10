@@ -3,7 +3,8 @@
 # packages for this program
 library(tableone)
 library(tidyverse)
-# Table 1 Household--------------------------------------------------------------------------------
+#Table 1--------------------
+##Household--------------------------------------------------------------------------------
 # create table 1
 hhIDs <- inddata1 %>%
   group_by(hrhhid) %>% summarize(hhsize=n())
@@ -32,7 +33,7 @@ write.csv(tab1hhexport, file = "tab1hhexport.csv")
 # -add all hh back (check on wealth index)
 
 
-# Table 1 for individuals------------------------------
+##All individuals------------------------------
 # all vars
 tab1_ind <- c("i27a_rdt_result_f","hhmemcat_f","hr3_relationship_f","age_combined","agegrp15_2", "hr4_sex_f", "hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
               "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f","i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
@@ -51,11 +52,126 @@ tab1ind_exp <- print(hover_ind_tab1 ,quote = FALSE, noSpaces = TRUE, printToggle
 tab1ind_exp
 write.csv(tab1ind_exp, file = "tab1ind_exp.csv")
 
+##Index mothers---------
+# Age
+# by exposure
+hhdata1 %>% group_by(h10_hbv_rdt_f) %>% summarise(mean(indexmotherage), sd(indexmotherage))
+# overall
+hhdata1 %>% summarise(mean(indexmotherage), sd(indexmotherage))
+
+# mom all vars
+tab1_mom <- c("indexmotherage", "hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
+              "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f","i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
+              "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f","i26_sex_hx_given_money_f")
+
+# num vars
+numvars_mom <- c("indexmotherage") # age, under 5s in hh, total hh members
+# cat vars
+catvars_mom <- c("hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","i4_fever_f",
+                 "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f", "i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
+                 "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f", "i26_sex_hx_given_money_f")
+hover_mom_tab1 <- CreateTableOne(vars = tab1_mom, factorVars = catvars_mom, data=moms, strata = c("h10_hbv_rdt_f"), addOverall = T)
+
+tab1mom_exp <- print(hover_mom_tab1 ,quote = FALSE, noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE, formatOptions = list(big.mark = ","))
+tab1mom_exp
+write.csv(tab1mom_exp, file = "tab1mom_exp.csv")
+
+moms %>% group_by(h10_hbv_rdt_f) %>% filter(i3_hiv_pos_test==1) %>%  summarise(i3b_hiv_medications)
+
+# time at residence
+# those with 0 time or NA
+moms %>% group_by(h10_hbv_rdt_f) %>% filter(is.na(i6_comb_yr) | i6_comb_yr==0) %>%  count()
+# median, IQR time at residence if not missing/0
+moms %>% group_by(h10_hbv_rdt_f) %>% filter(!is.na(i6_comb_yr) & i6_comb_yr!=0) %>%  summarise(median(i6_comb_yr), quantile(i6_comb_yr, probs=c(0.25, 0.75)))
+# overall
+moms %>% group_by(hr3_relationship) %>% filter(!is.na(i6_comb_yr) & i6_comb_yr!=0) %>%  summarise(median(i6_comb_yr), quantile(i6_comb_yr, probs=c(0.25, 0.75)))
+
+
 ## To_DO on ind questions
 # - education - distinguish those currently in school (eg secondary school) from adults who are out of school but only completed part of secondary school
 
+##Direct offspring---------
+# dataset is directoff, created in 04_famtree.R
 
-## misc for IRB renewal
+
+# mom all vars
+tab1_diroff <- c("age_combined", "hr4_sex_f", "cpshbvprox","hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
+              "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f","i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
+              "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f","i26_sex_hx_given_money_f")
+# num vars
+numvars_diroff <- c("age_combined") # age, under 5s in hh, total hh members
+# cat vars
+catvars_diroff <- c("cpshbvprox","hr4_sex_f","hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","i4_fever_f",
+                 "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f", "i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
+                 "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f", "i26_sex_hx_given_money_f")
+hover_diroff_tab1 <- CreateTableOne(vars = tab1_diroff, factorVars = catvars_diroff, data=directoff, strata = c("h10_hbv_rdt_f"), addOverall = T)
+
+tab1diroff_exp <- print(hover_diroff_tab1 ,quote = FALSE, noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE, formatOptions = list(big.mark = ","))
+tab1diroff_exp
+write.csv(tab1diroff_exp, file = "tab1diroff_exp.csv")
+
+# who are the offspring HIV+
+table(directoff$i3_hiv_pos_test)
+
+directoff %>% filter(i3_hiv_pos_test==1) %>% summarise(pid, age_combined)
+
+## other hh members-------
+othermember <- inddata1 %>% filter(hhmemcat==0)
+
+#  all vars
+tab1_other <- c("age_combined", "hr4_sex_f","hr3_relationship_f" ,"cpshbvprox","hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
+                 "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f","i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
+                 "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f","i26_sex_hx_given_money_f")
+# num vars
+numvars_other <- c("age_combined") # age, under 5s in hh, total hh members
+# cat vars
+catvars_other <- c("cpshbvprox","hr4_sex_f","hr3_relationship_f" ,"hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","i4_fever_f",
+                    "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f", "i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
+                    "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f", "i26_sex_hx_given_money_f")
+hover_other_tab1 <- CreateTableOne(vars = tab1_other, factorVars = catvars_other, data=othermember, strata = c("h10_hbv_rdt_f"), addOverall = T)
+
+tab1oth_exp <- print(hover_other_tab1 ,quote = FALSE, noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE, formatOptions = list(big.mark = ","))
+tab1oth_exp
+write.csv(tab1oth_exp, file = "tab1oth_exp.csv")
+
+# who are the offspring HIV+
+table(othermember$i3b_hiv_medications)
+
+othermember %>% filter(i3_hiv_pos_test==1) %>% summarise(pid, age_combined, hr3_relationship_f, hivhaart)
+
+# table 1 by exposure and 3-cat hh memb type---------
+#  all vars
+tab1_all <- c("age_combined", "hr4_sex_f","hr3_relationship_f" ,"cpshbvprox","hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f",
+                "hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","hivhaart","i4_fever_f", 
+                "i5_pregnancy_f")
+# num vars
+numvars_all <- c("age_combined") # age, under 5s in hh, total hh members
+# cat vars
+catvars_all <- c("cpshbvprox","hr4_sex_f","hr3_relationship_f" ,"hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f",
+                   "hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","hivhaart","i4_fever_f",
+                   "i5_pregnancy_f")
+
+hover_all_tab1 <- CreateTableOne(vars = tab1_all, factorVars = catvars_all, data=inddata1, strata = c("h10_hbv_rdt_f","hhmemcat_f"), addOverall = T)
+
+tab1_exp_memb <- print(hover_all_tab1 ,quote = FALSE, noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE, formatOptions = list(big.mark = ","))
+tab1_exp_memb
+write.csv(tab1_exp_memb, file = "tab1_exp_memb.csv")
+
+# removed HBV risk factors  - for subsequent analysis
+#"i14_shared_razor_f", "i15_shared_nailclippers_f","i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
+# "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f","i26_sex_hx_given_money_f"
+
+# analysis years living at household
+inddata1 %>% group_by(hhmemcat_f,h10_hbv_rdt_f) %>% filter(is.na(i6_comb_yr) | i6_comb_yr==0) %>%  count()
+
+# median, IQR time at residence if not missing/0
+inddata1 %>% group_by(hhmemcat_f,h10_hbv_rdt_f) %>% filter(!is.na(i6_comb_yr) & i6_comb_yr!=0) %>%  summarise(median(i6_comb_yr), quantile(i6_comb_yr, probs=c(0.25, 0.75)))
+# overall
+inddata1  %>% filter(!is.na(i6_comb_yr) & i6_comb_yr!=0) %>%  summarise(median(i6_comb_yr), quantile(i6_comb_yr, probs=c(0.25, 0.75)))
+
+
+
+## misc for IRB renewal---------
 hhsincerenew <- (hhdata1 %>% filter(hdov > '2021-10-11'))
 #new members since last approval
 nrow(inddata1 %>% filter(hrhhid %in% hhsincerenew$hrhhid))
@@ -102,7 +218,7 @@ table(inddata1$i27a_rdt_result_f, inddata1$i3a_hiv_treatment_f, inddata1$i3_hiv_
 table(inddata1$i1_hbv_positive_f, inddata1$i27a_rdt_result_f)
 
 ## Table 1 without index mothers------------
-hhmemb <- inddata1 %>% filter(indexmom=="Household member")
+hhmemb <- inddata1 %>% filter(hhmemcat<2) #hhmemcat 0=other, 1=diroff, 2=indexmom
 
 # all vars
 tab1_ind <- c("i27a_rdt_result_f","indexmom","hr3_relationship_f","age_combined","agegrp15_2", "hr4_sex_f", "hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 

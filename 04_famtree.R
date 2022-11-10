@@ -9,14 +9,16 @@ table(inddata1$agegrp15_2)
 
 hhsincerenew <- (hhdata1 %>% filter(hdov > '2021-10-11'))
 
+# drop
+# inddata1 <- inddata1 %>% select(-c(cpshbvprox))
 
 # sens analysis with 2021 vs 2022 enrollments, potential birth at beginning vs end of year
 inddata1 = inddata1 %>%
   mutate(cpshbvprox = case_when(
-    hdov < '2022-01-01' & age_combined > 16 ~ 0, # prob not vacc 2021 enroll: 14 oldest born in 2007 so 15yo and above wouldn't be vacc, add year for those born at end of year
-    hdov > '2022-01-01' & age_combined > 17 ~ 0, # prob not vacc 2022 enroll: 15 oldest born in 2007 so 16yo and above wouldn't be vacc, add year for those born at end of year
-    hdov < '2022-01-01' & age_combined <= 16 & age_combined >11  ~ 1, # poss vacc during rollout 2021 enroll: 12-16 yos in rollout
-    hdov > '2022-01-01' & age_combined <= 17 & age_combined >12 ~ 1, # poss vacc during rollout2 022 enroll: 13-17 yos in rollout
+    hdov < '2022-01-01' & age_combined >= 14 ~ 0, # prob not vacc 2021 enroll: 14 oldest born in 2007 so 14yo and above likely wouldn't be vacc
+    hdov > '2022-01-01' & age_combined >= 15 ~ 0, # prob not vacc 2022 enroll: 15 oldest born in 2007 so 15yo and above likely wouldn't be vacc
+    hdov < '2022-01-01' & age_combined < 14 & age_combined >11  ~ 1, # poss vacc during rollout 2021 enroll: 12-13 yos in rollout
+    hdov > '2022-01-01' & age_combined < 15 & age_combined >12 ~ 1, # poss vacc during rollout2 022 enroll: 13-14 yos in rollout
     hdov < '2022-01-01' & age_combined <= 11 ~ 2, # likely vacc 2021 enroll: <=11 likely vacc
     hdov > '2022-01-01' & age_combined <= 12 ~ 2, # likely vacc 2022 enroll: <=12 likely vacc
     TRUE ~ 0
@@ -24,18 +26,11 @@ inddata1 = inddata1 %>%
   )
 
 table(inddata1$cpshbvprox, inddata1$age_combined)
-# 12yos have some in both levels 0 and 1 - check that 12yo in level 1 were born in 2021 (assuming 12yo in 2022 likely vacc)
-# all 17yos are in level 0 - check they were all 2022 enroll
-# check those in level 1
-check <- inddata1 %>% filter(cpshbvprox==1) %>% summarise(hdov, age_combined)
-
-check2 <- inddata1 %>% filter(age_combined==17) %>% summarise(hdov)
-# all 17yos were 2021 enrollments so should be in likely not vacc group - correct
 
 # now look at households with at least one direct offspring in levels 0/1 vs hh with only group 2
 # only for direct offspring: hr3_relationship == 3
 
-diroff <- inddata1 %>% filter(hr3_relationship == 3) %>% select("hrhhid", "h10_hbv_rdt","hr3_relationship", "i27a_rdt_result","i27a_rdt_result_f", "age_combined","cpshbvprox")
+diroff <- inddata1 %>% filter(hr3_relationship == 3) %>% select("hrhhid", "pid","h10_hbv_rdt","hr3_relationship", "i27a_rdt_result","i27a_rdt_result_f", "age_combined","cpshbvprox")
 table(diroff$i27a_rdt_result_f)
 
 # count of HBV+ direct offspring in hh
@@ -48,7 +43,7 @@ diroffhh$hasdiroff <- 1
 inddata1 <- left_join(inddata1, diroffhh,  by = "hrhhid")
 hhdata1 <- left_join(hhdata1, diroffhh, by = "hrhhid")
 
-table(hhdata1$hbvposdiroff, useNA = "always")
+
 table(inddata1$hasdiroff, useNA = "always")
 hhdata1$hasdiroff <- ifelse(is.na(hhdata1$hasdiroff), 0,hhdata1$hasdiroff)
 inddata1$hasdiroff <- ifelse(is.na(inddata1$hasdiroff), 0,inddata1$hasdiroff)
@@ -63,40 +58,57 @@ diroff2 <- diroff %>% group_by(hrhhid) %>%
   mutate(probvacc = case_when(
     cpshbvprox==2 ~ 0, # here 0 is yes so that we can sum within households in next step and create indicator based on sum=0
     TRUE ~ 1 # at least one child prob/possibly not vacc
-  ) %>% as.numeric()
+  ) %>% as.numeric(),
+      defnotvacc = case_when(
+        cpshbvprox==0 ~ 1, # here 1 is yes so we can sum across hh members and use >=1 vs 0 to make indicator 
+        TRUE ~ 0 # at least one child prob/possibly IS vacc
+   ) %>% as.numeric(),
   )
 
-
+table(diroff2$probvacc)
+table(diroff2$defnotvacc)
 
 
 # diroff2 <- diroff2 %>% group_by(hrhhid) %>% summarise(allkidsvacc = sum(probvacc))
 #allkidsvacc----------
 diroff3 <- diroff2 %>% group_by(hrhhid) %>% summarise(allkidsvacc = ifelse(sum(probvacc)==0,1,0)) #if all kids probably vaccinated, sum will be 0 at hh level - allkidsvacc=1, else hh gets value 0
-table(diroff3$allkidsvacc)
+#oldestdefnotvacc-----
+diroff3_pt2 <- diroff2 %>% group_by(hrhhid) %>% summarise(oldestnotvacc = ifelse(sum(defnotvacc)>0,1,0)) # sum in hh - if at least one, make indicator
 
-# join this indicator back on to ind and hh datasets  
+table(diroff3$allkidsvacc)
+table(diroff3_pt2$oldestnotvacc)
+
+# join these indicators back on to ind and hh datasets  
 inddata1 <- left_join(inddata1, diroff3[, c("hrhhid","allkidsvacc")],  by = "hrhhid")
 hhdata1 <- left_join(hhdata1, diroff3[, c("hrhhid","allkidsvacc")],  by = "hrhhid")
 
+inddata1 <- left_join(inddata1, diroff3_pt2[, c("hrhhid","oldestnotvacc")],  by = "hrhhid")
+hhdata1 <- left_join(hhdata1, diroff3_pt2[, c("hrhhid","oldestnotvacc")],  by = "hrhhid")
+# drop
+# inddata1 <- inddata1 %>% select(-c(oldestnotvacc.x, oldestnotvacc.y))
+# hhdata1 <- hhdata1 %>% select(-c(oldestnotvacc.x, oldestnotvacc.y))
+
+
+# eval pos offspring by vacc status
 diroff4 <- left_join(diroff2, diroff3[, c("hrhhid","allkidsvacc")],  by = "hrhhid")
 
-diroff4 %>% group_by(allkidsvacc) %>% count(i27a_rdt_result_f)
-
 diroffhh <- left_join(diroffhh, diroff3, by = "hrhhid")
-# how many pos offspring by vacc status
-diroffhh %>% group_by(allkidsvacc) %>% count(hbvposdiroff)
 
 diroff4 <- left_join(diroff4, diroffhh[, c("hrhhid","hbvposdiroff")],  by = "hrhhid")
 agebypos <- diroff4 %>% group_by(h10_hbv_rdt) %>% filter(hbvposdiroff >0) %>%  summarise(hrhhid, hbvposdiroff,age_combined)
 
-addmargins(table(hhmemb$i27a_rdt_result_f, hhmemb$h10_hbv_rdt))
+
+# use for direct offspring analysis
+
+directoff <- left_join(diroff4[, c("pid","probvacc","defnotvacc")], inddata1, by = "pid")
+mismatch <- directoff %>% filter(!(pid %in% diroff$pid))
 
 # Summary of new variables:------
 # cpshbvprox: 3 categories for likely vacc, poss vacc, prob vacc
 # hbvposdiroff: count of HBV+ direct offspring. NAs are either no diroff (n=23) or not tested (n=3)
 # hasdiroff: yes/no 1/0 does hh have direct offspring enrolled
 # allkidsvacc: hh level indicator for if all dir off in hh likely vacc vs no (incl poss/prob)
-
+# oldestdefnotvacc: indicator for if hh has at least one direct offspring born before CPS had HBV vacc
 addmargins(table(inddata1$allkidsvacc, inddata1$hbvposdiroff, useNA = "always"))
 
 
@@ -193,13 +205,17 @@ expnotvacc_hh_1 <- exphh_89_noinf %>% filter((hrhhid %in% expnotvacc_ind_1$hrhhi
 
 
 
-# select the 9 households with a child unvaccinated but exposed
+# select the 9 households with a child unvaccinated but exposed--actually 10 including the huosehold with husband infected (1011)
 expnotvacc_ind %>% group_by(hrhhid) %>% filter(min(cpshbvprox)==0) %>% summarise(hrhhid)
 
+# Nov 10 for hover table 1--------------
+addmargins(table(hhdata1$allkidsvacc, hhdata1$h10_hbv_rdt_f, useNA = "always"))
 
 
-# select exposed households that hhmempos==0
-
+#expunvacc <- 
+hhdata1 %>% filter(allkidsvacc==0 & h10_hbv_rdt==1) %>% summarise(hrhhid)
+addmargins(table(hhdata1$oldestnotvacc, hhdata1$allkidsvacc))
+addmargins(table(hhdata1$oldestnotvacc, hhdata1$allkidsvacc,hhdata1$h10_hbv_rdt_f ))
 
 
 

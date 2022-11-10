@@ -104,38 +104,14 @@ clusters <- inddata1[inddata1$totalpositive >1, ]
 table(clusters$hrhhid)
 
 # indicator for recruitment method--------------------
-
 library(readxl)
 priorstudies <- read_excel("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/Patrick data updates/HOVER etudes precedentes.xlsx", sheet = "forimport")
 View(priorstudies)   
 
-test <- merge(hhdata1, priorstudies, by = c("hrhhid"), all = T)
+hhdata1 <- left_join(hhdata1, priorstudies, by = c("hrhhid"))
+inddata1 <- left_join(inddata1, priorstudies, by = c("hrhhid"))
 
-# add index mother age to both datasets-------
-moms <- inddata1 %>% group_by(hrhhid) %>% filter(hr3_relationship == 1) %>% rename(indexmotherage = age_combined)
-hhdata1 <- left_join(hhdata1, moms[, c("hrhhid", "indexmotherage")], by = "hrhhid")
-
-inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid", "indexmotherage")], by = "hrhhid")
-
-# age difference variables
-## child's age - diff with index mother's----
-inddata1_dc <- inddata1_dc %>%  
-  mutate(agediff = case_when(
-    hr3_relationship == 3  ~ indexmotherage - age_combined, #calculate this variable only if the person is the direct offspring
-    TRUE ~ NA_real_
-  ) %>% as.numeric()
-  )
-# table(inddata1$agediff, useNA = "always") # check this calculated correctly
-# age difference between grandchildren and index mother
-inddata1 <- inddata1 %>%  
-  mutate(agediff_grands = case_when(
-    hr3_relationship == 5  ~ indexmotherage - age_combined, #calculate this variable only if the person is the direct offspring
-    TRUE ~ NA_real_
-  ) %>% as.numeric()
-  )
-table(inddata1$agediff_grands) #n=7 with grandchildren, might as well verify all
-
-
+inddata1 %>% filter(acq_ind==1 & hr3_relationship==1) %>% summarise(pid,acq,hrname_last, hrname_post,  hrname_first)
 
 # Clean GPS data--------------------------------------------------
 # latitudes are below equator, so need to be negative decimal degrees
@@ -596,34 +572,66 @@ inddata1 <- inddata1 %>%
   dplyr::mutate(hr3_relationship_f=factor(
     inddata1$hr3_relationship, 
     levels = c(0, 1,2,3,4,5,6,7,8,9,10,11,12,13,97,98,99),
+    #labels = c("Sans parenté", "Mère index","Femme ou mari", "Fils/fille", "Gendre/belle fille", "Petit-fils/fille","Père/mère","Beaux-parents","Frère/soeur","Neveu/nièce","Neveu/nièce par alliance","Enfant adopté/ garde/de la femme/du mari","Tante/oncle","Grandpère/mère","Autre","Ne sait pas", "Refusé")))    
+labels = c("Unrelated", "Index mother","Spouse","Son/daughter","Step-son/daughter","Grandson/daughter","Father/mother","In-laws","Brother/sister","Nephew/niece","Nephew/niece by marriage","Adopted/in custody","Aunt/uncle","Grandmother/father","Other","Don't know", "Refused")))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr3_relationship_fr=factor(
+    inddata1$hr3_relationship, 
+    levels = c(0, 1,2,3,4,5,6,7,8,9,10,11,12,13,97,98,99),
     labels = c("Sans parenté", "Mère index","Femme ou mari", "Fils/fille", "Gendre/belle fille", "Petit-fils/fille","Père/mère","Beaux-parents","Frère/soeur","Neveu/nièce","Neveu/nièce par alliance","Enfant adopté/ garde/de la femme/du mari","Tante/oncle","Grandpère/mère","Autre","Ne sait pas", "Refusé")))    
-#labels = c("Unrelated", "Index mother","Spouse","Son/daughter","Step-son/daughter","Grandson/daughter","Father/mother","In-laws","Brother/sister","Nephew/niece","Nephew/niece by marriage","Adopted/in custody","Aunt/uncle","Grandmother/father","Other","Don't know", "Refused")))
+    #labels = c("Unrelated", "Index mother","Spouse","Son/daughter","Step-son/daughter","Grandson/daughter","Father/mother","In-laws","Brother/sister","Nephew/niece","Nephew/niece by marriage","Adopted/in custody","Aunt/uncle","Grandmother/father","Other","Don't know", "Refused")))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr4_sex_fr=factor(
+    inddata1$hr4_sex, 
+    levels = c(0, 1),
+    labels = c("Masculin", "Féminin")))
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(hr4_sex_f=factor(
     inddata1$hr4_sex, 
     levels = c(0, 1),
-    labels = c("Masculin", "Féminin")))
-#labels = c("Male", "Female")))
+    labels = c("Male", "Female")))
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(hr5_primary_residence_f=factor(
     inddata1$hr5_primary_residence, 
     levels = c(0, 1, 99),
-    labels = c("Non", "Oui", "Refusé")))
-#labels = c("No", "Yes", "Refused")))
+   # labels = c("Non", "Oui", "Refusé")))
+labels = c("No", "Yes", "Refused")))
+
 inddata1 <- inddata1 %>% 
   dplyr::mutate(hr6_last_night_residence_f=factor(
     inddata1$hr6_last_night_residence, 
     levels = c(0, 1, 99),
-    labels = c("Non", "Oui", "Refusé")))
-#labels = c("No", "Yes", "Refused")))
+    #labels = c("Non", "Oui", "Refusé")))
+labels = c("No", "Yes", "Refused")))
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(hr8_marital_status_f=factor(
     inddata1$hr8_marital_status, 
     levels = c(0, 1, 2,3,96),
     labels = c("Never married", "Married or living together", "Divorced", "Widow(er)", "N/A")))
+
+# years living at this address
+inddata1$i6_time_lived_resid_yrs <- as.numeric(inddata1$i6_time_lived_resid_yrs)
+inddata1$i6_time_lived_resid_months <- as.numeric(inddata1$i6_time_lived_resid_months)
+
+inddata1$i6_mon_conv <- as.numeric(inddata1$i6_time_lived_resid_yrs)*12 + as.numeric(inddata1$i6_time_lived_resid_months)
+inddata1$i6_comb_yr <- (inddata1$i6_mon_conv)/12
+# 42 have 0 for both and 14 are NA
+ad_is <- inddata1 %>% filter(is.na(i6_comb_yr) | i6_comb_yr==0)
+# is this not their primary residence
+table(ad_is$hr6_last_night_residence)
+table(ad_is$hr5_primary_residence_f)
+# who are these
+table(ad_is$hr3_relationship_f)
+table(ad_is$age_combined)
+
+table(inddata1$i6_comb_yr, useNA = "always")
+
+
 
 #ISSUE: education---------------------------------------------------------------
 inddata1 <- inddata1 %>% 
@@ -705,109 +713,136 @@ inddata1 <- inddata1 %>%
   dplyr::mutate(i2_past_hbv_dx_f=factor(
     inddata1$i2_past_hbv_dx, 
     levels = c(0, 1, 3,98,99),
-    labels = c("Non", "Oui", "Jamais testé", "Ne sait pas", "Refusé")))
-#labels = c("No", "Yes", "Never tested", "Don't know", "Refused")))
+    #labels = c("Non", "Oui", "Jamais testé", "Ne sait pas", "Refusé")))
+labels = c("No", "Yes", "Never tested", "Don't know", "Refused")))
+
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i1_hbv_positive_f=factor(
     inddata1$i1_hbv_positive, 
     levels = c(0, 1,2, 3,98,99),
-    labels = c("Non", "Oui, une fois","Oui, plus d'une fois", "Jamais testé", "Ne sait pas", "Refusé")))
-#labels = c("No", "Yes, once","Yes, more than once", "Never tested", "Don't know", "Refused")))
+   # labels = c("Non", "Oui, une fois","Oui, plus d'une fois", "Jamais testé", "Ne sait pas", "Refusé")))
+labels = c("No", "Yes, once","Yes, more than once", "Never tested", "Don't know", "Refused")))
+
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i3_hiv_pos_test_f=factor(
     inddata1$i3_hiv_pos_test, 
     levels = c(0, 1, 3,98,99),
-    labels = c("Non", "Oui", "Jamais testé", "Ne sait pas", "Refusé")))
-#labels = c("No", "Yes", "Never tested", "Don't know", "Refused")))
+  #  labels = c("Non", "Oui", "Jamais testé", "Ne sait pas", "Refusé")))
+labels = c("No", "Yes", "Never tested", "Don't know", "Refused")))
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i3a_hiv_treatment_f=factor(
     inddata1$i3a_hiv_treatment, 
     levels = c(0, 1, 98,99),
-    labels = c("Non", "Oui", "Ne sait pas","Refusé")))
-#labels = c("No", "Yes", "Don't know", "Refused")))
+   # labels = c("Non", "Oui", "Ne sait pas","Refusé")))
+   labels = c("No", "Yes", "Don't know", "Refused")))
+
+table(inddata1$i3b_hiv_medications, inddata1$i3a_hiv_treatment_f, useNA = "always")
+
+inddata1 = inddata1 %>%
+  mutate(hivhaart = case_when(
+    i3b_hiv_medications == ",TLD" ~ "TLD", #
+    i3b_hiv_medications == "CS PILOTE" ~ "Not taking", #
+    i3b_hiv_medications == "DLT" ~ "Dolutegravir", #
+    i3b_hiv_medications == "Dolutegravir,3TC,TDF" ~ "TLD", #
+    i3b_hiv_medications == "Dolutegravire,Abacavir" ~ "Dolutegravir, Abacavir", #
+    i3b_hiv_medications == "TDF +3TC+EFV" ~ "TLD", #
+    i3b_hiv_medications == "Tld" ~ "TLD", #
+    i3b_hiv_medications == "TLD" ~ "TLD", #
+    i3a_hiv_treatment == 0 & is.na(i3b_hiv_medications) ~ "Not taking",
+    TRUE ~ "" # hh mmeber is all other types of relationships
+  ) 
+  )
+
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i4_fever_f=factor(
     inddata1$i4_fever, 
     levels = c(0, 1, 98,99),
-    labels = c("Non", "Oui", "Ne sait pas","Refusé")))
-#labels = c("No", "Yes", "Don't know", "Refused")))
+    #labels = c("Non", "Oui", "Ne sait pas","Refusé")))
+ labels = c("No", "Yes", "Don't know", "Refused")))
+
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i5_pregnancy_f=factor(
     inddata1$i5_pregnancy, 
     levels = c(0, 1, 98,99),
-    labels = c("Non", "Oui", "Ne sait pas","Refusé")))
-#labels = c("No", "Yes", "Don't know", "Refused")))
+    #labels = c("Non", "Oui", "Ne sait pas","Refusé")))
+labels = c("No", "Yes", "Don't know", "Refused")))
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i14_shared_razor_f=factor(
     inddata1$i14_shared_razor, 
     levels = c(0, 1, 99),
-    labels = c("Non", "Oui", "Refusé")))
-#labels = c("No", "Yes", "Refused")))
+#    labels = c("Non", "Oui", "Refusé")))
+labels = c("No", "Yes", "Refused")))
+
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i15_shared_nailclippers_f=factor(
     inddata1$i15_shared_nailclippers, 
     levels = c(0, 1, 99),
-    labels = c("Non", "Oui", "Refusé")))
-#labels = c("No", "Yes", "Refused")))
+#    labels = c("Non", "Oui", "Refusé")))
+labels = c("No", "Yes", "Refused")))
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i8_transfusion_f=factor(
     inddata1$i8_transfusion, 
     levels = c(0, 1, 99),
-    labels = c("Non", "Oui", "Refusé")))
-#labels = c("No", "Yes", "Refused")))
+#    labels = c("Non", "Oui", "Refusé")))
+labels = c("No", "Yes", "Refused")))
+
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i9_iv_drug_use_f=factor(
     inddata1$i9_iv_drug_use, 
     levels = c(0, 1, 99),
-    labels = c("Non", "Oui", "Refusé")))
-#labels = c("No", "Yes", "Refused")))
+#    labels = c("Non", "Oui", "Refusé")))
+labels = c("No", "Yes", "Refused")))
+
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i10_street_salon_f=factor(
     inddata1$i10_street_salon, 
     levels = c(0, 1, 99),
-    labels = c("Non", "Oui", "Refusé")))
-#labels = c("No", "Yes", "Refused")))
+#    labels = c("Non", "Oui", "Refusé")))
+labels = c("No", "Yes", "Refused")))
+
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i11_manucure_f=factor(
     inddata1$i11_manucure, 
     levels = c(0, 1, 99),
-    labels = c("Non", "Oui", "Refusé")))
-#labels = c("No", "Yes", "Refused")))
+  #  labels = c("Non", "Oui", "Refusé")))
+labels = c("No", "Yes", "Refused")))
+
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i12_food_first_chew_f=factor(
     inddata1$i12_food_first_chew, 
     levels = c(0, 1, 99),
-    labels = c("Non", "Oui", "Refusé")))
-#labels = c("No", "Yes", "Refused")))
+#    labels = c("Non", "Oui", "Refusé")))
+labels = c("No", "Yes", "Refused")))
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i13_shared_toothbrush_f=factor(
     inddata1$i13_shared_toothbrush, 
     levels = c(0, 1, 99),
-    labels = c("Non", "Oui", "Refusé")))
-#labels = c("No", "Yes", "Refused")))
+#    labels = c("Non", "Oui", "Refusé")))
+labels = c("No", "Yes", "Refused")))
+
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i16_traditional_scarring_f=factor(
     inddata1$i16_traditional_scarring, 
     levels = c(0, 1, 99),
-    labels = c("Non", "Oui", "Refusé")))
-#labels = c("No", "Yes", "Refused")))
+#    labels = c("Non", "Oui", "Refusé")))
+labels = c("No", "Yes", "Refused")))
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i25_sex_hx_receive_money_f=factor(
     inddata1$i25_sex_hx_receive_money, 
     levels = c(0, 1, 99),
-    labels = c("Non", "Oui", "Refusé")))
-#labels = c("No", "Yes", "Refused")))
+#    labels = c("Non", "Oui", "Refusé")))
+labels = c("No", "Yes", "Refused")))
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i26_sex_hx_given_money_f=factor(
     inddata1$i26_sex_hx_given_money, 
     levels = c(0, 1, 99),
-    labels = c("Non", "Oui", "Refusé")))
-#labels = c("No", "Yes", "Refused")))
+#    labels = c("Non", "Oui", "Refusé")))
+labels = c("No", "Yes", "Refused")))
 
 #indic for indexmom/offspring----------------
 inddata1$indexmom_indic <- ifelse(inddata1$hr3_relationship==1,1,0)
@@ -876,6 +911,33 @@ inddata1  <- inddata1 %>%
   ) %>% as.numeric()
   )
 table(inddata1$hhmempos)
+
+
+# add index mother age to both datasets-------
+moms <- inddata1 %>% group_by(hrhhid) %>% filter(hr3_relationship == 1) %>% rename(indexmotherage = age_combined)
+hhdata1 <- left_join(hhdata1, moms[, c("hrhhid", "indexmotherage")], by = "hrhhid")
+# drop if repeat
+#hhdata1 <- hhdata1 %>% select(-c(indexmotherage.x,indexmotherage.y))
+
+inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid", "indexmotherage")], by = "hrhhid")
+
+# age difference variables----------
+## child's age - diff with index mother's----
+inddata1_dc <- inddata1_dc %>%  
+  mutate(agediff = case_when(
+    hr3_relationship == 3  ~ indexmotherage - age_combined, #calculate this variable only if the person is the direct offspring
+    TRUE ~ NA_real_
+  ) %>% as.numeric()
+  )
+# table(inddata1$agediff, useNA = "always") # check this calculated correctly
+# age difference between grandchildren and index mother
+inddata1 <- inddata1 %>%  
+  mutate(agediff_grands = case_when(
+    hr3_relationship == 5  ~ indexmotherage - age_combined, #calculate this variable only if the person is the direct offspring
+    TRUE ~ NA_real_
+  ) %>% as.numeric()
+  )
+table(inddata1$agediff_grands) #n=7 with grandchildren, might as well verify all
 
 
 
