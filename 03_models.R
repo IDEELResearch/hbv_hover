@@ -265,7 +265,7 @@ glmresults_mi_enr %>% filter(UCI < 50) %>% # refuse to answer sex hx has really 
   theme(axis.text.y = ggtext::element_markdown(color = "black", size = 11),
         axis.ticks.y=element_blank(),
         panel.grid.minor=element_blank())+
-  ggtitle("B. Index mothers, OR of HBV by enrollment HBV status")
+  ggtitle("A. Index mothers, OR of HBV by recruitment HBV status")
 
 
 # recruitment HBV test (ITT)
@@ -291,10 +291,9 @@ glmresults_mi %>% filter(UCI < 50) %>% # refuse to answer sex hx has really larg
   ggtitle("B. Index mothers, OR of HBV by enrollment HBV status")
 
 
-
-
-######
-# offspring and other members are clustered
+###
+##Direct offspring--------
+# offspring and other members are clustered - use geeglm()
 comp5_gee <- geeglm(i27a_rdt_result ~ as.factor(h10_hbv_rdt), id=hrhhid, data=othermemb, family=binomial)
 
 itt_model_do <- function(var){ # glm function
@@ -304,6 +303,8 @@ itt_model_do <- function(var){ # glm function
 glmresults_do <- map_dfr(vars_do,itt_model_do) 
 glmresults_do %>% print(noSpaces=T) 
 colnames(glmresults_do) <- c('term','estimate','std.error','statistic','p.value','LCI','UCI')
+glmresults_do <- glmresults_do %>% filter(!(is.na(LCI) | is.na(UCI)))
+glmresults_do <- glmresults_do %>% mutate_if(is.numeric, round, digits=3)
 
 glmresults_do %>% filter(UCI < 100) %>% # refuse to answer sex hx has really large CIs
   ggplot(aes(x=term, y=estimate)) +
@@ -315,15 +316,40 @@ glmresults_do %>% filter(UCI < 100) %>% # refuse to answer sex hx has really lar
   labs(x="Exposure", y="Odds of HBsAg+ compared with referent") + 
   theme(axis.text.y = ggtext::element_markdown(color = "black", size = 11),
         axis.ticks.y=element_blank(),
-        panel.grid.minor=element_blank()) 
+        panel.grid.minor=element_blank()) +
+  ggtitle("C. Direct offspring, OR of HBV by enrollment HBV status")
 
 
+## other household members--------
+itt_model_oth <- function(var){ # glm function
+  m <- glm(as.formula(paste0('i27a_rdt_result ~', var)), data=othermember, family=binomial("logit")) #id=hrhhid
+  cbind(tidy(m, exponentiate = T), exp(confint(m))) %>% filter(stringr::str_detect(term, var))}
+
+glmresults_oth <- map_dfr(vars_oth,itt_model_oth) 
+glmresults_oth %>% print(noSpaces=T) 
+colnames(glmresults_oth) <- c('term','estimate','std.error','statistic','p.value','LCI','UCI')
+glmresults_oth <- glmresults_oth %>% filter(!(is.na(LCI) | is.na(UCI)))
+glmresults_oth <- glmresults_oth %>% mutate_if(is.numeric, round, digits=3)
+
+glmresults_oth %>% filter(UCI < 100) %>% # refuse to answer sex hx has really large CIs
+  ggplot(aes(x=term, y=estimate)) +
+  geom_hline(yintercept=1, linetype='dashed') +
+  geom_pointrange(aes(x=term, y=estimate, ymin=LCI, ymax=UCI), shape=15,  color="black",  fatten=0.2) + #show.legend=F, size=0.8,
+  geom_point(shape=15, size=5, aes(color=term), show.legend=F, alpha=0.7) + 
+  coord_flip() + theme_bw() + 
+  #scale_x_continuous(breaks=glmresults_mi$ID, labels=term, trans = "reverse") + 
+  labs(x="Exposure", y="Odds of HBsAg+ compared with referent") + 
+  theme(axis.text.y = ggtext::element_markdown(color = "black", size = 11),
+        axis.ticks.y=element_blank(),
+        panel.grid.minor=element_blank()) +
+  ggtitle("D. Other household members, OR of HBV by enrollment HBV status")
 
 
-premast <- glm(i27a_rdt_result ~ i12_food_first_chew_f, family = binomial(link = "logit"), data=directoff)
-summary(premast)
-exp(premast$coefficients)
-exp(confint(premast))
+# TO-DO
+# cluster model for DO and hhmemb
+# decide on which wide CIs to include for each group
+# order by estimate
+
 
 ## INLA explore-----------------------
 install.packages("INLA",repos=c(getOption("repos"),INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE)
