@@ -15,10 +15,10 @@ hhsincerenew <- (hhdata1 %>% filter(hdov > '2021-10-11'))
 # sens analysis with 2021 vs 2022 enrollments, potential birth at beginning vs end of year
 inddata1 = inddata1 %>%
   mutate(cpshbvprox = case_when(
-    hdov < '2022-01-01' & age_combined >= 14 ~ 0, # prob not vacc 2021 enroll: 14 oldest born in 2007 so 14yo and above likely wouldn't be vacc
-    hdov > '2022-01-01' & age_combined >= 15 ~ 0, # prob not vacc 2022 enroll: 15 oldest born in 2007 so 15yo and above likely wouldn't be vacc
-    hdov < '2022-01-01' & age_combined < 14 & age_combined >11  ~ 1, # poss vacc during rollout 2021 enroll: 12-13 yos in rollout
-    hdov > '2022-01-01' & age_combined < 15 & age_combined >12 ~ 1, # poss vacc during rollout2 022 enroll: 13-14 yos in rollout
+    hdov < '2022-01-01' & age_combined >= 15 ~ 0, # prob not vacc 2021 enroll: 14 oldest born in 2007 so 15yo and above likely wouldn't be vacc
+    hdov > '2022-01-01' & age_combined >= 16 ~ 0, # prob not vacc 2022 enroll: 15 oldest born in 2007 so 16yo and above likely wouldn't be vacc
+    hdov < '2022-01-01' & age_combined < 15 & age_combined >11  ~ 1, # poss vacc during rollout 2021 enroll: 12-14 yos in rollout
+    hdov > '2022-01-01' & age_combined < 16 & age_combined >12 ~ 1, # poss vacc during rollout2 022 enroll: 13-15 yos in rollout
     hdov < '2022-01-01' & age_combined <= 11 ~ 2, # likely vacc 2021 enroll: <=11 likely vacc
     hdov > '2022-01-01' & age_combined <= 12 ~ 2, # likely vacc 2022 enroll: <=12 likely vacc
     TRUE ~ 0
@@ -26,6 +26,16 @@ inddata1 = inddata1 %>%
   )
 
 table(inddata1$cpshbvprox, inddata1$age_combined)
+
+#make a reverse of this so referent is likely vaccinated
+inddata1$cpshbvprox_rev <- 2 - inddata1$cpshbvprox
+  
+table(inddata1$cpshbvprox_rev)
+# lives in hh with another pos
+
+inddata1$anotherpos <- ifelse(inddata1$totalpositive - inddata1$i27a_rdt_result > 0 , 1,0)
+table(inddata1$anotherpos)
+
 
 # now look at households with at least one direct offspring in levels 0/1 vs hh with only group 2
 # only for direct offspring: hr3_relationship == 3
@@ -78,6 +88,7 @@ diroff3_pt2 <- diroff2 %>% group_by(hrhhid) %>% summarise(oldestnotvacc = ifelse
 table(diroff3$allkidsvacc)
 table(diroff3_pt2$oldestnotvacc)
 
+
 # join these indicators back on to ind and hh datasets  
 inddata1 <- left_join(inddata1, diroff3[, c("hrhhid","allkidsvacc")],  by = "hrhhid")
 hhdata1 <- left_join(hhdata1, diroff3[, c("hrhhid","allkidsvacc")],  by = "hrhhid")
@@ -85,8 +96,8 @@ hhdata1 <- left_join(hhdata1, diroff3[, c("hrhhid","allkidsvacc")],  by = "hrhhi
 inddata1 <- left_join(inddata1, diroff3_pt2[, c("hrhhid","oldestnotvacc")],  by = "hrhhid")
 hhdata1 <- left_join(hhdata1, diroff3_pt2[, c("hrhhid","oldestnotvacc")],  by = "hrhhid")
 # drop
-# inddata1 <- inddata1 %>% select(-c(oldestnotvacc.x, oldestnotvacc.y))
-# hhdata1 <- hhdata1 %>% select(-c(oldestnotvacc.x, oldestnotvacc.y))
+# inddata1 <- inddata1 %>% select(-c(allkidsvacc, oldestnotvacc))
+# hhdata1 <- hhdata1 %>% select(-c(allkidsvacc, oldestnotvacc))
 
 
 # eval pos offspring by vacc status
@@ -102,6 +113,7 @@ agebypos <- diroff4 %>% group_by(h10_hbv_rdt) %>% filter(hbvposdiroff >0) %>%  s
 
 directoff <- left_join(diroff4[, c("pid","probvacc","defnotvacc")], inddata1, by = "pid")
 mismatch <- directoff %>% filter(!(pid %in% diroff$pid))
+directoff$cpshbvprox_rev <- 2 - directoff$cpshbvprox
 
 # Summary of new variables:------
 # cpshbvprox: 3 categories for likely vacc, poss vacc, prob vacc
@@ -114,6 +126,10 @@ addmargins(table(inddata1$allkidsvacc, inddata1$hbvposdiroff, useNA = "always"))
 
 addmargins(table(inddata1$allkidsvacc, inddata1$h10_hbv_rdt_f, useNA = "always"))
 addmargins(table(hhdata1$allkidsvacc, hhdata1$h10_hbv_rdt_f, useNA = "always"))
+addmargins(table(hhdata1$oldestnotvacc, hhdata1$h10_hbv_rdt_f, useNA = "always"))
+addmargins(table(hhdata1$oldestnotvacc, hhdata1$allkidsvacc, hhdata1$h10_hbv_rdt_f, useNA = "always"))
+
+hhdata1 %>% filter(h10_hbv_rdt==1 & oldestnotvacc==1) %>% summarise(hrhhid)
 
 # select the households that: have a pos mother, have a kid that might not have received CPS
 exphh_kidnotvacc_hh <- hhdata1 %>% filter(allkidsvacc==0 & h10_hbv_rdt==1)

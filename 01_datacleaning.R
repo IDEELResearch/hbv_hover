@@ -742,7 +742,7 @@ table(inddata1$i3b_hiv_medications, inddata1$i3a_hiv_treatment_f, useNA = "alway
 inddata1 = inddata1 %>%
   mutate(hivhaart = case_when(
     i3b_hiv_medications == ",TLD" ~ "TLD", #
-    i3b_hiv_medications == "CS PILOTE" ~ "Not taking", #
+    i3b_hiv_medications == "CS PILOTE" ~ "Not specified", #
     i3b_hiv_medications == "DLT" ~ "Dolutegravir", #
     i3b_hiv_medications == "Dolutegravir,3TC,TDF" ~ "TLD", #
     i3b_hiv_medications == "Dolutegravire,Abacavir" ~ "Dolutegravir, Abacavir", #
@@ -753,6 +753,13 @@ inddata1 = inddata1 %>%
     TRUE ~ "" # hh mmeber is all other types of relationships
   ) 
   )
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i7_diabetes_f=factor(
+    inddata1$i7_diabetes, 
+    levels = c(0, 1,99),
+    #labels = c("Non", "Oui", "Refusé")))
+    labels = c("No", "Yes", "Refused")))
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i4_fever_f=factor(
@@ -829,6 +836,14 @@ inddata1 <- inddata1 %>%
     levels = c(0, 1, 99),
 #    labels = c("Non", "Oui", "Refusé")))
 labels = c("No", "Yes", "Refused")))
+
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i17_tattoo_f=factor(
+    inddata1$i17_tattoo, 
+    levels = c(0, 1, 99),
+    #    labels = c("Non", "Oui", "Refusé")))
+    labels = c("No", "Yes", "Refused")))
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i25_sex_hx_receive_money_f=factor(
@@ -913,8 +928,103 @@ inddata1  <- inddata1 %>%
 table(inddata1$hhmempos)
 
 
+# high-risk sexual behavior-------------
+inddata1 = inddata1 %>%
+  mutate(debutsex_all = case_when(
+    i22_sex_hx_age_1st < 18 ~ 1,
+    i22_sex_hx_age_1st >= 18 ~ 0,
+    TRUE ~ 0
+  ) %>% as.factor()
+  )
+
+inddata1 = inddata1 %>%
+  mutate(debutsex_miss = case_when(
+    i22_sex_hx_age_1st < 18 ~ 1,
+    i22_sex_hx_age_1st >= 18 &  i22_sex_hx_age_1st < 95 ~ 0,
+    TRUE ~ NA_real_
+  ) %>% as.factor()
+  )
+
+inddata1 = inddata1 %>%
+  mutate(debutsex_cat = case_when(
+    i22_sex_hx_age_1st < 18 ~ 1,
+    i22_sex_hx_age_1st >= 18 & i22_sex_hx_age_1st < 95 ~ 0,
+    i22_sex_hx_age_1st >= 95 ~ 2,
+    TRUE ~ NA_real_
+  ) %>% as.factor()
+  )
+
+table(moms$i27a_rdt_result_f, moms$debutsex_cat, useNA = "always")
+table(moms$h10_hbv_rdt_f, moms$debutsex_cat)
+table(moms$h10_hbv_rdt_f, moms$i22_sex_hx_age_1st)
+# more HBsAg+ index mothers refused/didin't know age of sexual debut - shouldn't group with older age 
+
+table(moms$i27a_rdt_result_f, moms$i23_sex_hx_part_past3mo, useNA = "always")
+table(moms$i27a_rdt_result_f, moms$i23a_sex_hx_past3mo_num)
+table(moms$i27a_rdt_result_f, moms$i24_sex_hx_part_past1yr)
+table(moms$i27a_rdt_result_f, moms$i24a_sex_hx_past1yr_num)
+
+# number of partners in last 3 months
+inddata1$i23_sex_hx_part_past3mo <- as.numeric(inddata1$i23_sex_hx_part_past3mo)
+inddata1 = inddata1 %>%
+  mutate(part3mo_cat = case_when(
+    i23_sex_hx_part_past3mo > 1 & i23_sex_hx_part_past3mo < 95 ~ 1, 
+    i23_sex_hx_part_past3mo >= 95  ~ 2,
+    i23_sex_hx_part_past3mo < 1 ~ 0,
+    TRUE ~ NA_real_
+  ) %>% as.factor()
+  )
+
+# new partners in last 3 months
+inddata1$i23a_sex_hx_past3mo_num <- as.numeric(inddata1$i23a_sex_hx_past3mo_num)
+inddata1 = inddata1 %>%
+  mutate(partnew3mo_cat = case_when(
+    i23a_sex_hx_past3mo_num > 0 & i23a_sex_hx_past3mo_num < 95 ~ 1, 
+    i23a_sex_hx_past3mo_num >= 95  ~ 2,
+    i23a_sex_hx_past3mo_num < 1 ~ 0,
+    TRUE ~ NA_real_
+  ) %>% as.factor()
+  )
+
+#  partners in last year
+inddata1$i24_sex_hx_part_past1yr <- as.numeric(inddata1$i24_sex_hx_part_past1yr)
+inddata1 = inddata1 %>%
+  mutate(part12mo_cat = case_when(
+    i24_sex_hx_part_past1yr > 1 & i24_sex_hx_part_past1yr < 95 ~ 1, 
+    i24_sex_hx_part_past1yr >= 95  ~ 2,
+    i24_sex_hx_part_past1yr < 1 ~ 0,
+    TRUE ~ NA_real_
+  ) %>% as.factor()
+  )
+# new partners in last year
+inddata1$i24a_sex_hx_past1yr_num <- as.numeric(inddata1$i24a_sex_hx_past1yr_num)
+inddata1 = inddata1 %>%
+  mutate(partnew12mo_cat = case_when(
+    i24a_sex_hx_past1yr_num > 0 & i24a_sex_hx_past1yr_num < 95 ~ 1, 
+    i24a_sex_hx_past1yr_num >= 95  ~ 2,
+    i24a_sex_hx_past1yr_num < 0 ~ 0,
+    TRUE ~ NA_real_
+  ) %>% as.factor()
+  )
+
+# did newly exposed women have new sexual partners? no
+# moms %>% filter(h10_hbv_rdt != perprot_h10) %>% summarise(perprot_h10,i23_sex_hx_part_past3mo,i23a_sex_hx_past3mo_num,i24_sex_hx_part_past1yr,i24a_sex_hx_past1yr_num )
+
+# marital status
+inddata1 = inddata1 %>%
+  mutate(maritalrisk = case_when(
+    hr8_marital_status == 0  ~ 1, 
+    hr8_marital_status == 1  ~ 0, # make married/living together the referent group 
+    hr8_marital_status > 1  ~ 2,# divorced/sep/widowed/N/A - not sure what N/A is
+    TRUE ~ NA_real_
+  ) %>% as.factor()
+  )
+
+
 # add index mother age to both datasets-------
-moms <- inddata1 %>% group_by(hrhhid) %>% filter(hr3_relationship == 1) %>% rename(indexmotherage = age_combined)
+moms <- inddata1 %>% group_by(hrhhid) %>% filter(hr3_relationship == 1) # %>% rename(indexmotherage = age_combined)
+
+moms$indexmotherage <- moms$age_combined
 hhdata1 <- left_join(hhdata1, moms[, c("hrhhid", "indexmotherage")], by = "hrhhid")
 # drop if repeat
 #hhdata1 <- hhdata1 %>% select(-c(indexmotherage.x,indexmotherage.y))
@@ -938,7 +1048,6 @@ inddata1 <- inddata1 %>%
   ) %>% as.numeric()
   )
 table(inddata1$agediff_grands) #n=7 with grandchildren, might as well verify all
-
 
 
 # Patrick data issues-----------------------------

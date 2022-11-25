@@ -2,7 +2,7 @@
 library(lme4)
 library(lmtest)
 library(geepack)
-
+library(tidyverse)
 #Comparison 1: odds of infection of household members in exposed vs unexposed--------------- 
 hhmemb <- inddata1 %>% filter(indexmom=="Household member")
 #exclude those with missing results
@@ -175,10 +175,150 @@ fixef(comp2_int)
 exp(fixef(comp2_int))
 
 
-## Risk factor identification---------------
-hhmemb_unexp <- hhmemb %>% filter(h10_hbv_rdt==0)
+#Risk factor identification---------------
+# run for: moms; directoff; othermemb or othermember
+# moms - no hh clustering
+# DO and other members- still clustering
 
-table(directoff$i12_food_first_chew_f)
+vars_mi <- c('age_combined', "maritalrisk","i6_comb_yr","i7_diabetes_f",'i8_transfusion_f', "i10_street_salon_f","i11_manucure_f",
+              "i14_shared_razor_f","i15_shared_nailclippers_f","i13_shared_toothbrush_f",'i12_food_first_chew_f',
+             "i17_tattoo_f", "i16_traditional_scarring_f",
+             'i25_sex_hx_receive_money_f','i26_sex_hx_given_money_f', 'debutsex_all','debutsex_miss',"debutsex_cat","part3mo_cat","partnew3mo_cat","part12mo_cat","partnew12mo_cat")
+
+vars_do <-  c('age_combined', "hr4_sex_f","cpshbvprox_rev","i6_comb_yr","i7_diabetes_f",'i8_transfusion_f', "i10_street_salon_f","i11_manucure_f",
+                            "i14_shared_razor_f","i15_shared_nailclippers_f","i13_shared_toothbrush_f",'i12_food_first_chew_f',
+                            "i17_tattoo_f", "i16_traditional_scarring_f")
+
+vars_oth <- c('age_combined',"hr4_sex_f", "cpshbvprox_rev","i6_comb_yr","i7_diabetes_f",'i8_transfusion_f', "i10_street_salon_f","i11_manucure_f",
+                             "i14_shared_razor_f","i15_shared_nailclippers_f","i13_shared_toothbrush_f",'i12_food_first_chew_f',
+                             "i17_tattoo_f", "i16_traditional_scarring_f",
+                             'i25_sex_hx_receive_money_f','i26_sex_hx_given_money_f', 'debutsex_all','debutsex_miss',"debutsex_cat","part3mo_cat","partnew3mo_cat","part12mo_cat","partnew12mo_cat")
+
+dfs <- c("moms", "directoff", "othermember")
+
+# function for enrollment RDT result model
+enr_model <- function(var){ # glm function
+  m <- glm(as.formula(paste0('i27a_rdt_result ~', var)), data=moms, family=binomial("logit"))
+  cbind(tidy(m, exponentiate = T), exp(confint(m))) %>% filter(stringr::str_detect(term, var))}
+
+# function for ITT for index mothers
+itt_model <- function(var){ # glm function
+  m <- glm(as.formula(paste0('h10_hbv_rdt ~', var)), data=moms, family=binomial("logit"))
+  cbind(tidy(m, exponentiate = T), exp(confint(m))) %>% filter(stringr::str_detect(term, var))}
+
+
+# run
+options(scipen = 999) # remove scientific notation
+
+#moms only - not clustered
+library(broom)
+# enrollment HBV test (per protocol)
+glmresults_mi_enr <- map_dfr(vars_mi, enr_model) 
+glmresults_mi_enr %>% print(noSpaces=T) 
+colnames(glmresults_mi_enr) <- c('term','estimate','std.error','statistic','p.value','LCI','UCI')
+glmresults_mi_enr <- glmresults_mi_enr %>% filter(!(is.na(LCI) | is.na(UCI)))
+glmresults_mi_enr <- glmresults_mi_enr %>% mutate_if(is.numeric, round, digits=3)
+
+
+# rename each risk factor
+glmresults_mi_enr$term[glmresults_mi_enr$term == "age_combined"] <- "Age (linear)"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "maritalrisk1"] <- "Never married"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "maritalrisk2"] <- "Divorced, separated, widowed"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "i6_comb_yr"] <- "Years living in household (linear)"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "i7_diabetes_fYes"] <- "Reports diabetes"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "i7_diabetes_fRefused"] <- "Refuses diabetes question"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "i8_transfusion_fYes"] <- "Has received transfusion"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "i10_street_salon_fYes"] <- "Uses street salons"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "i11_manucure_fYes"] <- "Manicures outside home"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "i14_shared_razorYes"] <- "Shares razors in house"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "i15_shared_nailclippers_fYes"] <- "Shares nail clippers in house"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "i13_shared_toothbrush_fYes"] <- "Shares toothbrushes in house"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "i12_food_first_chew_fYes"] <- "Premasticates food for someone else"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "i17_tattoo_fYes"] <- "Has tattoos"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "i7_diabetes_fYes"] <- "Reports diabetes"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "i16_traditional_scarring_fYes"] <- "Received traditional scars"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "i25_sex_hx_receive_money_fYes"] <- "Received money for sex"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "i26_sex_hx_given_money_fYes"] <- "Given money for sex"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "debutsex_cat1"] <- "Sexual debut before 18 yrs"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "debutsex_cat2"] <- "Refused to answer age of sexual debut"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "part3mo_cat1"] <- "More than 1 sexual partner in last 3 months"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "part3mo_cat2"] <- "Refused/DK num of sexual partners in last 3mo"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "partnew3mo_cat1"] <- "More than 1 new sexual partner in last 3 months"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "part12mo_cat1"] <- "More than 1 sexual partner in last year"
+glmresults_mi_enr$term[glmresults_mi_enr$term == "part12mo_cat2"] <- "Refused/DK num of partners in last year"
+
+# order by estimate, label numerically
+glmresults_mi_enr <- glmresults_mi_enr %>% arrange(estimate)
+ glmresults_mi_enr$ID <- row_number(rev(glmresults_mi_enr$estimate))
+##glmresults_mi %>% print(noSpaces=T) 
+
+# plot index mother risk factors by enrollment status
+glmresults_mi_enr %>% filter(UCI < 50) %>% # refuse to answer sex hx has really large CIs
+  ggplot(aes(x=term, y=estimate)) +
+  geom_hline(yintercept=1, linetype='dashed') +
+  geom_pointrange(aes(x=term, y=estimate, ymin=LCI, ymax=UCI), shape=15,  color="black",size=0.2) + #show.legend=F,  , fatten=0.2
+  geom_point(shape=15, size=3, aes(color=term), show.legend=F, alpha=0.6) + #
+  coord_flip() + theme_bw() + 
+  #ylim(0, 10)+
+  #scale_x_continuous(breaks=glmresults_mi_enr$ID, labels=term, trans = "reverse") + 
+  labs(x="Exposure", y="Odds of HBsAg+ compared with referent") + 
+  theme(axis.text.y = ggtext::element_markdown(color = "black", size = 11),
+        axis.ticks.y=element_blank(),
+        panel.grid.minor=element_blank())+
+  ggtitle("B. Index mothers, OR of HBV by enrollment HBV status")
+
+
+# recruitment HBV test (ITT)
+glmresults_mi <- map_dfr(vars_mi,itt_model) 
+glmresults_mi %>% print(noSpaces=T) 
+colnames(glmresults_mi) <- c('term','estimate','std.error','statistic','p.value','LCI','UCI')
+glmresults_mi <- glmresults_mi %>% filter(!(is.na(LCI) | is.na(UCI)))
+glmresults_mi <- glmresults_mi %>% mutate_if(is.numeric, round, digits=3)
+
+# plot index mother risk factors by enrollment status
+glmresults_mi %>% filter(UCI < 50) %>% # refuse to answer sex hx has really large CIs
+  ggplot(aes(x=term, y=estimate)) +
+  geom_hline(yintercept=1, linetype='dashed') +
+  geom_pointrange(aes(x=term, y=estimate, ymin=LCI, ymax=UCI), shape=15,  color="black",size=0.2) + #show.legend=F,  , fatten=0.2
+  geom_point(shape=15, size=3, aes(color=term), show.legend=F, alpha=0.6) + #
+  coord_flip() + theme_bw() + 
+  #ylim(0, 10)+
+  #scale_x_continuous(breaks=glmresults_mi_enr$ID, labels=term, trans = "reverse") + 
+  labs(x="Exposure", y="Odds of HBsAg+ compared with referent") + 
+  theme(axis.text.y = ggtext::element_markdown(color = "black", size = 11),
+        axis.ticks.y=element_blank(),
+        panel.grid.minor=element_blank())+
+  ggtitle("B. Index mothers, OR of HBV by enrollment HBV status")
+
+
+
+
+######
+# offspring and other members are clustered
+comp5_gee <- geeglm(i27a_rdt_result ~ as.factor(h10_hbv_rdt), id=hrhhid, data=othermemb, family=binomial)
+
+itt_model_do <- function(var){ # glm function
+  m <- glm(as.formula(paste0('i27a_rdt_result ~', var)), data=directoff, family=binomial("logit")) #id=hrhhid
+  cbind(tidy(m, exponentiate = T), exp(confint(m))) %>% filter(stringr::str_detect(term, var))}
+
+glmresults_do <- map_dfr(vars_do,itt_model_do) 
+glmresults_do %>% print(noSpaces=T) 
+colnames(glmresults_do) <- c('term','estimate','std.error','statistic','p.value','LCI','UCI')
+
+glmresults_do %>% filter(UCI < 100) %>% # refuse to answer sex hx has really large CIs
+  ggplot(aes(x=term, y=estimate)) +
+  geom_hline(yintercept=1, linetype='dashed') +
+  geom_pointrange(aes(x=term, y=estimate, ymin=LCI, ymax=UCI), shape=15,  color="black",  fatten=0.2) + #show.legend=F, size=0.8,
+  geom_point(shape=15, size=5, aes(color=term), show.legend=F, alpha=0.7) + 
+  coord_flip() + theme_bw() + 
+  #scale_x_continuous(breaks=glmresults_mi$ID, labels=term, trans = "reverse") + 
+  labs(x="Exposure", y="Odds of HBsAg+ compared with referent") + 
+  theme(axis.text.y = ggtext::element_markdown(color = "black", size = 11),
+        axis.ticks.y=element_blank(),
+        panel.grid.minor=element_blank()) 
+
+
+
 
 premast <- glm(i27a_rdt_result ~ i12_food_first_chew_f, family = binomial(link = "logit"), data=directoff)
 summary(premast)

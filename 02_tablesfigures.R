@@ -284,6 +284,7 @@ Moran.I(uniquescar$scarprev, test.hhdist.inv)
 table(hhmemb$i27a_rdt_result, hhmemb$h10_hbv_rdt)
 othermember <- hhmemb %>% filter(hhmemcat==0)
 table(othermember$i27a_rdt_result, othermember$hrhhid)
+othermember$cpshbvprox_rev <- 2 - othermember$cpshbvprox
 
 othmemprev <- othermember %>%
   dplyr::group_by(hrhhid) %>%
