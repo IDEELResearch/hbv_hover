@@ -115,6 +115,9 @@ directoff <- left_join(diroff4[, c("pid","probvacc","defnotvacc")], inddata1, by
 mismatch <- directoff %>% filter(!(pid %in% diroff$pid))
 directoff$cpshbvprox_rev <- 2 - directoff$cpshbvprox
 
+# to avoid rerunning all of the above:
+directoff <- inddata1 %>% filter(hr3_relationship == 3)
+
 # Summary of new variables:------
 # cpshbvprox: 3 categories for likely vacc, poss vacc, prob vacc
 # hbvposdiroff: count of HBV+ direct offspring. NAs are either no diroff (n=23) or not tested (n=3)
