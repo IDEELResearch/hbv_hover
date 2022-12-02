@@ -113,6 +113,18 @@ inddata1 <- left_join(inddata1, priorstudies, by = c("hrhhid"))
 
 inddata1 %>% filter(acq_ind==1 & hr3_relationship==1) %>% summarise(pid,acq,hrname_last, hrname_post,  hrname_first)
 
+test = inddata1 %>%
+  mutate(avert_indic = case_when(
+    is.na(inddata1$avert_indic) & hdov > '2022-01-01'  ~ 0, # 2022 - all new enrollments
+    TRUE ~ avert_indic
+  ) %>% as.numeric()
+  )
+
+table(test$avert_indic, useNA = "always")
+
+test %>% filter(is.na(avert_indic)) %>% group_by(hrhhid) %>% count() %>% print(n=Inf)
+# need to get the info on these PIDs from Patrick
+
 # Clean GPS data--------------------------------------------------
 # latitudes are below equator, so need to be negative decimal degrees
 options(scipen = 999)
@@ -1088,7 +1100,8 @@ table(inddata1$agediff_grands) #n=7 with grandchildren, might as well verify all
 # Knowledge subset-------------------
 # remove names and GPS ("ind_con" = individual, connaissance)
 ind_con <- inddata1 %>% select(-c(hrname_last,hrname_post,hrname_first,hxcoord, hycoord))
-
+# save to use in 09_connaissance.R file
+saveRDS(ind_con, file = "ind_con.rds")
 
 # Patrick data issues-----------------------------
 # hh without index mother
