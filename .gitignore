@@ -39,7 +39,7 @@ vignettes/*.pdf
 .Renviron
 
 # DHS dataset
-dhs_adultspf_share.rds
+*.rds
 *.csv
 *.xlsx
 

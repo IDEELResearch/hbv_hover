@@ -1085,6 +1085,10 @@ inddata1 <- inddata1 %>%
   )
 table(inddata1$agediff_grands) #n=7 with grandchildren, might as well verify all
 
+# Knowledge subset-------------------
+# remove names and GPS ("ind_con" = individual, connaissance)
+ind_con <- inddata1 %>% select(-c(hrname_last,hrname_post,hrname_first,hxcoord, hycoord))
+
 
 # Patrick data issues-----------------------------
 # hh without index mother
