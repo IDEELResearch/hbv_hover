@@ -182,17 +182,18 @@ exp(fixef(comp2_int))
 
 vars_mi <- c('age_combined', "maritalrisk","i6_comb_yr","i7_diabetes_f",'i8_transfusion_f', "i10_street_salon_f","i11_manucure_f",
               "i14_shared_razor_f","i15_shared_nailclippers_f","i13_shared_toothbrush_f",'i12_food_first_chew_f',
-             "i17_tattoo_f", "i16_traditional_scarring_f",
+             "i17_tattoo_f", "i16_traditional_scarring_f", "wealth_R",
              'i25_sex_hx_receive_money_f','i26_sex_hx_given_money_f', 'debutsex_all','debutsex_miss',"debutsex_cat","part3mo_cat","partnew3mo_cat","part12mo_cat","partnew12mo_cat")
 
 vars_do <-  c('age_combined', "hr4_sex_f","cpshbvprox_rev","i6_comb_yr","i7_diabetes_f",'i8_transfusion_f', "i10_street_salon_f","i11_manucure_f",
                             "i14_shared_razor_f","i15_shared_nailclippers_f","i13_shared_toothbrush_f",'i12_food_first_chew_f',
-                            "i17_tattoo_f", "i16_traditional_scarring_f")
+                            "i17_tattoo_f", "i16_traditional_scarring_f", "wealth_R")
 
 vars_oth <- c('age_combined',"hr4_sex_f", "cpshbvprox_rev","i6_comb_yr","i7_diabetes_f",'i8_transfusion_f', "i10_street_salon_f","i11_manucure_f",
                              "i14_shared_razor_f","i15_shared_nailclippers_f","i13_shared_toothbrush_f",'i12_food_first_chew_f',
-                             "i17_tattoo_f", "i16_traditional_scarring_f",
-                             'i25_sex_hx_receive_money_f','i26_sex_hx_given_money_f', 'debutsex_all','debutsex_miss',"debutsex_cat","part3mo_cat","partnew3mo_cat","part12mo_cat","partnew12mo_cat")
+                             "i17_tattoo_f", "i16_traditional_scarring_f", "wealth_R",
+                             'i25_sex_hx_receive_money_f','i26_sex_hx_given_money_f', 'debutsex_all','debutsex_miss',"debutsex_cat",
+                              "part3mo_cat","partnew3mo_cat","part12mo_cat","partnew12mo_cat")
 
 dfs <- c("moms", "directoff", "othermember")
 
@@ -215,7 +216,13 @@ library(broom)
 # enrollment HBV test (per protocol)
 glmresults_mi_enr <- map_dfr(vars_mi, enr_model) 
 glmresults_mi_enr %>% print(noSpaces=T) 
+
 colnames(glmresults_mi_enr) <- c('term','estimate','std.error','statistic','p.value','LCI','UCI')
+
+# save df to add to table 3
+library(writexl)
+write_xlsx(glmresults_mi_enr,"glmresults_mi_enr.xlsx")
+
 glmresults_mi_enr <- glmresults_mi_enr %>% filter(!(is.na(LCI) | is.na(UCI)))
 glmresults_mi_enr <- glmresults_mi_enr %>% mutate_if(is.numeric, round, digits=3)
 
@@ -251,7 +258,7 @@ glmresults_mi_enr$term[glmresults_mi_enr$term == "part12mo_cat2"] <- "Refused/DK
 glmresults_mi_enr <- glmresults_mi_enr %>% arrange(estimate)
  glmresults_mi_enr$ID <- row_number(rev(glmresults_mi_enr$estimate))
 ##glmresults_mi %>% print(noSpaces=T) 
-
+ 
 # plot index mother risk factors by enrollment status
 glmresults_mi_enr %>% filter(UCI < 50) %>% # refuse to answer sex hx has really large CIs
   ggplot(aes(x=term, y=estimate)) +
@@ -272,11 +279,15 @@ glmresults_mi_enr %>% filter(UCI < 50) %>% # refuse to answer sex hx has really 
 glmresults_mi <- map_dfr(vars_mi,itt_model) 
 glmresults_mi %>% print(noSpaces=T) 
 colnames(glmresults_mi) <- c('term','estimate','std.error','statistic','p.value','LCI','UCI')
-glmresults_mi <- glmresults_mi %>% filter(!(is.na(LCI) | is.na(UCI)))
 glmresults_mi <- glmresults_mi %>% mutate_if(is.numeric, round, digits=3)
+# save df to add to table
+library(writexl)
+write_xlsx(glmresults_mi,"glmresults_mi.xlsx")
+#only plot - move to plot filter
+#glmresults_mi <- glmresults_mi %>% filter(!(is.na(LCI) | is.na(UCI)))
 
 # plot index mother risk factors by enrollment status
-glmresults_mi %>% filter(UCI < 50) %>% # refuse to answer sex hx has really large CIs
+glmresults_mi %>% filter(UCI < 50 & !(is.na(LCI) & !(is.na(UCI)))) %>% # refuse to answer sex hx has really large CIs
   ggplot(aes(x=term, y=estimate)) +
   geom_hline(yintercept=1, linetype='dashed') +
   geom_pointrange(aes(x=term, y=estimate, ymin=LCI, ymax=UCI), shape=15,  color="black",size=0.2) + #show.legend=F,  , fatten=0.2
@@ -293,20 +304,44 @@ glmresults_mi %>% filter(UCI < 50) %>% # refuse to answer sex hx has really larg
 
 ###
 ##Direct offspring--------
+vars_do <-  c('age_combined', "hr4_sex_f","cpshbvprox_rev","i6_comb_yr","i7_diabetes_f",'i8_transfusion_f', "i10_street_salon_f","i11_manucure_f",
+              "i14_shared_razor_f","i15_shared_nailclippers_f","i13_shared_toothbrush_f",'i12_food_first_chew_f',
+              "i17_tattoo_f", "i16_traditional_scarring_f", "wealth_R")
+
+# factor var only: tab3_vars_cat
+# need to remove those not on DO dataset
+vars_do_cat <-  c( "hr4_sex_f","cpshbvprox_rev","i7_diabetes_f",'i8_transfusion_f', "i10_street_salon_f","i11_manucure_f",
+              "i14_shared_razor_f","i15_shared_nailclippers_f","i13_shared_toothbrush_f",'i12_food_first_chew_f',
+              "i17_tattoo_f", "i16_traditional_scarring_f", "wealth_R")
+vars_do_cat_orig <-  c( "hr4_sex","cpshbvprox_rev","i7_diabetes",'i8_transfusion', "i10_street_salon","i11_manucure",
+                   "i14_shared_razor","i15_shared_nailclippers","i13_shared_toothbrush",'i12_food_first_chew',
+                   "i17_tattoo", "i16_traditional_scarring", "wealth_R")
+
 # offspring and other members are clustered - use geeglm()
 comp5_gee <- geeglm(i27a_rdt_result ~ as.factor(h10_hbv_rdt), id=hrhhid, data=othermemb, family=binomial)
+summary(comp5_gee)
 
-itt_model_do <- function(var){ # glm function
+itt_gee_do <- function(var){ # trying geeglm function
+  m <- geeglm(as.formula(paste0('i27a_rdt_result ~', var)),id=hrhhid, data=directoff, family=binomial("logit")) #id=hrhhid
+  cbind(tidy(m, exponentiate = T), exp(confint(m))) %>% filter(stringr::str_detect(term, var))}
+# neither are working
+glmresults_do <- map_dfr(vars_do_cat,itt_gee_do) 
+glmresults_do <- map_dfr(vars_do_cat_orig,itt_gee_do) 
+
+
+# using GLM for prelim results instead
+itt_glm_do <- function(var){ # glm function
   m <- glm(as.formula(paste0('i27a_rdt_result ~', var)), data=directoff, family=binomial("logit")) #id=hrhhid
   cbind(tidy(m, exponentiate = T), exp(confint(m))) %>% filter(stringr::str_detect(term, var))}
 
-glmresults_do <- map_dfr(vars_do,itt_model_do) 
+glmresults_do <- map_dfr(vars_do,itt_glm_do) 
 glmresults_do %>% print(noSpaces=T) 
 colnames(glmresults_do) <- c('term','estimate','std.error','statistic','p.value','LCI','UCI')
-glmresults_do <- glmresults_do %>% filter(!(is.na(LCI) | is.na(UCI)))
+#glmresults_do <- glmresults_do %>% filter(!(is.na(LCI) | is.na(UCI)))
 glmresults_do <- glmresults_do %>% mutate_if(is.numeric, round, digits=3)
+write_xlsx(glmresults_do,"glmresults_do.xlsx")
 
-glmresults_do %>% filter(UCI < 100) %>% # refuse to answer sex hx has really large CIs
+glmresults_do %>% filter(UCI < 100 & !(is.na(LCI) & !(is.na(UCI)))) %>% # refuse to answer sex hx has really large CIs
   ggplot(aes(x=term, y=estimate)) +
   geom_hline(yintercept=1, linetype='dashed') +
   geom_pointrange(aes(x=term, y=estimate, ymin=LCI, ymax=UCI), shape=15,  color="black",  fatten=0.2) + #show.legend=F, size=0.8,
@@ -328,10 +363,11 @@ itt_model_oth <- function(var){ # glm function
 glmresults_oth <- map_dfr(vars_oth,itt_model_oth) 
 glmresults_oth %>% print(noSpaces=T) 
 colnames(glmresults_oth) <- c('term','estimate','std.error','statistic','p.value','LCI','UCI')
-glmresults_oth <- glmresults_oth %>% filter(!(is.na(LCI) | is.na(UCI)))
+#glmresults_oth <- glmresults_oth %>% filter(!(is.na(LCI) | is.na(UCI)))
 glmresults_oth <- glmresults_oth %>% mutate_if(is.numeric, round, digits=3)
+write_xlsx(glmresults_oth,"glmresults_oth.xlsx")
 
-glmresults_oth %>% filter(UCI < 100) %>% # refuse to answer sex hx has really large CIs
+glmresults_oth %>% filter(UCI < 100 & !(is.na(LCI) & !(is.na(UCI)))) %>% # refuse to answer sex hx has really large CIs
   ggplot(aes(x=term, y=estimate)) +
   geom_hline(yintercept=1, linetype='dashed') +
   geom_pointrange(aes(x=term, y=estimate, ymin=LCI, ymax=UCI), shape=15,  color="black",  fatten=0.2) + #show.legend=F, size=0.8,
@@ -344,11 +380,18 @@ glmresults_oth %>% filter(UCI < 100) %>% # refuse to answer sex hx has really la
         panel.grid.minor=element_blank()) +
   ggtitle("D. Other household members, OR of HBV by enrollment HBV status")
 
+# add wealth
+wealth <- geeglm(i27a_rdt_result ~ as.factor(wealth_R), id=hrhhid, data=directoff, family=binomial(link="logit"))
+wealth <- glm(i27a_rdt_result ~ as.factor(wealth_R),  data=othermember, family=binomial(link="logit"))
+exp(coef(wealth))
+exp(confint(wealth))
+table(directoff$wealth_R, directoff$i27a_rdt_result_f)
 
 # TO-DO
 # cluster model for DO and hhmemb
 # decide on which wide CIs to include for each group
 # order by estimate
+table(directoff$i14_shared_razor_f, directoff$i27a_rdt_result_f, directoff$h10_hbv_rdt_f)
 
 
 ## INLA explore-----------------------
