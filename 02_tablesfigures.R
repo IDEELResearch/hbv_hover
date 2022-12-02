@@ -285,6 +285,7 @@ table(hhmemb$i27a_rdt_result, hhmemb$h10_hbv_rdt)
 othermember <- hhmemb %>% filter(hhmemcat==0)
 table(othermember$i27a_rdt_result, othermember$hrhhid)
 othermember$cpshbvprox_rev <- 2 - othermember$cpshbvprox
+othermember$cpshbvprox_rev <- as.factor(othermember$cpshbvprox_rev)
 
 othmemprev <- othermember %>%
   dplyr::group_by(hrhhid) %>%
@@ -672,4 +673,25 @@ expcounts <- data.frame(groups=c("Other household member","Direct offspring" ,"I
 exp     
 exp + obs + plot_layout(nrow=1, ncol = 2) + plot_annotation(tag_levels = 'A')
 
-         
+
+# Table 3: Risk factor prevalence------------------------------
+#all vars
+tab3_vars_all <- c('age_combined', "maritalrisk","hr4_sex_f","cpshbvprox_rev","i6_comb_yr","i7_diabetes_f",'i8_transfusion_f', "i10_street_salon_f","i11_manucure_f",
+             "i14_shared_razor_f","i15_shared_nailclippers_f","i13_shared_toothbrush_f",'i12_food_first_chew_f',
+             "i17_tattoo_f", "i16_traditional_scarring_f",
+             'i25_sex_hx_receive_money_f','i26_sex_hx_given_money_f', 'debutsex_all','debutsex_miss',"debutsex_cat","part3mo_cat","partnew3mo_cat","part12mo_cat","partnew12mo_cat")
+# factor vars
+tab3_vars_cat <- c( "maritalrisk","hr4_sex_f","cpshbvprox_rev","i7_diabetes_f",'i8_transfusion_f', "i10_street_salon_f","i11_manucure_f",
+                   "i14_shared_razor_f","i15_shared_nailclippers_f","i13_shared_toothbrush_f",'i12_food_first_chew_f',
+                   "i17_tattoo_f", "i16_traditional_scarring_f",
+                   'i25_sex_hx_receive_money_f','i26_sex_hx_given_money_f', 'debutsex_all','debutsex_miss',"debutsex_cat","part3mo_cat","partnew3mo_cat","part12mo_cat","partnew12mo_cat")
+
+#first step in create table 3
+tab3 <- CreateTableOne(vars = tab3_vars_all, factorVars = tab3_vars_cat, data=inddata1, strata = c("i27a_rdt_result_f", "hhmemcat_f"), addOverall = T)
+tab3_itt <- CreateTableOne(vars = tab3_vars_all, factorVars = tab3_vars_cat, data=moms, strata = c("h10_hbv_rdt_f"), addOverall = T)
+
+tab3_enr <- print(tab3 ,quote = FALSE, noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE, formatOptions = list(big.mark = ","))
+write.csv(tab3_enr, file = "tab3_enr.csv")
+
+tab3_itt_p <- print(tab3_itt ,quote = FALSE, noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE, formatOptions = list(big.mark = ","))
+write.csv(tab3_itt_p, file = "tab3_itt_p.csv")
