@@ -504,6 +504,9 @@ table(hhdata2$wealth_R, hhdata2$maternity, useNA = "always")
 ## if reran wealth index after new obs and two vars added and need to drop them
 # hhdata2 <- hhdata2 %>% select(-c(wealth_R.x,wealth_R.y))
 
+#put wealth onto individual dataset
+inddata1 <- left_join(inddata1, hhdata2[,c("hrhhid","wealth_R")],  by = "hrhhid")
+table(inddata1$wealth_R)
 
 ## sharing nail clippers---------------------------
 table(hhdata2$h8_nail_cutting)
@@ -535,7 +538,8 @@ hhdata2$h8a_razer_owned <- as.factor(as.numeric(hhdata2$h8a_razer_owned))
 
 table(hhdata2$h9_razor_f ,hhdata2$h8a_razer_owned) # what does 96 mean
 
-# final hh spatial object with new variables
+
+# final hh spatial object with new variables---------
 hover_gps = st_as_sf(hhdata2[!is.na(hhdata2$hxcoord_edit) &!is.na(hhdata2$hycoord_edit),], coords = c("hycoord_edit", "hxcoord_edit"), crs = 4326)  
 hover_gps_full <- hover_gps
 hover_gps <- subset(hover_gps, select=c( "h10_hbv_rdt_f" , "hrhhid","geometry","maternity"))
@@ -775,12 +779,32 @@ inddata1 <- inddata1 %>%
     #labels = c("Non", "Oui", "Ne sait pas","Refusé")))
 labels = c("No", "Yes", "Don't know", "Refused")))
 
-inddata1 <- inddata1 %>% 
+table(inddata1$i14_shared_razor, useNA = "always") # some missing
+#which ones missing
+hhmemb %>% filter(is.na(i14_shared_razor)) %>% summarise(hrhhid, age_combined,hr4_sex_f, hr3_relationship_f)
+# use household questions on razors to assign value for individual missing
+hhdata1 %>% filter(hrhhid == "HRB-1100") %>% summarise(h9_razor, h8a_razer_owned) # doesn't own razors - assign i14_shared_razor==0
+hhdata1 %>% filter(hrhhid == "HRK-2026") %>% summarise(h9_razor, h8a_razer_owned) # doesn't own razors - assign i14_shared_razor==0
+
+inddata1$i14_shared_razor <- ifelse(is.na(inddata1$i14_shared_razor),0,inddata1$i14_shared_razor) # can give all 0 if missing based above analysis above
+
+inddata1 <- inddata1 %>%
   dplyr::mutate(i14_shared_razor_f=factor(
     inddata1$i14_shared_razor, 
     levels = c(0, 1, 99),
-#    labels = c("Non", "Oui", "Refusé")))
-labels = c("No", "Yes", "Refused")))
+    #    labels = c("Non", "Oui", "Refusé")))
+    labels = c("No", "Yes", "Refused")))
+
+table(inddata1$i15_shared_nailclippers, useNA = "always") # some missing
+#which ones missing
+hhmemb %>% filter(is.na(i15_shared_nailclippers)) %>% summarise(hrhhid, age_combined,hr4_sex_f, hr3_relationship_f)
+# use household questions on nail clippers to assign value for individual missing
+hhdata1 %>% filter(hrhhid == "HRK-2007") %>% summarise(h8_nail_cutting, h8a_nail_clippers_owned) 
+inddata1 %>% filter(hrhhid == "HRK-2007") %>%  summarise(hrhhid, age_combined,hr4_sex_f, hr3_relationship_f,i15_shared_nailclippers)
+
+# giving value missing
+inddata1$i15_shared_nailclippers <- ifelse(is.na(inddata1$i15_shared_nailclippers),0,inddata1$i15_shared_nailclippers) 
+
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i15_shared_nailclippers_f=factor(
@@ -788,6 +812,7 @@ inddata1 <- inddata1 %>%
     levels = c(0, 1, 99),
 #    labels = c("Non", "Oui", "Refusé")))
 labels = c("No", "Yes", "Refused")))
+
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i8_transfusion_f=factor(
     inddata1$i8_transfusion, 
@@ -822,6 +847,15 @@ inddata1 <- inddata1 %>%
     levels = c(0, 1, 99),
 #    labels = c("Non", "Oui", "Refusé")))
 labels = c("No", "Yes", "Refused")))
+
+table(inddata1$i13_shared_toothbrush, useNA = "always") # some missing
+#which ones missing
+hhmemb %>% filter(is.na(i13_shared_toothbrush)) %>% summarise(hrhhid, age_combined,hr4_sex_f, hr3_relationship_f)
+# use household questions on toothbrushes to assign value for individual missing
+inddata1 %>% filter(hrhhid == "HRK-2007") %>%  summarise(hrhhid, age_combined,hr4_sex_f, hr3_relationship_f,i13_shared_toothbrush)
+
+# giving value missing ==0 bc no others in household share toothbrushes
+inddata1$i13_shared_toothbrush <- ifelse(is.na(inddata1$i13_shared_toothbrush),0,inddata1$i13_shared_toothbrush) 
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i13_shared_toothbrush_f=factor(
@@ -970,7 +1004,7 @@ inddata1 = inddata1 %>%
   mutate(part3mo_cat = case_when(
     i23_sex_hx_part_past3mo > 1 & i23_sex_hx_part_past3mo < 95 ~ 1, 
     i23_sex_hx_part_past3mo >= 95  ~ 2,
-    i23_sex_hx_part_past3mo < 1 ~ 0,
+    i23_sex_hx_part_past3mo <= 1 ~ 0,
     TRUE ~ NA_real_
   ) %>% as.factor()
   )
@@ -981,7 +1015,7 @@ inddata1 = inddata1 %>%
   mutate(partnew3mo_cat = case_when(
     i23a_sex_hx_past3mo_num > 0 & i23a_sex_hx_past3mo_num < 95 ~ 1, 
     i23a_sex_hx_past3mo_num >= 95  ~ 2,
-    i23a_sex_hx_past3mo_num < 1 ~ 0,
+    i23a_sex_hx_past3mo_num <= 0 ~ 0,
     TRUE ~ NA_real_
   ) %>% as.factor()
   )
@@ -992,17 +1026,19 @@ inddata1 = inddata1 %>%
   mutate(part12mo_cat = case_when(
     i24_sex_hx_part_past1yr > 1 & i24_sex_hx_part_past1yr < 95 ~ 1, 
     i24_sex_hx_part_past1yr >= 95  ~ 2,
-    i24_sex_hx_part_past1yr < 1 ~ 0,
+    i24_sex_hx_part_past1yr <= 1 ~ 0,
     TRUE ~ NA_real_
   ) %>% as.factor()
   )
+table(moms$h10_hbv_rdt_f, moms$i24_sex_hx_part_past1yr, useNA = "always")
+table(moms$i27a_rdt_result_f, moms$i24_sex_hx_part_past1yr, useNA = "always")
 # new partners in last year
 inddata1$i24a_sex_hx_past1yr_num <- as.numeric(inddata1$i24a_sex_hx_past1yr_num)
 inddata1 = inddata1 %>%
   mutate(partnew12mo_cat = case_when(
     i24a_sex_hx_past1yr_num > 0 & i24a_sex_hx_past1yr_num < 95 ~ 1, 
     i24a_sex_hx_past1yr_num >= 95  ~ 2,
-    i24a_sex_hx_past1yr_num < 0 ~ 0,
+    i24a_sex_hx_past1yr_num <= 0 ~ 0,
     TRUE ~ NA_real_
   ) %>% as.factor()
   )

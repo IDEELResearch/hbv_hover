@@ -40,13 +40,8 @@ vignettes/*.pdf
 
 # DHS dataset
 dhs_adultspf_share.rds
-samegps.csv
-tab1hhexport.csv
-tab1hhmem.csv
-tab1ind_exp.csv
-fogdata.xlsx
-fogdata2.xlsx
-fdatahbv.xlsx
+*.csv
+*.xlsx
 
 # Rmd output
 00_datachecks.html
