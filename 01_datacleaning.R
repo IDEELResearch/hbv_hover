@@ -6,7 +6,6 @@ options(dplyr.summarise.inform = FALSE)
 
 library(tidyverse)
 library(knitr)
-library(stringr)
 library(viridis)
 library(scales)
 library(sf)
@@ -1102,6 +1101,7 @@ table(inddata1$agediff_grands) #n=7 with grandchildren, might as well verify all
 ind_con <- inddata1 %>% select(-c(hrname_last,hrname_post,hrname_first,hxcoord, hycoord))
 # save to use in 09_connaissance.R file
 saveRDS(ind_con, file = "ind_con.rds")
+# saveRDS(ind_con_2, file = "ind_con_2.rds")
 
 # Patrick data issues-----------------------------
 # hh without index mother

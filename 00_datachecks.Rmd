@@ -203,7 +203,7 @@ inddata1_dc %>% filter(hrhhid == "HRK2043") %>% summarise(hr3_relationship_f,age
 
 #### list de mere index des ces menages avec une question
 ```{r echo=FALSE, out.width="30%", eval=F}
-all_issues <- data.frame(c("HRK2041","HRK2009","HRB-1049","HRK-2002","HRB -1012", "HRK-2001", "HRK2033", "HRK2045", "HRK2056", "HRK2059", "HRK2081", "HRB-1008", "HRB-1025", "HRK2015", "HRK2031", "HRK2064", "HRB-1024", "HRB-1083", "HRK-2026", "HRK2008", "HRK2014", "HRK2023", "HRK2064", "HRK2091", "HRK2092", "HRB-1035", "HRK-2018", "HRK2023", "HRK2077", "HRK2011", "HRK2043"))
+all_issues <- data.frame(c("HRK2041","HRK2009","HRB-1049","HRK-2002","HRB -1012", "HRK-2001", "HRK2033", "HRK2045", "HRK2056", "HRK2059", "HRK2081", "HRB-1008", "HRB-1025", "HRK2015", "HRK2031", "HRK2064", "HRB-1024", "HRB-1083", "HRK-2026", "HRK2008", "HRK2014", "HRK2023", "HRK2064", "HRK2091", "HRK2092", "HRB-1035", "HRK-2018", "HRK2023", "HRK2077", "HRK2011", "HRK2043","HRB-1002","HRB-1023"))
 colnames(all_issues) <- c("hrhhid")
 
 miref <- inddata1 %>% filter(hr3_relationship==1 & (hrhhid %in% all_issues$hrhhid)) %>% select("hrhhid","participant_code","hdov","h10_hbv_rdt","n","hr3_relationship_f","age_combined", "i27a_rdt_result_f","hrname_last", "hrname_post", "hrname_first")
@@ -212,7 +212,7 @@ miref <- inddata1 %>% filter(hr3_relationship==1 & (hrhhid %in% all_issues$hrhhi
 # check that difference in dataframe size is due to duplicates
 miss <- all_issues %>% filter(!(hrhhid %in% miref$hrhhid))
 length(unique(all_issues$hrhhid))
-hhdata1$hxcoord_edit
+
 # add GPS points
 miref <- left_join(miref, hhdata1[,c("hrhhid","hxcoord_edit","hycoord_edit")], by = "hrhhid")
 
@@ -230,8 +230,9 @@ datacheckgps = st_as_sf(miref, coords = c("hycoord_edit", "hxcoord_edit"), crs =
 tmap_mode("view")
 # tmap_mode("plot")
 tm_basemap("OpenStreetMap") +
-  tm_shape(st_jitter(datacheckgps, factor=0.005)) + 
-    tm_dots(col = as.factor("h10_hbv_rdt"),id="hrhhid")
+  tm_shape(st_jitter(datacheckgps[datacheckgps$hrhhid=="HRK2064",], factor=0.005)) + #HRK2041 
+    tm_dots(col = as.factor("h10_hbv_rdt"),palette=nounprojgraphcol,id="hrhhid")
+
 
 
 

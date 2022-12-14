@@ -1,8 +1,10 @@
 #Analysis sur la connaissance de l'hepatite B (Knowledge analysis) -------------------
+# Date: 2 December 2022
+# Date update: 5 December 2022
 
 # Install packages-------------
 # Il suffit d'exécuter une fois "install.packages" pour télécharger sur l'ordinateur.
-# install.packages("tidyverse") # répétez pour chaque paquet
+install.packages("tableone") # répétez pour chaque paquet
 
 # Nécessité d'exécuter "library()" à chaque fois que vous ouvrez R
 library(tidyverse)
@@ -173,4 +175,5 @@ ind_con_2 %>%
   labs(x = "Response (Yes or No)", y = "Number of respondents")+
   theme_bw()
 
+install.packages("tidyverse") # répétez pour chaque paquet
 

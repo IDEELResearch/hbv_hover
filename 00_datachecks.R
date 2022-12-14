@@ -66,3 +66,11 @@ inddata1 %>% filter(hr3_relationship == 5) %>% summarise(min(age_combined), max(
 
 inddata1 %>% filter(hrhhid == "HRB-1002") %>% summarise(hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, agediff)
 
+# complete list of prior study women were in 
+# check which IDs not in
+inddata1_check$pid <- paste0(inddata1_check$hrhhid,"-",inddata1_check$participant_code)
+inddata1$pid <- paste0(inddata1$hrhhid,"-",inddata1$participant_code)
+new <- subset(inddata1_check, !(inddata1_check$pid %in% inddata1$pid))
+
+new <- inddata1_check
+
