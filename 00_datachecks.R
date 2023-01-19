@@ -60,6 +60,9 @@ inddata1 %>% filter(hrhhid == "HRB -1012") %>% summarise(hr3_relationship_f,age_
 inddata1 %>% filter(hrhhid == "HRB-1023") %>% summarise(hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f,agediff)
 inddata1 %>% filter(hrhhid == "HRK-2002") %>% summarise(hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f,agediff)
 
+inddata1 %>% filter(hrhhid == "HRB-1029") %>% summarise(hdov,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f,agediff)
+
+
 ## grandchildren
 inddata1 %>% filter(hr3_relationship == 5) %>% summarise(min(age_combined), max(age_combined))
 
@@ -73,4 +76,11 @@ inddata1$pid <- paste0(inddata1$hrhhid,"-",inddata1$participant_code)
 new <- subset(inddata1_check, !(inddata1_check$pid %in% inddata1$pid))
 
 new <- inddata1_check
+
+hrb1029 <- inddata1 %>% filter(hrhhid == "HRB-1029") 
+# %>% select("hrhhid", "pid","h10_hbv_rdt","hr3_relationship", "i27a_rdt_result","i27a_rdt_result_f", "age_combined",
+
+
+
+
 

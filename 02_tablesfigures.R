@@ -34,6 +34,8 @@ write.csv(tab1hhexport, file = "tab1hhexport.csv")
 
 
 ##All individuals------------------------------
+# use inddata1_dc for main hover paper
+inddata1 <- inddata1_dc
 # all vars
 tab1_ind <- c("i27a_rdt_result_f","hhmemcat_f","hr3_relationship_f","age_combined","agegrp15_2", "hr4_sex_f", "hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
               "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f","i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
@@ -90,6 +92,18 @@ moms %>% group_by(hr3_relationship) %>% filter(!is.na(i6_comb_yr) & i6_comb_yr!=
 ## To_DO on ind questions
 # - education - distinguish those currently in school (eg secondary school) from adults who are out of school but only completed part of secondary school
 
+# median age of moms
+moms %>% group_by(h10_hbv_rdt) %>% summarise(quantile(age_combined, probs=c(0.25, 0.5,0.75)))
+quantile(moms$age_combined, c(0.25, 0.75))
+
+# self-reported HIV infection
+selfrephiv <- moms %>% filter(i3_hiv_pos_test == 1)
+table(selfrephiv$i27a_rdt_result_f, selfrephiv$acq_ind, useNA = "always")
+table(selfrephiv$i3a_hiv_treatment_f, selfrephiv$acq_ind, useNA = "always")
+
+addmargins(table(moms$acq_ind, moms$i3_hiv_pos_test_f, moms$i27a_rdt_result_f,useNA = "always"))
+addmargins(table(moms$acq_ind, moms$i3a_hiv_treatment_f, useNA = "always"))
+addmargins(table(moms$acq_ind, moms$i3b_hiv_medications, useNA = "always"))
 ##Direct offspring---------
 # dataset is directoff, created in 04_famtree.R
 
@@ -115,6 +129,18 @@ table(directoff$i3_hiv_pos_test)
 
 directoff %>% filter(i3_hiv_pos_test==1) %>% summarise(pid, age_combined)
 
+#median age of direct off
+directoff %>% group_by(h10_hbv_rdt) %>% summarise(quantile(age_combined, probs=c(0.25, 0.5,0.75)))
+quantile(directoff$age_combined, c(0.25, 0.5,0.75))
+
+# range of offspring in hh
+directoffsum <- directoff %>% group_by(hrhhid) %>% summarise(ndiroff=n())
+directoffsum <- left_join(directoffsum, inddata1[,c("hrhhid","h10_hbv_rdt_f")], by = "hrhhid")
+
+directoffsum %>% group_by(h10_hbv_rdt_f) %>% summarise(quantile(ndiroff, probs=c(0,0.25, 0.5,0.75,1)))
+median(directoffsum$ndiroff)
+
+
 ## other hh members-------
 othermember <- inddata1 %>% filter(hhmemcat==0)
 
@@ -134,10 +160,17 @@ tab1oth_exp <- print(hover_other_tab1 ,quote = FALSE, noSpaces = TRUE, printTogg
 tab1oth_exp
 write.csv(tab1oth_exp, file = "tab1oth_exp.csv")
 
+# median age other hh mem
+othermember %>% group_by(h10_hbv_rdt) %>% summarise(quantile(age_combined, probs=c(0.25, 0.5,0.75)))
+quantile(othermember$age_combined, c(0.25, 0.5,0.75))
+
 # who are the offspring HIV+
 table(othermember$i3b_hiv_medications)
 
 othermember %>% filter(i3_hiv_pos_test==1) %>% summarise(pid, age_combined, hr3_relationship_f, hivhaart)
+
+#median age overall
+quantile(inddata1$age_combined, c(0.25, 0.5,0.75))
 
 # table 1 by exposure and 3-cat hh memb type---------
 #  all vars

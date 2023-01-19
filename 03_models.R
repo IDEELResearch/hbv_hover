@@ -227,33 +227,6 @@ glmresults_mi_enr <- glmresults_mi_enr %>% filter(!(is.na(LCI) | is.na(UCI)))
 glmresults_mi_enr <- glmresults_mi_enr %>% mutate_if(is.numeric, round, digits=3)
 
 
-# rename each risk factor
-glmresults_mi_enr$term[glmresults_mi_enr$term == "age_combined"] <- "Age (linear)"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "maritalrisk1"] <- "Never married"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "maritalrisk2"] <- "Divorced, separated, widowed"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "i6_comb_yr"] <- "Years living in household (linear)"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "i7_diabetes_fYes"] <- "Reports diabetes"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "i7_diabetes_fRefused"] <- "Refuses diabetes question"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "i8_transfusion_fYes"] <- "Has received transfusion"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "i10_street_salon_fYes"] <- "Uses street salons"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "i11_manucure_fYes"] <- "Manicures outside home"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "i14_shared_razorYes"] <- "Shares razors in house"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "i15_shared_nailclippers_fYes"] <- "Shares nail clippers in house"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "i13_shared_toothbrush_fYes"] <- "Shares toothbrushes in house"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "i12_food_first_chew_fYes"] <- "Premasticates food for someone else"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "i17_tattoo_fYes"] <- "Has tattoos"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "i7_diabetes_fYes"] <- "Reports diabetes"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "i16_traditional_scarring_fYes"] <- "Received traditional scars"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "i25_sex_hx_receive_money_fYes"] <- "Received money for sex"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "i26_sex_hx_given_money_fYes"] <- "Given money for sex"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "debutsex_cat1"] <- "Sexual debut before 18 yrs"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "debutsex_cat2"] <- "Refused to answer age of sexual debut"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "part3mo_cat1"] <- "More than 1 sexual partner in last 3 months"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "part3mo_cat2"] <- "Refused/DK num of sexual partners in last 3mo"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "partnew3mo_cat1"] <- "More than 1 new sexual partner in last 3 months"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "part12mo_cat1"] <- "More than 1 sexual partner in last year"
-glmresults_mi_enr$term[glmresults_mi_enr$term == "part12mo_cat2"] <- "Refused/DK num of partners in last year"
-
 # order by estimate, label numerically
 glmresults_mi_enr <- glmresults_mi_enr %>% arrange(estimate)
  glmresults_mi_enr$ID <- row_number(rev(glmresults_mi_enr$estimate))
@@ -280,6 +253,7 @@ glmresults_mi <- map_dfr(vars_mi,itt_model)
 glmresults_mi %>% print(noSpaces=T) 
 colnames(glmresults_mi) <- c('term','estimate','std.error','statistic','p.value','LCI','UCI')
 glmresults_mi <- glmresults_mi %>% mutate_if(is.numeric, round, digits=3)
+glmresults_mi$group <- "Index mother"
 # save df to add to table
 library(writexl)
 write_xlsx(glmresults_mi,"glmresults_mi.xlsx")
@@ -339,6 +313,7 @@ glmresults_do %>% print(noSpaces=T)
 colnames(glmresults_do) <- c('term','estimate','std.error','statistic','p.value','LCI','UCI')
 #glmresults_do <- glmresults_do %>% filter(!(is.na(LCI) | is.na(UCI)))
 glmresults_do <- glmresults_do %>% mutate_if(is.numeric, round, digits=3)
+glmresults_do$group <- "Direct offspring"
 write_xlsx(glmresults_do,"glmresults_do.xlsx")
 
 glmresults_do %>% filter(UCI < 100 & !(is.na(LCI) & !(is.na(UCI)))) %>% # refuse to answer sex hx has really large CIs
@@ -365,6 +340,7 @@ glmresults_oth %>% print(noSpaces=T)
 colnames(glmresults_oth) <- c('term','estimate','std.error','statistic','p.value','LCI','UCI')
 #glmresults_oth <- glmresults_oth %>% filter(!(is.na(LCI) | is.na(UCI)))
 glmresults_oth <- glmresults_oth %>% mutate_if(is.numeric, round, digits=3)
+glmresults_oth$group <- "Other household members"
 write_xlsx(glmresults_oth,"glmresults_oth.xlsx")
 
 glmresults_oth %>% filter(UCI < 100 & !(is.na(LCI) & !(is.na(UCI)))) %>% # refuse to answer sex hx has really large CIs
@@ -379,6 +355,56 @@ glmresults_oth %>% filter(UCI < 100 & !(is.na(LCI) & !(is.na(UCI)))) %>% # refus
         axis.ticks.y=element_blank(),
         panel.grid.minor=element_blank()) +
   ggtitle("D. Other household members, OR of HBV by enrollment HBV status")
+
+# combine model results of all subgroups
+glm_all <- rbind(glmresults_mi, glmresults_do, glmresults_oth)
+
+# rename each risk factor
+glm_all$term[glm_all$term == "age_combined"] <- "Age (linear)"
+glm_all$term[glm_all$term == "maritalrisk1"] <- "Never married"
+glm_all$term[glm_all$term == "maritalrisk2"] <- "Divorced, separated, widowed"
+glm_all$term[glm_all$term == "i6_comb_yr"] <- "Years living in household (linear)"
+glm_all$term[glm_all$term == "i7_diabetes_fYes"] <- "Reports diabetes"
+glm_all$term[glm_all$term == "i7_diabetes_fRefused"] <- "Refuses diabetes question"
+glm_all$term[glm_all$term == "i8_transfusion_fYes"] <- "Has received transfusion"
+glm_all$term[glm_all$term == "i10_street_salon_fYes"] <- "Uses street salons"
+glm_all$term[glm_all$term == "i11_manucure_fYes"] <- "Manicures outside home"
+glm_all$term[glm_all$term == "i14_shared_razorYes"] <- "Shares razors in house"
+glm_all$term[glm_all$term == "i15_shared_nailclippers_fYes"] <- "Shares nail clippers in house"
+glm_all$term[glm_all$term == "i13_shared_toothbrush_fYes"] <- "Shares toothbrushes in house"
+glm_all$term[glm_all$term == "i12_food_first_chew_fYes"] <- "Premasticates food for someone else"
+glm_all$term[glm_all$term == "i17_tattoo_fYes"] <- "Has tattoos"
+glm_all$term[glm_all$term == "i7_diabetes_fYes"] <- "Reports diabetes"
+glm_all$term[glm_all$term == "i16_traditional_scarring_fYes"] <- "Received traditional scars"
+glm_all$term[glm_all$term == "i25_sex_hx_receive_money_fYes"] <- "Received money for sex"
+glm_all$term[glm_all$term == "i26_sex_hx_given_money_fYes"] <- "Given money for sex"
+glm_all$term[glm_all$term == "i26_sex_hx_given_money_fRefused"] <- "Refused to answer given money for sex"
+glm_all$term[glm_all$term == "debutsex_cat1"] <- "Sexual debut before 18 yrs"
+glm_all$term[glm_all$term == "debutsex_cat2"] <- "Refused to answer age of sexual debut"
+glm_all$term[glm_all$term == "part3mo_cat1"] <- "More than 1 sexual partner in last 3 months"
+glm_all$term[glm_all$term == "part3mo_cat2"] <- "Refused/DK num of sexual partners in last 3mo"
+glm_all$term[glm_all$term == "partnew3mo_cat1"] <- "More than 1 new sexual partner in last 3 months"
+glm_all$term[glm_all$term == "part12mo_cat1"] <- "More than 1 sexual partner in last year"
+glm_all$term[glm_all$term == "part12mo_cat2"] <- "Refused/DK num of partners in last year"
+
+
+# plot all
+glm_all %>% filter(UCI < 100 & !(is.na(LCI) & !(is.na(UCI)))) %>% # refuse to answer sex hx has really large CIs
+  ggplot(aes(x=term, y=estimate)) +
+  geom_hline(yintercept=1, linetype='dashed') +
+  geom_pointrange(aes(x=term, y=estimate, ymin=LCI, ymax=UCI, color=group), shape=15,  color="black", position=position_dodge2(width=1.0), fatten=0.1) + #show.legend=F, size=0.8,
+  geom_point(shape=15, size=3, aes(color=group), position=position_dodge(width = 1.0) ,alpha=0.7) + 
+  #scale_color_manual(values=c("#999999", "#E69F00"))+
+  coord_flip() + theme_bw() + 
+  scale_color_discrete(name = "", labels = c("Index mother", "Direct offspring", "Other household members"))+
+  #scale_x_continuous(breaks=glmresults_mi$ID, labels=term, trans = "reverse") + 
+  labs(x="Exposure", y="Odds of HBsAg+ compared with referent") + 
+  theme(axis.text.y = ggtext::element_markdown(color = "black", size = 11),
+        axis.ticks.y=element_blank(),
+        panel.grid.minor=element_blank()) +
+  ggtitle("OR of HBV by enrollment HBV status")
+
+
 
 # add wealth
 wealth <- geeglm(i27a_rdt_result ~ as.factor(wealth_R), id=hrhhid, data=directoff, family=binomial(link="logit"))
