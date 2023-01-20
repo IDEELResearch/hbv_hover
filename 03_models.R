@@ -392,7 +392,7 @@ glm_all$term[glm_all$term == "part12mo_cat2"] <- "Refused/DK num of partners in 
 glm_all %>% filter(UCI < 100 & !(is.na(LCI) & !(is.na(UCI)))) %>% # refuse to answer sex hx has really large CIs
   ggplot(aes(x=term, y=estimate)) +
   geom_hline(yintercept=1, linetype='dashed') +
-  geom_pointrange(aes(x=term, y=estimate, ymin=LCI, ymax=UCI, color=group), shape=15,  color="black", position=position_dodge2(width=1.0), fatten=0.1) + #show.legend=F, size=0.8,
+  geom_pointrange(aes(x=term, y=estimate, ymin=LCI, ymax=UCI, color=group), shape=15,  color="grey2", position=position_dodge2(width=1.0), fatten=0.1) + #show.legend=F, size=0.8,
   geom_point(shape=15, size=3, aes(color=group), position=position_dodge(width = 1.0) ,alpha=0.7) + 
   #scale_color_manual(values=c("#999999", "#E69F00"))+
   coord_flip() + theme_bw() + 
