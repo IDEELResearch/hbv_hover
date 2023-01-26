@@ -13,6 +13,8 @@ hhdata2 <- hhdata2 %>%
 table(hhdata2$h10_hbv_rdt_f, hhdata2$recruited_f)
 table(hhdata2$modernhousing, hhdata2$recruited_f)
 
+table(hrb1029$hdov)
+
 # individuals
 inddata1 <- left_join(inddata1, hhdata2[, c("hrhhid", "recruited_f")], by = "hrhhid")
 table(inddata1$h10_hbv_rdt_f, inddata1$recruited_f)
@@ -67,7 +69,7 @@ inddata1 %>% filter(hrhhid == "HRB-1029") %>% summarise(hdov,hr3_relationship_f,
 inddata1 %>% filter(hr3_relationship == 5) %>% summarise(min(age_combined), max(age_combined))
 
 
-inddata1 %>% filter(hrhhid == "HRK-2088") %>% summarise(hdov,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, agediff)
+inddata1 %>% filter(hrhhid == "HRK2022") %>% summarise(hdov,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, agediff)
 
 # complete list of prior study women were in 
 # check which IDs not in
@@ -82,7 +84,15 @@ hrk2088 <- inddata1 %>% filter(hrhhid == "HRK-2088")
 
 # %>% select("hrhhid", "pid","h10_hbv_rdt","hr3_relationship", "i27a_rdt_result","i27a_rdt_result_f", "age_combined",
 
+addmargins(table(inddata1$hr4_sex_f))
 
+# select family tree option for the 13 exposed households without DO enrolled
+nodiroff <- hhdata1 %>% filter(!(hrhhid %in% diroff3$hrhhid))
+
+nodiroff <- inddata1 %>% filter(!(hrhhid %in% diroff3$hrhhid))
+
+nodiroff %>% filter(hrhhid == "HRK2074") %>% summarise(hdov,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f,agediff)
+inddata1 %>% filter(hrhhid == "HRB -1012") %>% summarise(hdov,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f,agediff)
 
 
 

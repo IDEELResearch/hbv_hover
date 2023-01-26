@@ -37,14 +37,14 @@ write.csv(tab1hhexport, file = "tab1hhexport.csv")
 # use inddata1_dc for main hover paper
 inddata1 <- inddata1_dc
 # all vars
-tab1_ind <- c("i27a_rdt_result_f","hhmemcat_f","hr3_relationship_f","age_combined","agegrp15_2", "hr4_sex_f", "hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
+tab1_ind <- c("i27a_rdt_result_f","hhmemcat_f","hr3_relationship_f","age_combined","agegrp15_2", "hr4_sex_f", "maritalrisk","educ_simp_f","hr10_occupation_gr_f","religion_simp_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
               "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f","i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
               "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f","i26_sex_hx_given_money_f")
 
 # num vars
 numvars_ind <- c("age_combined") # age, under 5s in hh, total hh members
 # cat vars
-catvars_ind <- c("i27a_rdt_result_f","hhmemcat_f","hr3_relationship_f","agegrp15_2" ,"hr4_sex_f", "hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","i4_fever_f",
+catvars_ind <- c("i27a_rdt_result_f","hhmemcat_f","hr3_relationship_f","agegrp15_2" ,"hr4_sex_f", "maritalrisk","educ_simp_f","hr10_occupation_gr_f","religion_simp_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","i4_fever_f",
                  "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f", "i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
                   "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f", "i26_sex_hx_given_money_f")
 #first step in create table 1
@@ -61,15 +61,18 @@ hhdata1 %>% group_by(h10_hbv_rdt_f) %>% summarise(mean(indexmotherage), sd(index
 # overall
 hhdata1 %>% summarise(mean(indexmotherage), sd(indexmotherage))
 
+# moms dataset if needed
+## moms <- inddata1 %>% filter(hr3_relationship == 1) 
+
 # mom all vars
-tab1_mom <- c("indexmotherage", "hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
+tab1_mom <- c("indexmotherage", "maritalrisk","educ_simp_f","hr10_occupation_gr_f","religion_simp_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
               "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f","i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
               "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f","i26_sex_hx_given_money_f")
 
 # num vars
 numvars_mom <- c("indexmotherage") # age, under 5s in hh, total hh members
 # cat vars
-catvars_mom <- c("hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","i4_fever_f",
+catvars_mom <- c("maritalrisk","educ_simp_f","hr10_occupation_gr_f","religion_simp_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","i4_fever_f",
                  "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f", "i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
                  "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f", "i26_sex_hx_given_money_f")
 hover_mom_tab1 <- CreateTableOne(vars = tab1_mom, factorVars = catvars_mom, data=moms, strata = c("h10_hbv_rdt_f"), addOverall = T)
@@ -89,8 +92,6 @@ moms %>% group_by(h10_hbv_rdt_f) %>% filter(!is.na(i6_comb_yr) & i6_comb_yr!=0) 
 moms %>% group_by(hr3_relationship) %>% filter(!is.na(i6_comb_yr) & i6_comb_yr!=0) %>%  summarise(median(i6_comb_yr), quantile(i6_comb_yr, probs=c(0.25, 0.75)))
 
 
-## To_DO on ind questions
-# - education - distinguish those currently in school (eg secondary school) from adults who are out of school but only completed part of secondary school
 
 # median age of moms
 moms %>% group_by(h10_hbv_rdt) %>% summarise(quantile(age_combined, probs=c(0.25, 0.5,0.75)))
@@ -106,16 +107,17 @@ addmargins(table(moms$acq_ind, moms$i3a_hiv_treatment_f, useNA = "always"))
 addmargins(table(moms$acq_ind, moms$i3b_hiv_medications, useNA = "always"))
 ##Direct offspring---------
 # dataset is directoff, created in 04_famtree.R
+# to avoid rerunning those contents again:
+directoff <- inddata1 %>% filter(hr3_relationship == 3)
 
-
-# mom all vars
-tab1_diroff <- c("age_combined", "hr4_sex_f", "cpshbvprox","hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
+#  all vars for DO
+tab1_diroff <- c("age_combined", "hr4_sex_f", "cpshbvprox","maritalrisk","educ_simp_f","hr10_occupation_gr_f","religion_simp_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
               "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f","i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
               "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f","i26_sex_hx_given_money_f")
 # num vars
 numvars_diroff <- c("age_combined") # age, under 5s in hh, total hh members
 # cat vars
-catvars_diroff <- c("cpshbvprox","hr4_sex_f","hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","i4_fever_f",
+catvars_diroff <- c("cpshbvprox","hr4_sex_f","maritalrisk","educ_simp_f","hr10_occupation_gr_f","religion_simp_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","i4_fever_f",
                  "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f", "i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
                  "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f", "i26_sex_hx_given_money_f")
 hover_diroff_tab1 <- CreateTableOne(vars = tab1_diroff, factorVars = catvars_diroff, data=directoff, strata = c("h10_hbv_rdt_f"), addOverall = T)
@@ -145,13 +147,13 @@ median(directoffsum$ndiroff)
 othermember <- inddata1 %>% filter(hhmemcat==0)
 
 #  all vars
-tab1_other <- c("age_combined", "hr4_sex_f","hr3_relationship_f" ,"cpshbvprox","hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
+tab1_other <- c("age_combined", "hr4_sex_f","hr3_relationship_f" ,"cpshbvprox","maritalrisk","educ_simp_f","hr10_occupation_gr_f","religion_simp_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
                  "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f","i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
                  "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f","i26_sex_hx_given_money_f")
 # num vars
 numvars_other <- c("age_combined") # age, under 5s in hh, total hh members
 # cat vars
-catvars_other <- c("cpshbvprox","hr4_sex_f","hr3_relationship_f" ,"hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","i4_fever_f",
+catvars_other <- c("cpshbvprox","hr4_sex_f","hr3_relationship_f" ,"maritalrisk","educ_simp_f","hr10_occupation_gr_f","religion_simp_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","i4_fever_f",
                     "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f", "i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
                     "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f", "i26_sex_hx_given_money_f")
 hover_other_tab1 <- CreateTableOne(vars = tab1_other, factorVars = catvars_other, data=othermember, strata = c("h10_hbv_rdt_f"), addOverall = T)
@@ -174,13 +176,13 @@ quantile(inddata1$age_combined, c(0.25, 0.5,0.75))
 
 # table 1 by exposure and 3-cat hh memb type---------
 #  all vars
-tab1_all <- c("age_combined", "hr4_sex_f","hr3_relationship_f" ,"cpshbvprox","hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f",
+tab1_all <- c("age_combined", "hr4_sex_f","hr3_relationship_f" ,"cpshbvprox","maritalrisk","educ_simp_f","hr10_occupation_gr_f","religion_simp_f",
                 "hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","hivhaart","i4_fever_f", 
                 "i5_pregnancy_f")
 # num vars
 numvars_all <- c("age_combined") # age, under 5s in hh, total hh members
 # cat vars
-catvars_all <- c("cpshbvprox","hr4_sex_f","hr3_relationship_f" ,"hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f",
+catvars_all <- c("cpshbvprox","hr4_sex_f","hr3_relationship_f" ,"maritalrisk","educ_simp_f","hr10_occupation_gr_f","religion_simp_f",
                    "hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","hivhaart","i4_fever_f",
                    "i5_pregnancy_f")
 
@@ -254,14 +256,14 @@ table(inddata1$i1_hbv_positive_f, inddata1$i27a_rdt_result_f)
 hhmemb <- inddata1 %>% filter(hhmemcat<2) #hhmemcat 0=other, 1=diroff, 2=indexmom
 
 # all vars
-tab1_ind <- c("i27a_rdt_result_f","indexmom","hr3_relationship_f","age_combined","agegrp15_2", "hr4_sex_f", "hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
+tab1_ind <- c("i27a_rdt_result_f","indexmom","hr3_relationship_f","age_combined","agegrp15_2", "hr4_sex_f", "maritalrisk","educ_simp_f","hr10_occupation_gr_f","religion_simp_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
               "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f","i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
               "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f","i26_sex_hx_given_money_f")
 
 # num vars
 numvars_ind <- c("age_combined") # age, under 5s in hh, total hh members
 # cat vars
-catvars_ind <- c("i27a_rdt_result_f","indexmom","hr3_relationship_f","agegrp15_2" ,"hr4_sex_f", "hr8_marital_status_f","hr9_school_gr_f","hr10_occupation_gr_f","hr11_religion_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","i4_fever_f",
+catvars_ind <- c("i27a_rdt_result_f","indexmom","hr3_relationship_f","agegrp15_2" ,"hr4_sex_f", "maritalrisk","educ_simp_f","hr10_occupation_gr_f","religion_simp_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","i4_fever_f",
                  "i5_pregnancy_f", "i14_shared_razor_f", "i15_shared_nailclippers_f", "i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
                  "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f", "i26_sex_hx_given_money_f")
 #first step in create table 1

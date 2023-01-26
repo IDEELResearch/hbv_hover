@@ -440,7 +440,7 @@ wealthpca_hoverhh <- wealthpca_hoverhh %>% select(-c(h4_hh_member_wealth_animalc
 # other variables with missing?
 
 wealthpca_hoverhh_nomiss <- wealthpca_hoverhh[complete.cases(wealthpca_hoverhh), ]
-
+view(wealthpca_hoverhh_nomiss)
 # which IDs dropped
 notcompcase <- subset(wealthpca_hoverhh, !(wealthpca_hoverhh$hrhhid %in% wealthpca_hoverhh_nomiss$hrhhid))
 
@@ -629,6 +629,8 @@ inddata1 <- inddata1 %>%
     levels = c(0, 1, 2,3,96),
     labels = c("Never married", "Married or living together", "Divorced", "Widow(er)", "N/A")))
 
+
+
 # years living at this address
 inddata1$i6_time_lived_resid_yrs <- as.numeric(inddata1$i6_time_lived_resid_yrs)
 inddata1$i6_time_lived_resid_months <- as.numeric(inddata1$i6_time_lived_resid_months)
@@ -676,6 +678,26 @@ inddata1 <- inddata1 %>%
     labels = c("No schooling", "Primary school not finished", "Finished primary school",
                "1st/2nd orientation", "Some secondary school","Finished secondary school","3 years of university",
                "5 years of university", "Doctorate","N/A","Other","Don't know","Refused")))
+# simplified eduation
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(educ_simp = case_when(
+    age_combined < 5 ~ 0, # below school age
+    hr9_school_gr == 0 ~ 1, # no schooling
+    hr9_school_gr >0 & hr9_school_gr < 3 ~ 2, # any primary
+    hr9_school_gr >= 3 & hr9_school_gr <=5 ~ 3, #1er/2eme cycle d'orientation - secondary
+    hr9_school_gr > 5 & hr9_school_gr <= 8 ~ 4, # any university/doctorat
+    hr9_school_gr >= 96 ~ 99, # N/A, other, DK, refused
+    is.na(hr9_school_gr) ~99,
+    TRUE ~ NA_real_))
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(educ_simp_f=factor(
+    inddata1$educ_simp, 
+    levels = c(0, 1, 2,3,4,99),
+    labels = c("Below school age","No schooling", "Any primary", "Any secondary",
+               "Any university", "Other")))
+#
+table(inddata1$educ_simp_f, inddata1$hr9_school_gr,useNA = "always")
+
 # occupation---------------------------------
 inddata1 <- inddata1 %>% 
   dplyr::mutate(hr10_occupation_gr = case_when(# divide salaried, self-employed, student
@@ -697,17 +719,15 @@ inddata1 <- inddata1 %>%
     hr10_occupation == 15 ~ 2, # small business - self
     hr10_occupation == 16 ~ 4, # student
     hr10_occupation == 96 ~ NA_real_, # set as missing
-    hr10_occupation == 97 ~ 97, # other
-    hr10_occupation == 98 ~ 98, # don't know/refused
-    hr10_occupation == 99 ~ 98, # don't know/refused
+    hr10_occupation >= 97 ~ 97, # other97/DK 98/refused 99
     TRUE ~ NA_real_))
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(hr10_occupation_gr_f=factor(
     inddata1$hr10_occupation_gr, 
-    levels = c(0, 1, 2,3,4,97,98),
+    levels = c(0, 1, 2,3,4,97),
     labels = c("No occupation", "Salaried", "Self-employed",
-               "Works for someone else", "Student","Other","Don't know/refused")))
+               "Works for someone else", "Student","Other")))
 table(inddata1$hr10_occupation_gr_f, inddata1$hr10_occupation, useNA = "always")
 # RELIGION---------------------------
 # look at religion by household 
@@ -722,7 +742,21 @@ inddata1 <- inddata1 %>%
     labels = c("No religion", "Traditional", "Catholic",
                "Evangelical", "Revivalist","Adventist","Protestant", "Muslim","Kimbanguism",
                "Salvation Army", "Other","Don't know","Refused")))
+table(inddata1$age_combined,inddata1$hr11_religion)
 
+# simple religion - any vs none
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(religion_simp = case_when(# any vs none
+    hr11_religion == 0 ~ 0, # no religion
+    hr11_religion >0  ~ 1, # any religion (dont know /refused are both <2 years old)
+    TRUE ~ NA_real_))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(religion_simp_f=factor(
+    inddata1$religion_simp, 
+    levels = c(0, 1),
+    labels = c("No religion", "Any religion")))
+    
 # exposures/medical--------------
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i2_past_hbv_dx_f=factor(
