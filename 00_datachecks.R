@@ -64,12 +64,15 @@ inddata1 %>% filter(hrhhid == "HRK-2002") %>% summarise(hr3_relationship_f,age_c
 
 inddata1 %>% filter(hrhhid == "HRB-1029") %>% summarise(hdov,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f,agediff)
 
+inddata1 %>% filter(hrhhid == "HRB-1052") %>% summarise(hdov,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, i3_hiv_pos_test,hivhaart)
+
 
 ## grandchildren
 inddata1 %>% filter(hr3_relationship == 5) %>% summarise(min(age_combined), max(age_combined))
 
-
+library(tidyverse)
 inddata1 %>% filter(hrhhid == "HRK2022") %>% summarise(hdov,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, agediff)
+inddata1 %>% filter(hrhhid == "HRB-1034") %>% summarise(hdov,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, agediff, i23_sex_hx_part_past3mo, i22_sex_hx_age_1st)
 
 # complete list of prior study women were in 
 # check which IDs not in

@@ -597,6 +597,28 @@ inddata1 <- inddata1 %>%
     labels = c("Sans parenté", "Mère index","Femme ou mari", "Fils/fille", "Gendre/belle fille", "Petit-fils/fille","Père/mère","Beaux-parents","Frère/soeur","Neveu/nièce","Neveu/nièce par alliance","Enfant adopté/ garde/de la femme/du mari","Tante/oncle","Grandpère/mère","Autre","Ne sait pas", "Refusé")))    
     #labels = c("Unrelated", "Index mother","Spouse","Son/daughter","Step-son/daughter","Grandson/daughter","Father/mother","In-laws","Brother/sister","Nephew/niece","Nephew/niece by marriage","Adopted/in custody","Aunt/uncle","Grandmother/father","Other","Don't know", "Refused")))
 
+#relationship simple
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr3relat_simp = case_when(
+    hr3_relationship == 0 ~ 6, #other
+    hr3_relationship == 1 ~ 1, #index mother
+    hr3_relationship == 2 ~ 2, # spouse
+    hr3_relationship == 3 ~ 3, # child
+    hr3_relationship == 8 ~ 4, # brother/sister
+    hr3_relationship == 9 ~ 5, # niece/nephew
+    hr3_relationship == 10 ~ 5, # niece/nephew par alliance - collapse
+    hr3_relationship >=4 & hr3_relationship <=7 ~ 6, # collapsing categories - other
+    hr3_relationship >=11 ~ 6, # collapsing categories - other
+    TRUE ~ NA_real_))
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hr3relat_simp_f=factor(
+    inddata1$hr3relat_simp, 
+    levels = c(1,2,3,4,5,6),
+    labels = c("Index mother","Spouse","Son/daughter","Brother/sister","Nephew/niece","Other")))
+
+
+
 inddata1 <- inddata1 %>% 
   dplyr::mutate(hr4_sex_fr=factor(
     inddata1$hr4_sex, 
@@ -1136,6 +1158,13 @@ ind_con <- inddata1 %>% select(-c(hrname_last,hrname_post,hrname_first,hxcoord, 
 # save to use in 09_connaissance.R file
 saveRDS(ind_con, file = "ind_con.rds")
 # saveRDS(ind_con_2, file = "ind_con_2.rds")
+
+# number of household members expsed to HBV in household
+anyhbv <- hhdata2 %>% filter(totalpositive >0) 
+exphhmem <- inddata1 %>% filter(hrhhid %in% anyhbv$hrhhid)
+ 
+table(exphhmem$i27a_rdt_result_f, exphhmem$h10_hbv_rdt)
+
 
 # Patrick data issues-----------------------------
 # hh without index mother

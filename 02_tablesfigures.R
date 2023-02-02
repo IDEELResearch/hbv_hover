@@ -96,11 +96,18 @@ moms %>% group_by(hr3_relationship) %>% filter(!is.na(i6_comb_yr) & i6_comb_yr!=
 # median age of moms
 moms %>% group_by(h10_hbv_rdt) %>% summarise(quantile(age_combined, probs=c(0.25, 0.5,0.75)))
 quantile(moms$age_combined, c(0.25, 0.75))
+#median age everyone
+inddata1 %>% group_by(h10_hbv_rdt,hhmemcat_f ) %>% summarise(quantile(age_combined, probs=c(0.25, 0.5,0.75)))
+inddata1 %>%  summarise(quantile(age_combined, probs=c(0.25, 0.5,0.75)))
 
 # self-reported HIV infection
 selfrephiv <- moms %>% filter(i3_hiv_pos_test == 1)
 table(selfrephiv$i27a_rdt_result_f, selfrephiv$acq_ind, useNA = "always")
 table(selfrephiv$i3a_hiv_treatment_f, selfrephiv$acq_ind, useNA = "always")
+table(selfrephiv$hivhaart, selfrephiv$acq_ind, useNA = "always")
+# who is not taking HIV
+selfrephiv %>% filter(i3a_hiv_treatment==0) %>% summarise(i27a_rdt_result_f,acq_ind, hrhhid )
+
 
 addmargins(table(moms$acq_ind, moms$i3_hiv_pos_test_f, moms$i27a_rdt_result_f,useNA = "always"))
 addmargins(table(moms$acq_ind, moms$i3a_hiv_treatment_f, useNA = "always"))
@@ -176,13 +183,13 @@ quantile(inddata1$age_combined, c(0.25, 0.5,0.75))
 
 # table 1 by exposure and 3-cat hh memb type---------
 #  all vars
-tab1_all <- c("age_combined", "hr4_sex_f","hr3_relationship_f" ,"cpshbvprox","maritalrisk","educ_simp_f","hr10_occupation_gr_f","religion_simp_f",
+tab1_all <- c("age_combined", "hr4_sex_f","hr3relat_simp_f" ,"cpshbvprox","maritalrisk","educ_simp_f","hr10_occupation_gr_f","religion_simp_f",
                 "hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","hivhaart","i4_fever_f", 
                 "i5_pregnancy_f")
 # num vars
 numvars_all <- c("age_combined") # age, under 5s in hh, total hh members
 # cat vars
-catvars_all <- c("cpshbvprox","hr4_sex_f","hr3_relationship_f" ,"maritalrisk","educ_simp_f","hr10_occupation_gr_f","religion_simp_f",
+catvars_all <- c("cpshbvprox","hr4_sex_f","hr3relat_simp_f" ,"maritalrisk","educ_simp_f","hr10_occupation_gr_f","religion_simp_f",
                    "hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f", "i3_hiv_pos_test_f","i3a_hiv_treatment_f","hivhaart","i4_fever_f",
                    "i5_pregnancy_f")
 
@@ -248,6 +255,8 @@ mean(hhdata2$hhsize)
 # hiv among the sag+
 table(inddata1$i3_hiv_pos_test_f, inddata1$i27a_rdt_result_f)
 table(inddata1$i27a_rdt_result_f, inddata1$i3a_hiv_treatment_f, inddata1$i3_hiv_pos_test_f)
+table(moms$i27a_rdt_result_f, moms$i3_hiv_pos_test_f, moms$i3a_hiv_treatment_f)
+
 
 #prior HBV test
 table(inddata1$i1_hbv_positive_f, inddata1$i27a_rdt_result_f)
