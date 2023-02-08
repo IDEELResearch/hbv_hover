@@ -107,6 +107,9 @@ library(readxl)
 priorstudies <- read_excel("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/Patrick data updates/HOVER etudes precedentes.xlsx", sheet = "forimport")
 View(priorstudies)   
 
+# inddata1 <- inddata1 %>% select(-c(acq.x,acq.y, acq_ind.x, acq_ind.y,zone.x,zone.y,...7,astmh_indic.x,astmh_indic.y,avert_indic.x, avert_indic.y))
+
+
 hhdata1 <- left_join(hhdata1, priorstudies, by = c("hrhhid"))
 inddata1 <- left_join(inddata1, priorstudies, by = c("hrhhid"))
 
@@ -1018,6 +1021,20 @@ inddata1 <- inddata1 %>%
 
 serostatchange <- perprotexpsure %>% filter(h10_hbv_rdt != perprot_h10) %>% select("hrhhid", "h10_hbv_rdt","perprot_h10")
 table(serostatchange$hrhhid)
+serostatchange$serostatchange <- 1 # any change
+serostatchange$serochangedir <- ifelse(serostatchange$h10_hbv_rdt==0,"incident","recovered")
+
+
+# add this identifier back onto main datasets for households with serostatus change serostatchange 
+inddata1 <- merge(inddata1, serostatchange[,c("hrhhid","serostatchange","serochangedir")],by = "hrhhid", all.x = T )
+inddata1$serostatchange <- ifelse(is.na(inddata1$serostatchange),0,inddata1$serostatchange)
+inddata1$serochangedir <- ifelse(is.na(inddata1$serochangedir),"no change",inddata1$serochangedir)
+table(inddata1$serochangedir)
+
+hhdata1 <- merge(hhdata1, serostatchange[,c("hrhhid","serostatchange","serochangedir")],by = "hrhhid", all.x = T )
+hhdata1$serostatchange <- ifelse(is.na(hhdata1$serostatchange),0,hhdata1$serostatchange)
+hhdata1$serochangedir <- ifelse(is.na(hhdata1$serochangedir),"no change",hhdata1$serochangedir)
+table(hhdata1$serochangedir)
 
 # household has another household member positive
 inddata1  <- inddata1 %>% 

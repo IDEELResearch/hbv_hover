@@ -236,9 +236,20 @@ hhdata1 %>% filter(allkidsvacc==0 & h10_hbv_rdt==1) %>% summarise(hrhhid)
 addmargins(table(hhdata1$oldestnotvacc, hhdata1$allkidsvacc))
 addmargins(table(hhdata1$oldestnotvacc, hhdata1$allkidsvacc,hhdata1$h10_hbv_rdt_f ))
 
+# households with husbands
+maris <- inddata1 %>% filter(hr3_relationship == 2) %>% select("hrhhid", "pid","hdov","h10_hbv_rdt","hr3_relationship_f", "i3_hiv_pos_test_f","acq_ind","avert_indic","astmh_indic","i27a_rdt_result","i27a_rdt_result_f", 
+                                                               "age_combined","cpshbvprox","serostatchange","serochangedir","i23_sex_hx_part_past3mo","i23a_sex_hx_past3mo_num","i24_sex_hx_part_past1yr","i24a_sex_hx_past1yr_num")
 
+inddata1$i24_sex_hx_part_past1yr
+  
+table(maris$i3_hiv_pos_test_f)
+table(maris$avert_indic,maris$h10_hbv_rdt, useNA = "always")
+table(maris$serochangedir, maris$i27a_rdt_result_f)
+table(maris$i3_hiv_pos_test_f,maris$i27a_rdt_result_f )
+table(maris$i23_sex_hx_part_past3mo)
 
-
+# verify only one in each hh
+maris %>% group_by(hrhhid) %>% count() %>% print(n=Inf)
 
 
 
