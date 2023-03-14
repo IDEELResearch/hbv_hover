@@ -108,6 +108,7 @@ priorstudies <- read_excel("/Users/camillem/OneDrive - University of North Carol
 View(priorstudies)   
 
 # inddata1 <- inddata1 %>% select(-c(acq.x,acq.y, acq_ind.x, acq_ind.y,zone.x,zone.y,...7,astmh_indic.x,astmh_indic.y,avert_indic.x, avert_indic.y))
+# inddata1 <- inddata1 %>% select(-c(acq, acq_ind,zone,astmh_indic,avert_indic))
 
 
 hhdata1 <- left_join(hhdata1, priorstudies, by = c("hrhhid"))
@@ -522,6 +523,7 @@ table(hhdata2$wealth_R, hhdata2$maternity, useNA = "always")
 inddata1 <- left_join(inddata1, hhdata2[,c("hrhhid","wealth_R")],  by = "hrhhid")
 table(inddata1$wealth_R)
 
+inddata1$wealth_R <- as.factor(inddata1$wealth_R)
 ## sharing nail clippers---------------------------
 table(hhdata2$h8_nail_cutting)
 
@@ -1082,27 +1084,34 @@ table(moms$i27a_rdt_result_f, moms$i23a_sex_hx_past3mo_num)
 table(moms$i27a_rdt_result_f, moms$i24_sex_hx_part_past1yr)
 table(moms$i27a_rdt_result_f, moms$i24a_sex_hx_past1yr_num)
 
+table(moms$i23_sex_hx_part_past3mo, useNA = "always")
+
 # number of partners in last 3 months
 inddata1$i23_sex_hx_part_past3mo <- as.numeric(inddata1$i23_sex_hx_part_past3mo)
+class(inddata1$i23_sex_hx_part_past3mo)
 inddata1 = inddata1 %>%
   mutate(part3mo_cat = case_when(
-    i23_sex_hx_part_past3mo > 1 & i23_sex_hx_part_past3mo < 95 ~ 1, 
-    i23_sex_hx_part_past3mo >= 95  ~ 2,
-    i23_sex_hx_part_past3mo <= 1 ~ 0,
+    i23_sex_hx_part_past3mo > 1 & i23_sex_hx_part_past3mo < 99 ~ 1, #more than 1 sexual partner or don't know
+    i23_sex_hx_part_past3mo == 99  ~ 2, # refused = own category
+    i23_sex_hx_part_past3mo <= 1 ~ 0, # make one or 0 sexual partners the reference group
     TRUE ~ NA_real_
   ) %>% as.factor()
   )
+table(inddata1$part3mo_cat, useNA = "always")
 
 # new partners in last 3 months
 inddata1$i23a_sex_hx_past3mo_num <- as.numeric(inddata1$i23a_sex_hx_past3mo_num)
 inddata1 = inddata1 %>%
   mutate(partnew3mo_cat = case_when(
-    i23a_sex_hx_past3mo_num > 0 & i23a_sex_hx_past3mo_num < 95 ~ 1, 
+    i23a_sex_hx_past3mo_num > 0 & i23a_sex_hx_past3mo_num < 95 ~ 1, # 
     i23a_sex_hx_past3mo_num >= 95  ~ 2,
     i23a_sex_hx_past3mo_num <= 0 ~ 0,
     TRUE ~ NA_real_
   ) %>% as.factor()
   )
+table(moms$partnew3mo_cat, useNA = "always")
+table(moms$i23a_sex_hx_past3mo_num, useNA = "always")
+table(moms$wealth_R, moms$i27a_rdt_result_f, useNA = "always")
 
 #  partners in last year
 inddata1$i24_sex_hx_part_past1yr <- as.numeric(inddata1$i24_sex_hx_part_past1yr)

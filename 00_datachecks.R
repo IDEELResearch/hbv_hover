@@ -96,6 +96,7 @@ nodiroff <- inddata1 %>% filter(!(hrhhid %in% diroff3$hrhhid))
 
 nodiroff %>% filter(hrhhid == "HRK2074") %>% summarise(hdov,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f,agediff)
 inddata1 %>% filter(hrhhid == "HRB -1012") %>% summarise(hdov,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f,agediff)
+inddata1 %>% filter(hrhhid == "HRB-1042") %>% summarise(hrname_last, hrname_post, hrname_first, age_combined)
 
 
 

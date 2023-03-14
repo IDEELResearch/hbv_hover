@@ -62,7 +62,7 @@ hhdata1 %>% group_by(h10_hbv_rdt_f) %>% summarise(mean(indexmotherage), sd(index
 hhdata1 %>% summarise(mean(indexmotherage), sd(indexmotherage))
 
 # moms dataset if needed
-## moms <- inddata1 %>% filter(hr3_relationship == 1) 
+moms <- inddata1 %>% filter(hr3_relationship == 1) 
 
 # mom all vars
 tab1_mom <- c("indexmotherage", "maritalrisk","educ_simp_f","hr10_occupation_gr_f","religion_simp_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
@@ -365,7 +365,7 @@ library(ggsn)
 library(ggspatial)
 
 # merge gps onto individual survey
-inddata1 <- merge(inddata1, hhdata1[,c("hrhhid","hycoord_edit","hxcoord_edit")], by = "hrhhid")
+inddata1 <- merge(inddata1, hhdata2[,c("hrhhid","hycoord_edit","hxcoord_edit")], by = "hrhhid")
 # make spatial object
 indgps_2 = st_as_sf(inddata1[!is.na(inddata1$hxcoord_edit) &!is.na(inddata1$hycoord_edit),], coords = c("hycoord_edit", "hxcoord_edit"), crs = 4326)  
 # order by hbsag result
@@ -374,19 +374,19 @@ indgps_2 <- indgps_2[order(indgps_2$i27a_rdt_result_f),]
 indgps_2_jitt<- st_jitter(indgps_2,  factor = 0.005)
 
 # surrounding polygons
-drc_healthzone_correctkinshasa = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/drc_healthzone_adm2_correctkinshasa/RDC_Zone_de_sante_09092019.shp", stringsAsFactors = F) %>% st_transform(4326)
+drc_healthzone_correctkinshasa = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/drc_healthzone_adm2_correctkinshasa/RDC_Zone_de_sante_09092019.shp", stringsAsFactors = FALSE) %>% st_transform(4326)
 # keep only Kin prov
 drc_healthzone_kinshasa <- subset(drc_healthzone_correctkinshasa, PROVINCE == "Kinshasa")
 
 # brazzaville polygon
-congo_br = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/congo_adm0/cog_admbnda_adm0_gaul_20190617.shp", stringsAsFactors = F) %>% st_transform(4326)
+congo_br = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/congo_adm0/cog_admbnda_adm0_gaul_20190617.shp", stringsAsFactors = FALSE) %>% st_transform(4326)
 # rename brazza labels
 congo_br$ADM0_FR <- as.character(congo_br$ADM0_FR) 
 congo_br$ADM0_FR[congo_br$ADM0_FR == "Congo (le)"] <- "Congo"
 congo_br$ADM0_FR[congo_br$ADM0_FR == "Congo"] <- "Brazzaville"
 
 # health areas
-drc_healtharea = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/rdc_aires-de-sante/RDC_Aires de sant‚.shp", stringsAsFactors = F) %>% st_transform(4326)
+drc_healtharea = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/rdc_aires-de-sante/RDC_Aires de sant‚.shp", stringsAsFactors = FALSE) %>% st_transform(4326)
 # restrict to Kin
 drc_healtharea_Kin <- subset(drc_healtharea, Province == "Kinshasa")
 
@@ -409,12 +409,13 @@ st_crs(admin0) # view CRS
 DRC <- admin0 %>% filter(Country=='Democratic Republic of the Congo') # DRC
 
 ## Africa with DRC highlighted and Kinshasa in red box
-africa <- st_read("./afr_simp/afr_g2014_2013_0.shp", stringsAsFactors = F) %>% st_transform(4326)
-A <- ggplot(africa) +
+africa <- st_read("./afr_simp/afr_g2014_2013_0.shp", stringsAsFactors = FALSE) %>% st_transform(4326)
+#A <- 
+ggplot(africa) +
     geom_sf(alpha=0.75, size = 0.1)+
     geom_sf(data=DRC, fill = "gray75", size=0.2)+
     geom_rect(aes(xmin = 15.2, xmax = 15.6, ymin = -4.48, ymax = -4.07),
-              fill = "transparent", color = "red", size = 1.5)+
+              fill = "transparent", color = "red", size = 2.5)+
     theme(panel.background = element_rect(fill = "white"),
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
@@ -423,7 +424,9 @@ A <- ggplot(africa) +
           axis.text = element_blank(),
           axis.ticks = element_blank(),
           legend.title = element_blank())
-  
+
+ ggsave('./plots/afr_drc.png', width=9, height=9)
+
 
 ## Base map----------
 base <- ggplot(drc_healtharea_Kin) +
@@ -459,8 +462,8 @@ hover_gps_full <- hover_gps_full %>%
   ggplot(drc_healtharea_Kin) +
   geom_sf(alpha=0.75, size = 0.1)+
   geom_sf(data=congo_br, fill = "gray75", size=0.2,aes(label = ADM0_FR))+
-  geom_sf(data=hover_gps_full, aes(fill=h10_hbv_rdt_f, color=h10_hbv_rdt_f), size=0.5)+ #or 3 for standalone
-  geom_sf(data=matgps, color = "gray39", fill="cornsilk2", shape = 21, aes(label = centers))+
+  geom_sf(data=hover_gps_full, aes(fill=h10_hbv_rdt_f, color=h10_hbv_rdt_f), size=3)+ #or 3 for standalone
+  geom_sf(data=matgps, color = "gray39", fill="#fee090", shape = 23, size=5, aes(label = centers))+
   #scale_fill_manual(values = c("#4D4D4D","#B2182B",'ghostwhite'))+
   scale_color_manual(values = c("#4D4D4D","#B2182B",'ghostwhite'))+
   geom_sf_text(data=congo_br, aes(label = ADM0_FR), size=1, hjust = 2, vjust = 44)+
@@ -480,7 +483,7 @@ hover_gps_full <- hover_gps_full %>%
     guides(color = guide_legend(override.aes = list(size = 2)))
     #annotation_scale(location = "br", plot_unit = "mi")
   
-# ggsave('./plots/hh.png', width=9, height=9)
+ ggsave('./plots/hh2.png', width=9, height=9)
 
 ## Map: Hbsag results--------------------
 C <- 

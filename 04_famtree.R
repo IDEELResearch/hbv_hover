@@ -113,7 +113,7 @@ agebypos <- diroff4 %>% group_by(h10_hbv_rdt) %>% filter(hbvposdiroff >0) %>%  s
 
 directoff <- left_join(diroff4[, c("pid","probvacc","defnotvacc")], inddata1, by = "pid")
 mismatch <- directoff %>% filter(!(pid %in% diroff$pid))
-directoff$cpshbvprox_rev <- 2 - directoff$cpshbvprox
+directoff$cpshbvprox_rev <- 2 - directoff$cpshbvprox 
 
 # to avoid rerunning all of the above:
 directoff <- inddata1 %>% filter(hr3_relationship == 3)
@@ -252,8 +252,135 @@ table(maris$i23_sex_hx_part_past3mo)
 maris %>% group_by(hrhhid) %>% count() %>% print(n=Inf)
 
 
+#Post-CROI--------------
+# post-discussion with Marcel Tues Feb 21 - what is main story
+addmargins(table(directoff$cpshbvprox)) # 0 = no vacc, 1=poss, 2=prob
+addmargins(table(directoff$h10_hbv_rdt_f, directoff$cpshbvprox)) # 0 = no vacc, 1=poss, 2=prob
+addmargins(table(directoff$h10_hbv_rdt_f, directoff$paststudymutexcl)) # 0 = no vacc, 1=poss, 2=prob
+
+addmargins(table(hhdata1$h10_hbv_rdt, hhdata1$paststudymutexcl)) # 0 = no vacc, 1=poss, 2=prob
+
+# create indicator for whether direct offspring was the pregnancy of a previous study
+directoff %>% filter(paststudymutexcl == "newscreening" & age_combined <1) %>% summarise(age_combined, hdov, hrhhid)
+
+table(inddata1$age_combined)
+
+test <- directoff %>% 
+  mutate(pregpaststudy = case_when(
+    age_combined < 7 & paststudymutexcl == "acq" ~ 1, # check with marcel on these ages
+    age_combined >1.5 & age_combined <5 & paststudymutexcl == "astmh only" ~ 1, #check with peyton on these numbers
+    age_combined >1.5 & age_combined <5 & paststudymutexcl == "avert/astmh" ~ 1, #check with peyton on these numbers
+    age_combined < 1 & paststudymutexcl == "newscreening" ~ 1, # check with patrick on these dates and ages, only 2 
+    TRUE ~ 0)
+    %>% as.numeric())
+
+table(test$pregpaststudy, useNA = "always")
+
+test$cpshbvprox
+test$hbvpmtct <- NA_character_
+test <- test %>% 
+  mutate(hbvpmtct = case_when(
+    cpshbvprox == 0 ~ "No HBV intervention",
+    pregpaststudy == 1 & paststudymutexcl == "acq" ~ "TDF+penta",
+    pregpaststudy == 0 & paststudymutexcl == "acq" ~ "Penta & possibly TDF", #pregnancies prior to ACQ
+   
+    pregpaststudy == 1 & paststudymutexcl == "astmh only" & h10_hbv_rdt==0 & hrhhid=="HRB-1029" ~ "BD+penta", # HRB-1029 was group C in Astmh (BD arm)
+    pregpaststudy == 1 & paststudymutexcl == "astmh only" & h10_hbv_rdt==0 & hrhhid !="HRB-1029" ~ "Penta or BD+penta", # need to connect ACQ IDs to HOVER IDs to determine randomization group...
+    # need to confirm HRB-1042 group (another kid turned pos)
+    pregpaststudy == 0 & paststudymutexcl == "astmh only" & h10_hbv_rdt==0 ~ "Penta only",
+    pregpaststudy == 1 & paststudymutexcl == "astmh only" & h10_hbv_rdt==1 ~ "BD+penta",
+    pregpaststudy == 0 & paststudymutexcl == "astmh only" & h10_hbv_rdt==1 ~ "Penta only",
+    
+    pregpaststudy == 1 & paststudymutexcl == "avert/astmh"  ~ "BD+penta",
+    pregpaststudy == 0 & paststudymutexcl == "avert/astmh"  ~ "Penta only",
+    
+    pregpaststudy == 1 & paststudymutexcl == "newscreening"  ~ "BD+penta",
+    pregpaststudy == 0 & paststudymutexcl == "newscreening"  ~ "Penta only",
+    
+    TRUE ~ NA_character_)
+  %>% as.character()
+  )
+addmargins(table(test$hbvpmtct, test$i27a_rdt_result_f, test$h10_hbv_rdt_f))
+
+test %>% filter(h10_hbv_rdt==0 &i27a_rdt_result_f=="HBsAg+") %>% summarise(hrhhid,hbvpmtct )
+
+library(tidyverse)
+olderinhover <- inddata1 %>% filter(age_combined > 45)
+addmargins(table(olderinhover$hr4_sex_f))
+
+# Jim Moody talk - network analysis--------------------------------------------------------
+
+# create edge list then get adjacency matrix
+hovernet <- inddata1 %>% select("hrhhid","pid","maternity","h10_hbv_rdt","hr3_relationship","hr4_sex") #"i27a_rdt_result_f","age_combined", "hr4_sex_f","hdov",
+hovernet$hhid <-  str_sub(hovernet$hrhhid,-4,-1)
+hovernet <- mutate(hovernet, hhindex = as.numeric(as.factor(hhid)))
+hovernet <- hovernet[order(hovernet$hhid),] 
 
 
+#hovernet$ego <- 1 # every household has index mother, this should be the ego
+# weight sexual and child relationships
+hovernet <- hovernet %>% 
+  mutate(value = case_when(
+    hr3_relationship == 2 ~ 2, # husband - sexual relationship with ego
+    hr3_relationship == 3 ~ 3, # direct offspring - vertical with ego
+    hr3_relationship == 6 & hr4_sex == 1 ~ 3, # mother of index mother - vertical with ego
+    hr3_relationship == 1 ~ 0, # ego - ego doesn't need a value
+    TRUE ~ 1)
+    %>% as.numeric())
+# 
+table(hovernet$value)
+# remove index mom- index mom 
+hover_edge <- hovernet %>% filter(hr3_relationship != 1)
+
+#hovernet <- tibble::rowid_to_column(hovernet, "ind_id")
+hover_edge$ind_id <- seq.int(nrow(hover_edge)) +max(hover_edge$hhindex)
+
+
+# export
+write_csv(hovernet,"hovernet.csv")
+
+# subset to required minimal columns for edge list - node1, node2, value
+hovernet_min <- hover_edge %>% select("hhindex","ind_id","value")
+write_csv(hovernet_min,"hovernet_min.csv")
+
+write.table(hovernet_min, "hovernet_min.txt", sep=" ", row.names=FALSE, quote=FALSE)
+
+# reorder the columns - need source (hh or index case) and target (other hh member) first and second
+hovernet <- hovernet[,c('hrhhid','hr3_relationship','maternity','h10_hbv_rdt')]
+# rename the columns
+colnames(hovernet) <- c('source','target','maternity','h10_hbv_rdt')
+g <- graph.data.frame(hovernet, directed = T, vertices = campattr) # what is campattr
+
+# igraph--------------
+library(igraph)
+# hovernet_min and hover_edge
+
+hover_edge_m <- as.matrix(hover_edge)
+rownames(hovernet) <- colnames(hovernet)
+g1 <- graph.adjacency(hovernet, weighted = T, mode = 'directed')
+
+hover_edge <- hover_edge %>% relocate(hhindex, ind_id)
+
+nodes_mere <- as.data.frame(hover_edge$hhindex) %>% distinct() %>% rename(nodeid = `hover_edge$hhindex`)
+nodes_mem <- as.data.frame(hover_edge$ind_id) %>% distinct() %>% rename(nodeid = `hover_edge$ind_id`)
+nodes <- rbind(nodes_mere,nodes_mem)
+
+net <- graph_from_data_frame(d=hover_edge, vertices=nodes, directed=T) 
+
+class(net)
+plot(net,edge.arrow.size=.1, vertex.size = 2, vertex.label=NA) #
+
+# start with subset of cases
+hvr_net_sub <- hover_edge %>% filter(hhindex < 11)
+nodes_mere_sub <- as.data.frame(hvr_net_sub$hhindex) %>% distinct() %>% rename(nodeid = `hvr_net_sub$hhindex`)
+nodes_mem_sub <- as.data.frame(hvr_net_sub$ind_id) %>% distinct() %>% rename(nodeid = `hvr_net_sub$ind_id`)
+nodes_sub <- rbind(nodes_mere_sub,nodes_mem_sub)
+
+
+net_sub <- graph_from_data_frame(d=hvr_net_sub, vertices=nodes_sub, directed=T) 
+
+class(net)
+plot(net_sub,edge.arrow.size=.1, vertex.size = 5, vertex.label=NA) #
 
 
 
