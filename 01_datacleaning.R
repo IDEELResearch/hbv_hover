@@ -570,7 +570,6 @@ hover_gps_full <- hover_gps
 hover_gps <- subset(hover_gps, select=c( "h10_hbv_rdt_f" , "hrhhid","geometry","maternity","cpn_maternity")) #maternity = indicator for study nurse; cpn_maternity=where their hbsag test was actually done (includes ACQ)
 
 #Clean individual survey variables------------------------
-
 inddata1 <- inddata1 %>% 
   dplyr::mutate(h10_hbv_rdt_f=factor(
     inddata1$h10_hbv_rdt, 
@@ -630,6 +629,18 @@ inddata1 <- inddata1 %>%
     inddata1$hr3relat_simp, 
     levels = c(1,2,3,4,5,6),
     labels = c("Index mother","Spouse","Son/daughter","Brother/sister","Nephew/niece","Other")))
+
+# direct offspring enrolled
+countsbyhh <- inddata1 %>% group_by(hrhhid) %>% summarise(numdiroff = sum(hr3_relationship==3), malepartner = sum(hr3_relationship==2))
+addmargins(table(countsbyhh$numdiroff))
+addmargins(table(countsbyhh$malepartner))
+
+inddata1 <- left_join(inddata1, countsbyhh[, c("hrhhid", "numdiroff", "malepartner")], by = "hrhhid")
+table(inddata1$numdiroff)
+table(inddata1$malepartner)
+hhdata1 <- left_join(hhdata1, countsbyhh[, c("hrhhid", "numdiroff", "malepartner")], by = "hrhhid")
+addmargins(table(hhdata1$numdiroff))
+table(hhdata1$malepartner)
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(hr4_sex_fr=factor(
@@ -1186,4 +1197,20 @@ inddata1 <- inddata1 %>%
     TRUE ~ NA_real_
   ) %>% as.numeric())
 table(inddata1$agediff_grands) #n=3 with grandchildren, might as well verify all
+
+# save clean and remove those added during fogarty---------------------------
+inddata1$pid <- paste0(inddata1$hrhhid,"-",inddata1$participant_code)
+ind_clean <- inddata1
+
+test <- subset(inddata1, (inddata1$pid %in% ind1006$pid2))
+notmatching <- subset(ind1006, !(ind1006$pid2 %in% test$pid))
+
+ind1006 <- ind1006 %>% mutate(pid2 = case_when(
+  hrhhid == "HRB-1082" ~ paste0(ind1006$hrhhid,"-0",ind1006$redcap_repeat_instance),
+  TRUE ~ pid
+))
+
+inddata1 <- subset(inddata1, (inddata1$pid %in% ind1006$pid2))
+notmatching <- subset(ind_clean, !(ind_clean$pid %in% test$pid))
+# proceed with 1005
 
