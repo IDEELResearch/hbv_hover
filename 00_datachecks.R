@@ -2,6 +2,7 @@
 library(tidyverse)
 
 inddata1 <- readRDS("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/hoverdataanalysis/inddata.RDS")
+ind1006 <- inddata1 # on Mar 18 for redownloading hover data
 # english version
 hhdata2 <- hhdata2 %>% 
   dplyr::mutate(recruited_f=factor(
@@ -96,7 +97,62 @@ nodiroff <- inddata1 %>% filter(!(hrhhid %in% diroff3$hrhhid))
 
 nodiroff %>% filter(hrhhid == "HRK2074") %>% summarise(hdov,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f,agediff)
 inddata1 %>% filter(hrhhid == "HRB -1012") %>% summarise(hdov,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f,agediff)
-inddata1 %>% filter(hrhhid == "HRB-1042") %>% summarise(hrname_last, hrname_post, hrname_first, age_combined)
+inddata1 %>% filter(hrhhid == "HRK2050") %>% summarise(hrname_last, hrname_post, hrname_first, age_combined)
+
+inddata1 %>% filter(pid == "HRB -1010-01") %>% summarise(age_combined,hr8_marital_status,i22_sex_hx_age_1st,i23_sex_hx_part_past3mo,i23a_sex_hx_past3mo_num,i24_sex_hx_part_past1yr,i24a_sex_hx_past1yr_num, i26_sex_hx_given_money_f,i25_sex_hx_receive_money_f)
+
+#everyone who refused to answer sexual history
+inddata1 %>% filter(debutsex_cat == "2") %>% summarise(pid, hdov, hr3_relationship_f, age_combined,hr4_sex_f)
+# only index mothers
+inddata1 %>% filter(debutsex_cat == "2"&hr3_relationship==1 ) %>% summarise(pid, hdov, age_combined,hrname_last, hrname_post, hrname_first,i22_sex_hx_age_1st,i23_sex_hx_part_past3mo,i23a_sex_hx_past3mo_num,i24_sex_hx_part_past1yr,i24a_sex_hx_past1yr_num)
+inddata1 %>% filter(debutsex_cat == "2"&hr3_relationship==1 ) %>% summarise(pid,i26_sex_hx_given_money_f,i25_sex_hx_receive_money_f)
+
+inddata1 %>% filter(i25_sex_hx_receive_money_f != "Non"&hr3_relationship==1 ) %>% count(maternity,h10_hbv_rdt_f, i27a_rdt_result_f)
+inddata1 %>% filter(i25_sex_hx_receive_money_f != "Non"&hr3_relationship==1 ) %>% summarise(pid, hdov, age_combined,hr8_marital_status,i22_sex_hx_age_1st,i23_sex_hx_part_past3mo,i23a_sex_hx_past3mo_num,i24_sex_hx_part_past1yr,i24a_sex_hx_past1yr_num)
+
+inddata1$hr8_marital_status
+inddata1 %>% filter(hr3_relationship==3 &i27a_rdt_result_f=="HBsAg+" &age_combined>14) %>% summarise(pid, hdov, age_combined,hr4_sex_f,hr8_marital_status_f,debutsex_cat,i22_sex_hx_age_1st,i23_sex_hx_part_past3mo,part12mo_cat,i24_sex_hx_part_past1yr)
+inddata1 %>% filter(hr3_relationship==3 &age_combined>14) %>% summarise(pid, hdov, age_combined,hr4_sex_f,hr8_marital_status_f,debutsex_cat,i22_sex_hx_age_1st,i23_sex_hx_part_past3mo,part12mo_cat,i24_sex_hx_part_past1yr)
+
+inddata1 %>% filter(hr3_relationship==3 &age_combined>14) %>% count(debutsex_cat)
+inddata1 %>% filter(hr3_relationship==3 &age_combined>14) %>% count(i24_sex_hx_part_past1yr)
+
+directoff$i22_sex_hx_age_1st
+# sexhx of older kids who are positive
+directoff %>% filter(age_combined>14) %>% count(i27a_rdt_result_f, i23_sex_hx_part_past3mo)
+
+table(inddata1$i27a_rdt_result_f)
+# age dist of sexual debut
+NAdf<-
+inddata1 %>%
+  filter(i22_sex_hx_age_1st>94 | i22_sex_hx_age_1st==0) %>% 
+  mutate(nosexdebut = case_when(i22_sex_hx_age_1st==0 ~ 1, TRUE~NA_real_),
+         refusesexdebut = case_when(i22_sex_hx_age_1st>94 ~ 1, TRUE~NA_real_)) %>% 
+  dplyr::group_by(hhmemcat_4_f, h10_hbv_rdt_f ) %>%
+  dplyr::summarise(
+          refused=sum(refusesexdebut),
+          num_NA=sum(nosexdebut))
+    
+  
+inddata1 %>% filter(i22_sex_hx_age_1st > 94) %>% count(i22_sex_hx_age_1st, hhmemcat_4, h10_hbv_rdt_f)
+inddata1 %>% filter(i22_sex_hx_age_1st ==0) %>% count(i22_sex_hx_age_1st, hhmemcat_4, h10_hbv_rdt_f)
+
+# need to add missing and refused
+inddata1 %>% filter(i22_sex_hx_age_1st > 0 & i22_sex_hx_age_1st < 95) %>% 
+  ggplot()+
+    geom_histogram(aes(x=i22_sex_hx_age_1st, fill=i27a_rdt_result_f), bins = 40)+
+    labs(x="Age (in years)", fill="HBsAg at enrollment")+
+    scale_fill_manual(values = nounprojgraphcol)+
+    ggtitle("Age of sexual debut")+
+    theme_bw()+
+    #geom_text(data=NAdf, aes(x=xcoor, y=ycoor, label=paste(num_NA,"for",name))) +
+    facet_wrap(~ fct_rev(h10_hbv_rdt_f) + fct_rev(hhmemcat_f  ))
 
 
+# facet zoom
+library(ggforce)
+ggplot(df) + 
+  aes(x = b, y = a) +
+  geom_col() +
+  facet_zoom(ylim = c(0, 10))
 

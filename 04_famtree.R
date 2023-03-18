@@ -382,8 +382,15 @@ net_sub <- graph_from_data_frame(d=hvr_net_sub, vertices=nodes_sub, directed=T)
 class(net)
 plot(net_sub,edge.arrow.size=.1, vertex.size = 5, vertex.label=NA) #
 
-
-
+# ideas for plot characteristics
+plot.igraph(graph1,
+            vertex.color = V(graph1)$color,
+            vertex.shape = V(graph1)$shape,
+            vertex.size = 15,
+            edge.color = "black",
+            edge.arrow.size = 0.05,
+            layout = myLayout
+)
 
 
 

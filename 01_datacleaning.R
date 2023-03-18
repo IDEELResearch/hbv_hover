@@ -991,6 +991,20 @@ inddata1 <- inddata1 %>%
     # labels = c("Household member", "Index mother")))
     labels = c("Other household member","Direct offspring" ,"Index mother")))
 
+# add male partner category
+inddata1 = inddata1 %>%
+  mutate(hhmemcat_4 = case_when(
+    hr3_relationship == 1 ~ 3, #hh member is an index mother
+    hr3_relationship == 3 ~ 2, #hh member is direct offspring
+    hr3_relationship == 2 ~ 1, #hh member is male partner
+    TRUE ~ 0 # hh mmeber is all other types of relationships
+  ) %>% as.numeric()
+  )
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(hhmemcat_4_f=factor(
+    inddata1$hhmemcat_4, 
+    levels = c(0, 1, 2,3),
+    labels = c("Other household member","Male partner","Direct offspring" ,"Index mother")))
 
 # necessary for individual survey?
 table(inddata1$indexmom, useNA = "always")
