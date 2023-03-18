@@ -16,6 +16,24 @@ table(hhdata2$modernhousing, hhdata2$recruited_f)
 
 table(hrb1029$hdov)
 
+# Patrick data issues-----------------------------
+# hh without index mother
+#hh with index mom
+nomere <- subset(inddata1, (!(inddata1$hrhhid %in% perprotexpsure$hrhhid))) # all good
+
+# missing HBsAg result
+missingtest <- inddata1 %>% filter(is.na(i27a_rdt_result_f)) %>% select("hrhhid","participant_code","h10_hbv_rdt_f",
+                                                                        "hr3_relationship_f","age_combined","i27a_rdt_result","i27_rdt_done", "i27_rdt_notdone_reason","hrname_last","hrname_post","hrname_first")
+
+table(inddata1$i27_rdt_notdone_reason, useNA = "always")
+
+# hh w same GPS coords
+samegps <- hhdata2[duplicated(hhdata2[c('hxcoord_edit', 'hycoord_edit')]), c("hrhhid","hxcoord_edit","hycoord_edit")]
+write_csv(samegps, file = "samegps.csv")
+# for moran's i
+unique <- hhdata2[!duplicated(hhdata2[c('hxcoord_edit', 'hycoord_edit')]),]
+
+
 # individuals
 inddata1 <- left_join(inddata1, hhdata2[, c("hrhhid", "recruited_f")], by = "hrhhid")
 table(inddata1$h10_hbv_rdt_f, inddata1$recruited_f)
@@ -89,6 +107,10 @@ hrk2088 <- inddata1 %>% filter(hrhhid == "HRK-2088")
 # %>% select("hrhhid", "pid","h10_hbv_rdt","hr3_relationship", "i27a_rdt_result","i27a_rdt_result_f", "age_combined",
 
 addmargins(table(inddata1$hr4_sex_f))
+
+# check ACQ households
+inddata1 %>% filter(acq_ind==1 & hr3_relationship==1) %>% summarise(pid,acq,hrname_last, hrname_post,  hrname_first)
+
 
 # select family tree option for the 13 exposed households without DO enrolled
 nodiroff <- hhdata1 %>% filter(!(hrhhid %in% diroff3$hrhhid))
