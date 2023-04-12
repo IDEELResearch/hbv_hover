@@ -1,8 +1,22 @@
 # HOVER paper investigate
 library(tidyverse)
 
-inddata1 <- readRDS("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/hoverdataanalysis/inddata.RDS")
-ind1006 <- inddata1 # on Mar 18 for redownloading hover data
+ind1006 <- readRDS("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/hoverdataanalysis/inddata1006.RDS")
+# ind1006 <- inddata1 # on Mar 18 for redownloading hover data
+
+# origin of latest version of the above file:
+# was last download before fogarty began with these changes
+ind1006 <- ind1006 %>% mutate(pid2 = case_when(
+  hrhhid == "HRB-1082" ~ paste0(ind1006$hrhhid,"-0",ind1006$redcap_repeat_instance),
+  TRUE ~ pid
+))
+ind1006$pid_orig <- ind1006$pid
+ind1006$pid <-  ind1006$pid2
+saveRDS(ind1006, file = "/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/hoverdataanalysis/inddata1006.RDS")
+# these PIDs were entered incorrectly and needed to be manually changed in the previously downloaded dataset
+
+
+
 # english version
 hhdata2 <- hhdata2 %>% 
   dplyr::mutate(recruited_f=factor(
@@ -85,6 +99,9 @@ inddata1 %>% filter(hrhhid == "HRB-1029") %>% summarise(hdov,hr3_relationship_f,
 
 inddata1 %>% filter(hrhhid == "HRB-1052") %>% summarise(hdov,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, i3_hiv_pos_test,hivhaart)
 
+# check for Sarah on Mar 21
+inddata1 %>% filter(hrhhid == "HRK2081") %>% reframe(hdov,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, i3_hiv_pos_test,hivhaart,hrname_last, hrname_post, hrname_first)
+library(tidyverse)
 
 ## grandchildren
 inddata1 %>% filter(hr3_relationship == 5) %>% summarise(min(age_combined), max(age_combined))
@@ -169,6 +186,29 @@ inddata1 %>% filter(i22_sex_hx_age_1st > 0 & i22_sex_hx_age_1st < 95) %>%
     theme_bw()+
     #geom_text(data=NAdf, aes(x=xcoor, y=ycoor, label=paste(num_NA,"for",name))) +
     facet_wrap(~ fct_rev(h10_hbv_rdt_f) + fct_rev(hhmemcat_f  ))
+
+# changes in database in 2023
+nodirlist1 <- test %>% filter(numdiroff==0) %>% count(hrhhid) %>% print(n=Inf)
+test1006 <- ind1006 %>% group_by(hrhhid) %>% count(hasdiroff)
+nodirlist2 <- test1006 %>% filter(hasdiroff==0) %>% count(hrhhid) %>% print(n=Inf)
+
+discrep <- subset(nodirlist1, (!(nodirlist1$hrhhid %in% nodirlist2$hrhhid))) 
+inddata1 %>% filter(hrhhid == "HRK2033") %>% reframe(recruited,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, agediff)
+ind1006 %>% filter(hrhhid == "HRK2033") %>% reframe(hdov,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, agediff)
+
+# partners
+maleparnew <- test %>% filter(malepartner==1) %>% count(hrhhid) %>% print(n=Inf)
+view(maleparnew)
+oldmalepart <- ind1006 %>% filter(hr3_relationship==2) %>% reframe(hrhhid)
+
+test1006 <- ind1006 %>% group_by(hrhhid) %>% count(hasdiroff)
+nodirlist2 <- test1006 %>% filter(hasdiroff==0) %>% count(hrhhid) %>% print(n=Inf)
+
+discrep_malepart <- subset(oldmalepart, (!(oldmalepart$hrhhid %in% maleparnew$hrhhid))) 
+#HRK2009 has two in earlier version of db, later version only 1
+
+inddata1 %>% filter(hrhhid == "HRK2009") %>% summarise(h10_hbv_rdt,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, agediff)
+ind1006 %>% filter(hrhhid == "HRK2009") %>% summarise(hdov,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, agediff)
 
 
 # facet zoom
