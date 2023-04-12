@@ -27,10 +27,12 @@ hover_hh_tab1 <- CreateTableOne(vars = tab1varcleaned, factorVars = catvars, dat
 tab1hhexport <- print(hover_hh_tab1 ,quote = FALSE, noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE, formatOptions = list(big.mark = ","))
 tab1hhexport
 write.csv(tab1hhexport, file = "tab1hhexport.csv")
-# TODO
 
-# -add factor for exposed vs unexposed
-# -add all hh back (check on wealth index)
+# single stats to add to table 1
+# median (IQR) direct offspring enrolled
+inddata1 %>% group_by(h10_hbv_rdt) %>% reframe(quantile = scales::percent(c(0.25, 0.5, 0.75)),
+                                      numdiroff = quantile(numdiroff, c(0.25, 0.5, 0.75)))
+
 
 
 ##All individuals------------------------------
@@ -112,6 +114,16 @@ selfrephiv %>% filter(i3a_hiv_treatment==0) %>% summarise(i27a_rdt_result_f,acq_
 addmargins(table(moms$acq_ind, moms$i3_hiv_pos_test_f, moms$i27a_rdt_result_f,useNA = "always"))
 addmargins(table(moms$acq_ind, moms$i3a_hiv_treatment_f, useNA = "always"))
 addmargins(table(moms$acq_ind, moms$i3b_hiv_medications, useNA = "always"))
+
+# sexual hx counts
+table(moms$i23_sex_hx_part_past3mo,moms$h10_hbv_rdt_f, useNA = "always") # figure out what 95 means
+# wealth and education of index moms who refused sex hx questions
+inddata1 %>% filter(indexmom_indic==1 &part3mo_cat==9) %>% count(cpn_maternity, paststudymutexcl,wealth_R,hr9_school_gr_f)
+
+
+
+
+
 ##Direct offspring---------
 # dataset is directoff, created in 04_famtree.R
 # to avoid rerunning those contents again:
@@ -354,270 +366,6 @@ max(test.hhdist.inv) # check not infinite
 
 Moran.I(uniqueothprev$othermemprev, test.hhdist.inv)
 
-# Maps--------------------------------------------------------------------------------
-
-library(sf)
-library(gstat)
-library(stars)
-library(tidyverse)
-library(patchwork)
-library(ggsn)
-library(ggspatial)
-
-# merge gps onto individual survey
-inddata1 <- merge(inddata1, hhdata2[,c("hrhhid","hycoord_edit","hxcoord_edit")], by = "hrhhid")
-# make spatial object
-indgps_2 = st_as_sf(inddata1[!is.na(inddata1$hxcoord_edit) &!is.na(inddata1$hycoord_edit),], coords = c("hycoord_edit", "hxcoord_edit"), crs = 4326)  
-# order by hbsag result
-indgps_2 <- indgps_2[order(indgps_2$i27a_rdt_result_f),]
-# jitter points
-indgps_2_jitt<- st_jitter(indgps_2,  factor = 0.005)
-
-# surrounding polygons
-drc_healthzone_correctkinshasa = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/drc_healthzone_adm2_correctkinshasa/RDC_Zone_de_sante_09092019.shp", stringsAsFactors = FALSE) %>% st_transform(4326)
-# keep only Kin prov
-drc_healthzone_kinshasa <- subset(drc_healthzone_correctkinshasa, PROVINCE == "Kinshasa")
-
-# brazzaville polygon
-congo_br = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/congo_adm0/cog_admbnda_adm0_gaul_20190617.shp", stringsAsFactors = FALSE) %>% st_transform(4326)
-# rename brazza labels
-congo_br$ADM0_FR <- as.character(congo_br$ADM0_FR) 
-congo_br$ADM0_FR[congo_br$ADM0_FR == "Congo (le)"] <- "Congo"
-congo_br$ADM0_FR[congo_br$ADM0_FR == "Congo"] <- "Brazzaville"
-
-# health areas
-drc_healtharea = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/rdc_aires-de-sante/RDC_Aires de sant‚.shp", stringsAsFactors = FALSE) %>% st_transform(4326)
-# restrict to Kin
-drc_healtharea_Kin <- subset(drc_healtharea, Province == "Kinshasa")
-
-#provinces
-drcprov = st_read("./adm1/GLOBAL_ADM1.shp", stringsAsFactors = F) %>% st_transform(4326)
-# restrict to Kin and prov below kin (but prov shp covers river)
-drcprov_Kin <- subset(drcprov, ADM1_NAME == "KINSHASA")
-drcprov_KinKC <- subset(drcprov, ADM1_NAME == "KINSHASA" | ADM1_NAME == "KONGO CENTRAL" )
-
-##rivers - covered by adm0 and adm1 
-# rivers = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/congo_rivers_simp/congo_rivers_simp.shp", stringsAsFactors = F) %>% st_transform(4326)
-
-# read in data
-admin0 <- readRDS('./admin0.rds') %>%          # GADM admin0 boundaries
-  st_transform(4326) %>% # set at ESPG 4326
-  filter(grepl('Congo|Rwanda|Tanzania|Burundi|African Republic|Angola|Zambia|Uganda|Sudan|Gabon|Cameroon|Equatorial Guinea', Country)) 
-
-st_crs(admin0) # view CRS
-
-DRC <- admin0 %>% filter(Country=='Democratic Republic of the Congo') # DRC
-
-## Africa with DRC highlighted and Kinshasa in red box
-africa <- st_read("./afr_simp/afr_g2014_2013_0.shp", stringsAsFactors = FALSE) %>% st_transform(4326)
-#A <- 
-ggplot(africa) +
-    geom_sf(alpha=0.75, size = 0.1)+
-    geom_sf(data=DRC, fill = "gray75", size=0.2)+
-    geom_rect(aes(xmin = 15.2, xmax = 15.6, ymin = -4.48, ymax = -4.07),
-              fill = "transparent", color = "red", size = 2.5)+
-    theme(panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          plot.title = element_text(hjust = 0.5),
-          axis.title = element_blank(),
-          axis.text = element_blank(),
-          axis.ticks = element_blank(),
-          legend.title = element_blank())
-
- ggsave('./plots/afr_drc.png', width=9, height=9)
-
-
-## Base map----------
-base <- ggplot(drc_healtharea_Kin) +
-  geom_sf(alpha=0.75, size = 0.1)+
-  geom_sf(data=congo_br, fill = "gray75", size=0.2)+
-  geom_sf_text(data=congo_br, aes(label = ADM0_FR), size=3)+
-  theme(panel.background = element_rect(fill = "aliceblue"),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        plot.title = element_text(hjust = 0.5),
-        axis.title = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        legend.title = element_blank(),
-        legend.position = c(0.15,0.9))
-
-## Map: HH prev--------------------
-base +
-  geom_sf(data=hover_gps_full, aes(color=hhprev))+
-  scale_color_binned(type="viridis", breaks = c(0.1, 0.2, 0.3,0.4,0.5,0.6,0.7,0.8,0.9))+
-  #scale_color_continuous(type = "RdYlBu")+
-  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)+
-  guides(fill=guide_legend(title="Household prevalence (%)"))
-
-## Map: Exp vs Unexp------------------
-hover_gps_full <- hover_gps_full %>% 
-  dplyr::mutate(h10_hbv_rdt_f=factor(
-    hover_gps_full$h10_hbv_rdt, 
-    levels = c(0, 1),
-    labels = c("Unexposed", "Exposed")))
-
-#B <- 
-  ggplot(drc_healtharea_Kin) +
-  geom_sf(alpha=0.75, size = 0.1)+
-  geom_sf(data=congo_br, fill = "gray75", size=0.2,aes(label = ADM0_FR))+
-  geom_sf(data=hover_gps_full, aes(fill=h10_hbv_rdt_f, color=h10_hbv_rdt_f), size=3)+ #or 3 for standalone
-  geom_sf(data=matgps, color = "gray39", fill="#fee090", shape = 23, size=5, aes(label = centers))+
-  #scale_fill_manual(values = c("#4D4D4D","#B2182B",'ghostwhite'))+
-  scale_color_manual(values = c("#4D4D4D","#B2182B",'ghostwhite'))+
-  geom_sf_text(data=congo_br, aes(label = ADM0_FR), size=1, hjust = 2, vjust = 44)+
-  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)+
-  #coord_sf(xlim = c(14.1, 15.6), ylim = c(-7.1, -3.1), expand = FALSE)+
-  theme(panel.background = element_rect(fill = "aliceblue"),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        plot.title = element_text(hjust = 0.5),
-        axis.title = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        legend.title = element_blank(),
-        legend.position = c(0.12,0.92)#,
-        #legend.text=element_text(size=20)
-        )+
-    guides(color = guide_legend(override.aes = list(size = 2)))
-    #annotation_scale(location = "br", plot_unit = "mi")
-  
- ggsave('./plots/hh2.png', width=9, height=9)
-
-## Map: Hbsag results--------------------
-C <- 
-  base + 
-  geom_sf(data=indgps_2_jitt[!is.na(indgps_2_jitt$i27a_rdt_result_f),], aes(fill=i27a_rdt_result_f, color=i27a_rdt_result_f), size = 0.5)+
-  scale_fill_manual(values = c('#878787','#f4a582','ghostwhite'))+
-  scale_color_manual(values = c('#878787','#f4a582','ghostwhite'))+
-  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)+
-  theme(legend.position = c(0.1,0.92))+
-  guides(color = guide_legend(override.aes = list(size = 2)))
-
-  
-
-##Map: Traditional scarring---------------------------------------------------------------
-indgps_2_jitt <- indgps_2_jitt %>% 
-  dplyr::mutate(i16_traditional_scarring_f_map=factor(
-    indgps_2_jitt$i16_traditional_scarring, 
-    levels = c(0, 1, 99),
-    labels = c("No traditional scars", "Has traditional scars", "Refused")))
-D <-
-  base + 
-  geom_sf(data=indgps_2_jitt, aes(fill=i16_traditional_scarring_f_map, color=i16_traditional_scarring_f_map), size=0.5)+
-  #scale_fill_manual(values = c('#878787','#f4a582','ghostwhite'))+
-  #scale_color_manual(values = c('#878787','#f4a582','ghostwhite'))+
-  scale_color_manual(values = c('#665191',"#F5B24E","#A87323"))+   # purple and yellow and brown (refuse)
-  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)+
-  theme(legend.position = c(0.2,0.9))+
-    guides(color = guide_legend(override.aes = list(size = 2)))
-
-# past transfusions
-indgps_2_jitt <- indgps_2_jitt %>% 
-  dplyr::mutate(i8_transfusion_f_map=factor(
-    indgps_2_jitt$i8_transfusion, 
-    levels = c(0, 1, 99),
-    labels = c("No transfusions", "Received transfusions", "Refused")))
-E <-
-  base + 
-  geom_sf(data=indgps_2_jitt[!is.na(indgps_2_jitt$i8_transfusion_f_map),], aes(fill=i8_transfusion_f_map, color=i8_transfusion_f_map), size=0.5)+
-  #scale_fill_manual(values = c('#878787','#f4a582','ghostwhite'))+
-  #scale_color_manual(values = c('#878787','#f4a582','ghostwhite'))+
-  scale_color_manual(values = c('#665191',"#F5B24E","#A87323"))+   # purple and yellow and brown (refuse)
-  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)+
-  theme(legend.position = c(0.213,0.9))+
-  guides(color = guide_legend(override.aes = list(size = 2)))
-
-#money exchanged for sex
-indgps_2_jitt <- indgps_2_jitt %>% 
-  dplyr::mutate(i26_sex_hx_given_money_f_map=factor(
-    indgps_2_jitt$i26_sex_hx_given_money, 
-    levels = c(0, 1, 99),
-    labels = c("Never given money for sex", "Given money for sex", "Refused")))
-F <-
-  base + 
-  geom_sf(data=indgps_2_jitt[!is.na(indgps_2_jitt$i26_sex_hx_given_money_f_map),], aes(fill=i26_sex_hx_given_money_f_map, color=i26_sex_hx_given_money_f_map), size=0.5)+
-  #scale_fill_manual(values = c('#878787','#f4a582','ghostwhite'))+
-  #scale_color_manual(values = c('#878787','#f4a582','ghostwhite'))+
-  scale_color_manual(values = c('#665191',"#F5B24E","#A87323"))+   # purple and yellow and brown (refuse)
-  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)+
-  theme(legend.position = c(0.245,0.9))+
-  guides(color = guide_legend(override.aes = list(size = 2)))
-
-# piece plots together using library(patchwork)
-A + B + C + D + E + F + plot_layout(nrow=2, ncol = 3) + plot_annotation(tag_levels = 'A')
-
-#A + grid + plot_layout(nrow=1, ncol = 2) + plot_annotation(tag_levels = 'A')
-
-# output
-ggsave('./plots/croiabs.png', width=15, height=9)
-
-## Kriging-------------
-# kriging using gstat: https://rpubs.com/nabilabd/118172 
-# https://mgimond.github.io/Spatial/interpolation-in-r.html#generate-the-variance-and-confidence-interval-maps
-
-
-output <- indgps_2_jitt %>% 
-  #group_by(hrhhid) %>%
-  # make variable for hh prev
-  mutate(hhprev = (totalpositive/n)*100)
-
-output <- hover_gps_full
-# remove points where geometry is outside of DRC outline (geometry=c(0,0))
-output_points <- st_join(output, drcprov_Kin, join = st_intersects)
-#%>% filter(!is.na(Country)) # from Hill's code
-
-# make variogram
-m.vgm <- gstat::variogram(hhprev~1, output_points)
-
-# fit a model to the sample variogram
-# https://gisgeography.com/semi-variogram-nugget-range-sill/
-m.fit <- gstat::fit.variogram(m.vgm, model=vgm(psill=1,"Exp",range=500, nugget=0))
-
-library(automap)
-variogram = autofitVariogram(hhprev~1,output_points)
-plot(variogram)
-
-# plot
-plot(m.vgm,m.fit)
-
-# simple kriging
-spDRC <- as_Spatial(DRC)
-grd <- makegrid(spDRC, n = 50000)# making grid of points
-colnames(grd) <- c('x','y')
-grd_pts <- SpatialPoints(coords = grd, 
-                         proj4string=CRS(proj4string(spDRC)))
-
-# find all points in `grd_pts` that fall within DRC outline
-grd_pts_in <- grd_pts[spDRC, ]
-
-# transform grd_pts_in back into a data frame
-gdf <- as.data.frame(coordinates(grd_pts_in)) 
-
-# conduct kriging: Pf prev
-m.kriged <- gstat::krige(prev~1, output_points, st_as_sf(grd_pts_in), model=m.fit)
-summary(m.kriged$var1.pred)
-
-# assign points into bins
-krige <- m.kriged %>% cbind(gdf$x, gdf$y) %>% mutate(
-  var1.pred = cut(var1.pred, breaks=seq(0,80,by=10)), 
-  se = sqrt(var1.var),
-  se = cut(se, breaks=seq(0,24,by=4))) %>% filter(!is.na(var1.pred))
-
-# conduct kriging: animal ownership
-m.kriged.own <- gstat::krige(ownership~1, output_points, st_as_sf(grd_pts_in), model=m.fit)
-summary(m.kriged.own$var1.pred)
-
-# assign points into bins
-krige_own <- m.kriged.own %>% cbind(gdf$x, gdf$y) %>% mutate(
-  var1.pred = cut(var1.pred, breaks=seq(0,90,by=10)), 
-  se = sqrt(var1.var),
-  se = cut(se, breaks=seq(0,24,by=4))) %>% filter(!is.na(var1.pred))
-# Stats for proposal----------------------------
-table(inddata1$h10_hbv_rdt, inddata1$hhmemcat_f)
-
-table(inddata1$h10_hbv_rdt, inddata1$indexmom)
 
 
 # Figures-----------------------
@@ -722,23 +470,113 @@ exp + obs + plot_layout(nrow=1, ncol = 2) + plot_annotation(tag_levels = 'A')
 
 
 # Table 3: Risk factor prevalence------------------------------
-#all vars
-tab3_vars_all <- c('age_combined', "maritalrisk","hr4_sex_f","cpshbvprox_rev","i6_comb_yr","i7_diabetes_f",'i8_transfusion_f', "i10_street_salon_f","i11_manucure_f",
-             "i14_shared_razor_f","i15_shared_nailclippers_f","i13_shared_toothbrush_f",'i12_food_first_chew_f',
-             "i17_tattoo_f", "i16_traditional_scarring_f",
-             'i25_sex_hx_receive_money_f','i26_sex_hx_given_money_f', 'debutsex_all','debutsex_miss',"debutsex_cat","part3mo_cat","partnew3mo_cat","part12mo_cat","partnew12mo_cat")
+# vars of interest: c("malepartpos","i22_sex_hx_age_1st","maritalrisk_f","hr4_sex_f","cpshbvprox_rev","i6_comb_yr","i7_diabetes_f",'i8_transfusion_f', "transfus_num","i10_street_salon_f",
+  #            "wealth_R", "i14_shared_razor_f","i15_shared_nailclippers_f","i13_shared_toothbrush_f",'i12_food_first_chew_f',
+  #            "i11_manucure_f","i17_tattoo_f", "i16_traditional_scarring_f",'i25_sex_hx_receive_money_f','i26_sex_hx_given_money_f', "debutsex_cat", "part3mo_cat", "i23a_sex_hx_past3mo_num_f", "part12mo_cat", "partnew12mo_cat")
+
+# hh member type as stratum var
+table(inddata1$hhmemcat_f) # 3 levels
+table(inddata1$hhmemcat) # 3 levels
+table(inddata1$hhmemcat_4_f) # 4 levels (male partner separate)
+#make hbsag variable for output - mother's CPN result and others' enrollment result
+inddata1$tab3hbv <- ifelse(inddata1$hhmemcat==2, inddata1$h10_hbv_rdt, inddata1$i27a_rdt_result) # hhmemcat==2 are index moms
+table(inddata1$tab3hbv, useNA = "always")
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(tab3hbv_f=factor(
+    inddata1$tab3hbv, 
+    levels = c(0, 1),
+    labels = c("HBsAg-", "HBsAg+")))
+
+# now restrict to no missing (3 direct offspring weren't tested)
+table(inddata1$i27a_rdt_result_f, inddata1$hhmemcat_f, useNA = "always")
+inddata1_nomiss <- inddata1 %>% filter(!(is.na(tab3hbv_f)))
+
+# vars for everyone
+tab3_all <- c("i22_sex_hx_age_1st","i6_comb_yr","i7_diabetes_f",# individual
+              "wealth_R",   "i14_shared_razor_f","i15_shared_nailclippers_f","i13_shared_toothbrush_f",'i12_food_first_chew_f', # household
+             # comm factors. - note that transfusions could be from family member in hh
+               'i8_transfusion_f', "transfus_num","i10_street_salon_f", "i11_manucure_f","i17_tattoo_f", "i16_traditional_scarring_f",'i25_sex_hx_receive_money_f','i26_sex_hx_given_money_f', "debutsex_cat", "part3mo_cat", "i23a_sex_hx_past3mo_num_f", "part12mo_cat", "partnew12mo_cat")
+tab3_num <- c("i22_sex_hx_age_1st","i6_comb_yr")
 # factor vars
-tab3_vars_cat <- c( "maritalrisk","hr4_sex_f","cpshbvprox_rev","i7_diabetes_f",'i8_transfusion_f', "i10_street_salon_f","i11_manucure_f",
-                   "i14_shared_razor_f","i15_shared_nailclippers_f","i13_shared_toothbrush_f",'i12_food_first_chew_f',
-                   "i17_tattoo_f", "i16_traditional_scarring_f",
-                   'i25_sex_hx_receive_money_f','i26_sex_hx_given_money_f', 'debutsex_all','debutsex_miss',"debutsex_cat","part3mo_cat","partnew3mo_cat","part12mo_cat","partnew12mo_cat")
+tab3_cat <- c("i7_diabetes_f",'i8_transfusion_f', "transfus_num", "i10_street_salon_f","i11_manucure_f",
+              "wealth_R", "i14_shared_razor_f","i15_shared_nailclippers_f","i13_shared_toothbrush_f",'i12_food_first_chew_f',
+              "i17_tattoo_f", "i16_traditional_scarring_f",
+              'i25_sex_hx_receive_money_f','i26_sex_hx_given_money_f',"debutsex_cat", "part3mo_cat", "i23a_sex_hx_past3mo_num_f", "part12mo_cat", "partnew12mo_cat")
+#...................
+# vars for specific stratum groups, add to table separate
+# index mothers only: malepartpos, maritalrisk_f
+tab3_mi_cat_all <- c("malepartpos", "maritalrisk_f")
+# direct offspring: "cpshbvprox_rev", "hr4_sex_f"
+# other hh memm: cpshbvprox_rev, "hr4_sex_f"
+tab3_do_oth_cat <- c("cpshbvprox_rev", "hr4_sex_f")
+#...................return to these after main table
 
 #first step in create table 3
-tab3 <- CreateTableOne(vars = tab3_vars_all, factorVars = tab3_vars_cat, data=inddata1, strata = c("i27a_rdt_result_f", "hhmemcat_f"), addOverall = T)
-tab3_itt <- CreateTableOne(vars = tab3_vars_all, factorVars = tab3_vars_cat, data=moms, strata = c("h10_hbv_rdt_f"), addOverall = T)
+tab3_main <- CreateTableOne(vars = tab3_all, factorVars = tab3_cat, data=inddata1_nomiss, strata = c("tab3hbv_f", "hhmemcat_f"), addOverall = T )
 
-tab3_enr <- print(tab3 ,quote = FALSE, noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE, formatOptions = list(big.mark = ","))
-write.csv(tab3_enr, file = "tab3_enr.csv")
+tab3_main_p <- print(tab3_main ,quote = FALSE, noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE, formatOptions = list(big.mark = ","))
+write.csv(tab3_main_p, file = "tab3_main_p.csv")
 
-tab3_itt_p <- print(tab3_itt ,quote = FALSE, noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE, formatOptions = list(big.mark = ","))
-write.csv(tab3_itt_p, file = "tab3_itt_p.csv")
+# group specific variables
+# moms
+tab3_moms <- CreateTableOne(vars = tab3_mi_cat_all, factorVars = tab3_mi_cat_all, data=moms, strata = c("h10_hbv_rdt_f"), addOverall = T)
+tab3_moms_p <- print(tab3_moms ,quote = FALSE, noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE, formatOptions = list(big.mark = ","))
+write.csv(tab3_moms_p, file = "tab3_moms_p.csv")
+table(moms$malepartner, moms$malepartpos)
+table(moms$malepartner, moms$h10_hbv_rdt_f)
+
+# others
+inddata1_nomiss_o <- inddata1_nomiss %>% filter(hhmemcat!=2)
+
+tab3_dooth <- CreateTableOne(vars = tab3_do_oth_cat, factorVars = tab3_do_oth_cat, data=inddata1_nomiss_o, strata = c("tab3hbv_f", "hhmemcat_f"), addOverall = T)
+tab3_dooth_p <- print(tab3_dooth ,quote = FALSE, noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE, formatOptions = list(big.mark = ","))
+write.csv(tab3_dooth_p, file = "tab3_dooth_p.csv")
+
+
+
+
+
+
+#Exploratory data analysis for vertical/horizontal relationships------------------------------
+inddata1 %>% filter(indexmom_indic==1) %>% count(h10_hbv_rdt_f, i3_hiv_pos_test_f)
+# did newly exposed women have new sexual partners? no
+inddata1 %>% filter(indexmom_indic==1 &serostatchange==1) %>% count(perprot_h10,i23_sex_hx_part_past3mo,i23a_sex_hx_past3mo_num,i24_sex_hx_part_past1yr,i24a_sex_hx_past1yr_num )
+#sexual hx of two women with incident infections
+inddata1 %>% filter(indexmom_indic==1 &serochangedir=="incident") %>% count(i3_hiv_pos_test_f,age_combined,i22_sex_hx_age_1st,i23_sex_hx_part_past3mo,i23a_sex_hx_past3mo_num,i24_sex_hx_part_past1yr,i24a_sex_hx_past1yr_num,i25_sex_hx_receive_money_f,i26_sex_hx_given_money_f )
+
+inddata1 %>% filter(hhmemcat_4==1) %>% count(i3_hiv_pos_test_f, i27a_rdt_result_f,h10_hbv_rdt_f,paststudymutexcl)
+inddata1 %>% filter(hhmemcat_4==1) %>% count(paststudymutexcl)
+inddata1 %>% filter(hhmemcat_4==1 &i3_hiv_pos_test_f=="Yes") %>% count(hrhhid)
+
+# female part hbv/hiv status by those w male partner
+inddata1 %>% filter(malepartner==1 & indexmom_indic==1) %>% count(h10_hbv_rdt_f, i3_hiv_pos_test_f)
+
+inddata1 %>% filter(hr3_relationship==2) %>% count(h10_hbv_rdt_f, i27a_rdt_result_f,i3_hiv_pos_test_f,paststudymutexcl)
+
+inddata1 %>% group_by(i27a_rdt_result_f) %>% count(hr3relat_simp_f)
+table(inddata1$hr3_relationship_f,inddata1$i27a_rdt_result_f)
+
+inddata1 %>% filter(i27a_rdt_result==1 & hr3_relationship==3) %>% reframe(pid)
+inddata1 %>% filter(hrhhid=="HRK2081") %>% reframe(hr3_relationship_f, i27a_rdt_result_f)
+ind1006 %>% filter(hrhhid=="HRK2081") %>% reframe(hr3_relationship_f, i27a_rdt_result_f, age_combined)
+
+inddata1 %>% group_by(h10_hbv_rdt) %>% reframe(quantile = scales::percent(c(0.25, 0.5, 0.75)),
+                                               numdiroff = quantile(numdiroff, c(0.25, 0.5, 0.75)))
+
+# known vertical relationships
+# mothers of index mother
+inddata1 %>% group_by(h10_hbv_rdt) %>% filter((hr3_relationship==6 & hr4_sex==1) | indexmom_indic==1) %>% count(hr3_relationship, i27a_rdt_result_f)
+
+# sisters and niece/nephew of index mother
+inddata1 %>% group_by(h10_hbv_rdt) %>% filter(hr3_relationship==8 | hr3_relationship==9) %>% count(hr3_relationship, i27a_rdt_result_f)
+# make var for if a sibling and if a niece/nephew enrolled and age diff
+counts_sibnieceneph <- inddata1 %>% group_by(hrhhid) %>% summarise(sibs = sum(hr3_relationship==8), nieceneph = sum(hr3_relationship==9))
+addmargins(table(counts_sibnieceneph$sibs))
+addmargins(table(counts_sibnieceneph$nieceneph))
+counts_sibnieceneph$both <- ifelse(counts_sibnieceneph$sibs>0 & counts_sibnieceneph$nieceneph >0,1,0)
+table(counts_sibnieceneph$both)
+
+atleast1 <- counts_sibnieceneph %>% filter(both==1)
+investigate_vert <-  inddata1 %>% filter(hrhhid %in% atleast1$hrhhid) %>% select(c("hrhhid","hr3_relationship","hr3_relationship_f", "hr4_sex_f","age_combined","hrname_last","hrname_post","hrname_first"))
+

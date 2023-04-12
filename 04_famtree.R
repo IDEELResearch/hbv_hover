@@ -1,62 +1,15 @@
 # 04 fam tree /mother-offspring analysis
 library(tidyverse)
 
-# from 01_datacleaning, we have an indicator for 14 years or younger, or >= 15 years: agegrp15_2
-table(inddata1$agegrp15_2)
-#should distinguish between enrollments in 2021 vs 2022: for 2021 use 14 or younger, for 2022, use 15 or younger
-# also should make 3 groups: 1) >=16 years and definitely not vaccinated in CPS; 2) 12-16 years and possibly vaccinated during roll-out
-# and 3) <12 years most likely vaccinated 
+# Variables for network/family tree analysis
 
-hhsincerenew <- (hhdata1 %>% filter(hdov > '2021-10-11'))
+# 1: cpshbvprox, cpshbvprox_rev--------------
+# moved to end of 01_datacleaning.R
 
-# drop
-# inddata1 <- inddata1 %>% select(-c(cpshbvprox))
+# 2: anotherpos-------------
+# lives in hh with another pos moved to 01_datacleaning.R
 
-# sens analysis with 2021 vs 2022 enrollments, potential birth at beginning vs end of year
-inddata1 = inddata1 %>%
-  mutate(cpshbvprox = case_when(
-    hdov < '2022-01-01' & age_combined >= 15 ~ 0, # prob not vacc 2021 enroll: 14 oldest born in 2007 so 15yo and above likely wouldn't be vacc
-    hdov > '2022-01-01' & age_combined >= 16 ~ 0, # prob not vacc 2022 enroll: 15 oldest born in 2007 so 16yo and above likely wouldn't be vacc
-    hdov < '2022-01-01' & age_combined < 15 & age_combined >11  ~ 1, # poss vacc during rollout 2021 enroll: 12-14 yos in rollout
-    hdov > '2022-01-01' & age_combined < 16 & age_combined >12 ~ 1, # poss vacc during rollout2 022 enroll: 13-15 yos in rollout
-    hdov < '2022-01-01' & age_combined <= 11 ~ 2, # likely vacc 2021 enroll: <=11 likely vacc
-    hdov > '2022-01-01' & age_combined <= 12 ~ 2, # likely vacc 2022 enroll: <=12 likely vacc
-    TRUE ~ 0
-  ) %>% as.numeric()
-  )
-
-table(inddata1$cpshbvprox, inddata1$age_combined)
-
-#make a reverse of this so referent is likely vaccinated
-inddata1$cpshbvprox_rev <- 2 - inddata1$cpshbvprox
-  
-table(inddata1$cpshbvprox_rev)
-# lives in hh with another pos
-
-inddata1$anotherpos <- ifelse(inddata1$totalpositive - inddata1$i27a_rdt_result > 0 , 1,0)
-table(inddata1$anotherpos)
-
-
-# now look at households with at least one direct offspring in levels 0/1 vs hh with only group 2
-# only for direct offspring: hr3_relationship == 3
-
-diroff <- inddata1 %>% filter(hr3_relationship == 3) %>% select("hrhhid", "pid","h10_hbv_rdt","hr3_relationship", "i27a_rdt_result","i27a_rdt_result_f", "age_combined","cpshbvprox")
-table(diroff$i27a_rdt_result_f)
-
-# count of HBV+ direct offspring in hh
-diroffhh <- diroff %>% group_by(hrhhid) %>% summarise(hbvposdiroff = sum(i27a_rdt_result))
-# indicator for has direct offspring
-diroffhh$hasdiroff <- 1
-
-#hbvposdiroff, hasdiroff -----
-#put this variable back onto hh and indd datasets
-inddata1 <- left_join(inddata1, diroffhh,  by = "hrhhid")
-hhdata1 <- left_join(hhdata1, diroffhh, by = "hrhhid")
-
-
-table(inddata1$hasdiroff, useNA = "always")
-hhdata1$hasdiroff <- ifelse(is.na(hhdata1$hasdiroff), 0,hhdata1$hasdiroff)
-inddata1$hasdiroff <- ifelse(is.na(inddata1$hasdiroff), 0,inddata1$hasdiroff)
+# 3: hbvposdiroff, hasdiroff----------
 
 # households with direct offspring
 hhwdirect <- diroff %>% group_by(hrhhid,h10_hbv_rdt) %>% count()
@@ -122,6 +75,7 @@ directoff <- inddata1 %>% filter(hr3_relationship == 3)
 # cpshbvprox: 3 categories for likely vacc, poss vacc, prob vacc
 # hbvposdiroff: count of HBV+ direct offspring. NAs are either no diroff (n=23) or not tested (n=3)
 # hasdiroff: yes/no 1/0 does hh have direct offspring enrolled
+### not added onto inddata1 in redownload March 2023
 # allkidsvacc: hh level indicator for if all dir off in hh likely vacc vs no (incl poss/prob)
 # oldestdefnotvacc: indicator for if hh has at least one direct offspring born before CPS had HBV vacc
 addmargins(table(inddata1$allkidsvacc, inddata1$hbvposdiroff, useNA = "always"))
@@ -309,88 +263,3 @@ olderinhover <- inddata1 %>% filter(age_combined > 45)
 addmargins(table(olderinhover$hr4_sex_f))
 
 # Jim Moody talk - network analysis--------------------------------------------------------
-
-# create edge list then get adjacency matrix
-hovernet <- inddata1 %>% select("hrhhid","pid","maternity","h10_hbv_rdt","hr3_relationship","hr4_sex") #"i27a_rdt_result_f","age_combined", "hr4_sex_f","hdov",
-hovernet$hhid <-  str_sub(hovernet$hrhhid,-4,-1)
-hovernet <- mutate(hovernet, hhindex = as.numeric(as.factor(hhid)))
-hovernet <- hovernet[order(hovernet$hhid),] 
-
-
-#hovernet$ego <- 1 # every household has index mother, this should be the ego
-# weight sexual and child relationships
-hovernet <- hovernet %>% 
-  mutate(value = case_when(
-    hr3_relationship == 2 ~ 2, # husband - sexual relationship with ego
-    hr3_relationship == 3 ~ 3, # direct offspring - vertical with ego
-    hr3_relationship == 6 & hr4_sex == 1 ~ 3, # mother of index mother - vertical with ego
-    hr3_relationship == 1 ~ 0, # ego - ego doesn't need a value
-    TRUE ~ 1)
-    %>% as.numeric())
-# 
-table(hovernet$value)
-# remove index mom- index mom 
-hover_edge <- hovernet %>% filter(hr3_relationship != 1)
-
-#hovernet <- tibble::rowid_to_column(hovernet, "ind_id")
-hover_edge$ind_id <- seq.int(nrow(hover_edge)) +max(hover_edge$hhindex)
-
-
-# export
-write_csv(hovernet,"hovernet.csv")
-
-# subset to required minimal columns for edge list - node1, node2, value
-hovernet_min <- hover_edge %>% select("hhindex","ind_id","value")
-write_csv(hovernet_min,"hovernet_min.csv")
-
-write.table(hovernet_min, "hovernet_min.txt", sep=" ", row.names=FALSE, quote=FALSE)
-
-# reorder the columns - need source (hh or index case) and target (other hh member) first and second
-hovernet <- hovernet[,c('hrhhid','hr3_relationship','maternity','h10_hbv_rdt')]
-# rename the columns
-colnames(hovernet) <- c('source','target','maternity','h10_hbv_rdt')
-g <- graph.data.frame(hovernet, directed = T, vertices = campattr) # what is campattr
-
-# igraph--------------
-library(igraph)
-# hovernet_min and hover_edge
-
-hover_edge_m <- as.matrix(hover_edge)
-rownames(hovernet) <- colnames(hovernet)
-g1 <- graph.adjacency(hovernet, weighted = T, mode = 'directed')
-
-hover_edge <- hover_edge %>% relocate(hhindex, ind_id)
-
-nodes_mere <- as.data.frame(hover_edge$hhindex) %>% distinct() %>% rename(nodeid = `hover_edge$hhindex`)
-nodes_mem <- as.data.frame(hover_edge$ind_id) %>% distinct() %>% rename(nodeid = `hover_edge$ind_id`)
-nodes <- rbind(nodes_mere,nodes_mem)
-
-net <- graph_from_data_frame(d=hover_edge, vertices=nodes, directed=T) 
-
-class(net)
-plot(net,edge.arrow.size=.1, vertex.size = 2, vertex.label=NA) #
-
-# start with subset of cases
-hvr_net_sub <- hover_edge %>% filter(hhindex < 11)
-nodes_mere_sub <- as.data.frame(hvr_net_sub$hhindex) %>% distinct() %>% rename(nodeid = `hvr_net_sub$hhindex`)
-nodes_mem_sub <- as.data.frame(hvr_net_sub$ind_id) %>% distinct() %>% rename(nodeid = `hvr_net_sub$ind_id`)
-nodes_sub <- rbind(nodes_mere_sub,nodes_mem_sub)
-
-
-net_sub <- graph_from_data_frame(d=hvr_net_sub, vertices=nodes_sub, directed=T) 
-
-class(net)
-plot(net_sub,edge.arrow.size=.1, vertex.size = 5, vertex.label=NA) #
-
-# ideas for plot characteristics
-plot.igraph(graph1,
-            vertex.color = V(graph1)$color,
-            vertex.shape = V(graph1)$shape,
-            vertex.size = 15,
-            edge.color = "black",
-            edge.arrow.size = 0.05,
-            layout = myLayout
-)
-
-
-

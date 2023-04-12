@@ -8,14 +8,16 @@ library(tidyverse)
 library(knitr)
 library(viridis)
 library(scales)
+library(REDCapR)
+library(readr)
+library(lubridate)
+
 library(sf)
 library(tmap)    # for static and interactive maps
 library(leaflet) # for interactive maps
 library(tmaptools)
 library(OpenStreetMap)
-library(REDCapR)
-library(readr)
-library(lubridate)
+
 
 ## establish colors----------------------------------------------------------------
 drc_colors <- c("#007fff", 	"#ce102f", 	"#f7d618")
@@ -59,8 +61,6 @@ data1$maternity <- ifelse(data1$mat=="B","Binza",
 
 # select household entries
 hhdata1 <- data1[(is.na(data1$redcap_repeat_instrument)), ]
-#hhdata1 <- data1[data1$redcap_repeat_instrument != "questionnaire_individuel", ]
-# ^ backup in case is.na() is not working
 
 # for hh dataset, select only hh variables
 hhdata1 <- hhdata1 %>% 
@@ -907,6 +907,19 @@ inddata1 <- inddata1 %>%
 #    labels = c("Non", "Oui", "Refusé")))
 labels = c("No", "Yes", "Refused")))
 
+inddata1$i8a_transfusion_number <- as.numeric(inddata1$i8a_transfusion_number)
+table(inddata1$i8a_transfusion_number)
+
+inddata1 = inddata1 %>%
+  mutate(transfus_num = case_when(
+    is.na(i8a_transfusion_number) ~ 0, #
+    i8a_transfusion_number == 1 ~ 1, #
+    i8a_transfusion_number == 2 ~ 2, #
+    i8a_transfusion_number == 3 ~ 3, #
+    i8a_transfusion_number >= 4 ~ 9 # 4 or more or refused (1 refuse)
+  ) %>% as.factor() ) # save as factor for analysis
+table(test$transfus_num, useNA = "always")
+
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i9_iv_drug_use_f=factor(
     inddata1$i9_iv_drug_use, 
@@ -1103,6 +1116,16 @@ inddata1 = inddata1 %>%
 inddata1 %>% filter(indexmom_indic==1) %>% count(i27a_rdt_result_f,debutsex_cat,i22_sex_hx_age_1st)
 # more HBsAg+ index mothers refused/didin't know age of sexual debut - shouldn't group with older age 
 
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(debutsex_cat=factor(
+    inddata1$debutsex_cat, 
+    levels = c(0, 1, 2),
+    #  labels = c("Non", "Oui", "Refusé")))
+    labels = c( "≥18","<18", "Refused/don't know")))
+table(inddata1$debutsex_cat)
+
+# Final list of sexual hx questions: debutsex_cat, part3mo_cat, i23a_sex_hx_past3mo_num_f, part12mo_cat, partnew12mo_cat
+
 #var of  partners:
 # i23_sex_hx_part_past3mo: # sexual partners in last 3 mo
 # i23a_sex_hx_past3mo_num: # of these who are new
@@ -1112,54 +1135,110 @@ inddata1 %>% filter(indexmom_indic==1) %>% count(i27a_rdt_result_f,debutsex_cat,
 # number of partners in last 3 months
 inddata1$i23_sex_hx_part_past3mo <- as.numeric(inddata1$i23_sex_hx_part_past3mo)
 class(inddata1$i23_sex_hx_part_past3mo)
-table(inddata1$i23_sex_hx_part_past3mo, useNA = "always") # figure out what 95 means
+table(inddata1$i23_sex_hx_part_past3mo,inddata1$hhmemcat_4_f, useNA = "always") # confirm what 95, 96 mean
 inddata1 %>% filter(i23_sex_hx_part_past3mo == 95 |i23_sex_hx_part_past3mo == 96  ) %>% reframe(hrhhid, hr3_relationship_fr, age_combined,paststudymutexcl,i22_sex_hx_age_1st,hrname_first, hrname_last, hrname_post)
-# same culprits of value or 95 or 96 for subsequent questions - check with Patrick
+# same culprits of value or 95 or 96 for subsequent questions - check with Patrick but likely should combine don't know/refused
+
+inddata1$i23_sex_hx_part_past3mo_f <- as.factor(inddata1$i23_sex_hx_part_past3mo)
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i23_sex_hx_part_past3mo_f=factor(
+    inddata1$i23_sex_hx_part_past3mo_f, 
+    levels = c(0, 1, 2,3,5,17,95,96,98,99),
+    # labels = c("Household member", "Index mother")))
+    labels = c("0","1" ,"2","3","5","17","Don't know/refused","Don't know/refused","Don't know/refused","Don't know/refused")))
+table(inddata1$i23_sex_hx_part_past3mo_f)
 
 inddata1 = inddata1 %>%
   mutate(part3mo_cat = case_when(
-    i23_sex_hx_part_past3mo > 1 & i23_sex_hx_part_past3mo < 99 ~ 1, #more than 1 sexual partner or don't know
-    i23_sex_hx_part_past3mo == 99  ~ 2, # refused = own category
-    i23_sex_hx_part_past3mo <= 1 ~ 0, # make one or 0 sexual partners the reference group
+    i23_sex_hx_part_past3mo > 1 & i23_sex_hx_part_past3mo < 99 ~ 2, #more than 1 sexual partner or don't know
+    i23_sex_hx_part_past3mo == 99  ~ 9, # refused = own category
+    i23_sex_hx_part_past3mo == 1 ~ 1, # make one or 0 sexual partners the reference group - no separate
+    i23_sex_hx_part_past3mo == 0 ~ 0, # make one or 0 sexual partners the reference group - no separate
     TRUE ~ NA_real_
   ) %>% as.factor())
-table(inddata1$part3mo_cat, useNA = "always")
+table(inddata1$part3mo_cat, inddata1$hhmemcat_4_f,useNA = "always")
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(part3mo_cat=factor(
+    inddata1$part3mo_cat, 
+    levels = c(0, 1, 2,9),
+    # labels = c("Household member", "Index mother")))
+    labels = c("0","1" ,"More than 1","Refused")))
+table(inddata1$part3mo_cat)
+
 
 # new partners in last 3 months
 inddata1$i23a_sex_hx_past3mo_num <- as.numeric(inddata1$i23a_sex_hx_past3mo_num)
 table(inddata1$i23a_sex_hx_past3mo_num, useNA = "always") # figure out what 95 means
 inddata1 %>% filter(i23a_sex_hx_past3mo_num >= 95) %>% reframe(hrhhid, hr3_relationship_fr, age_combined,paststudymutexcl,hrname_first, hrname_last, hrname_post)
 
+inddata1$i23a_sex_hx_past3mo_num_f <- as.factor(inddata1$i23a_sex_hx_past3mo_num)
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(i23a_sex_hx_past3mo_num_f=factor(
+    inddata1$i23a_sex_hx_past3mo_num_f, 
+    levels = c(0, 1, 2,95, 99),
+    # labels = c("Household member", "Index mother")))
+    labels = c("No new sexual partners","1 new" ,"More than 1/Don't know","More than 1/Don't know","Refused")))
+table(inddata1$i23a_sex_hx_past3mo_num_f)
+table(inddata1$i23a_sex_hx_past3mo_num)
+
+# OTHER OPTION TO CODE:
+
 inddata1 = inddata1 %>%
   mutate(partnew3mo_cat = case_when(
     i23a_sex_hx_past3mo_num > 0 & i23a_sex_hx_past3mo_num < 95 ~ 1, # 
-    i23a_sex_hx_past3mo_num >= 95  ~ 2, # 
+    i23a_sex_hx_past3mo_num >= 95  ~ 9, # 
     i23a_sex_hx_past3mo_num <= 0 ~ 0,
     TRUE ~ NA_real_
   ) %>% as.factor())
 table(inddata1$partnew3mo_cat, useNA = "always")
 
-inddata1 %>% filter(indexmom_indic==1 &part3mo_cat==2) %>% count(cpn_maternity, paststudymutexcl,wealth_R,hr9_school_gr_f)
-
+table(inddata1$partnew3mo_cat,inddata1$i23a_sex_hx_past3mo_num_f)
 #  partners in last year
 inddata1$i24_sex_hx_part_past1yr <- as.numeric(inddata1$i24_sex_hx_part_past1yr)
+
+inddata1$i24_sex_hx_part_past1yr_f <- as.factor(inddata1$i24_sex_hx_part_past1yr)
+
 inddata1 = inddata1 %>%
   mutate(part12mo_cat = case_when(
-    i24_sex_hx_part_past1yr > 1 & i24_sex_hx_part_past1yr < 95 ~ 1, 
-    i24_sex_hx_part_past1yr >= 95  ~ 2,
-    i24_sex_hx_part_past1yr <= 1 ~ 0,
+    i24_sex_hx_part_past1yr > 1 & i24_sex_hx_part_past1yr < 99 ~ 2, #DONT KNOW WITH >1
+    i24_sex_hx_part_past1yr == 99  ~ 9, # REFUSED AS OWN CATEGORY
+    i24_sex_hx_part_past1yr == 1 ~ 1,
+    i24_sex_hx_part_past1yr == 0 ~ 0,
     TRUE ~ NA_real_
   ) %>% as.factor())
+table(inddata1$part12mo_cat)
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(part12mo_cat=factor(
+    inddata1$part12mo_cat, 
+    levels = c(0, 1, 2, 9),
+    # labels = c("Household member", "Index mother")))
+    labels = c("No sexual partners","1","More than 1/Don't know","Refused")))
+table(inddata1$part12mo_cat)
 
 # new partners in last year
 inddata1$i24a_sex_hx_past1yr_num <- as.numeric(inddata1$i24a_sex_hx_past1yr_num)
+inddata1$i24a_sex_hx_past1yr_num_f <- as.factor(inddata1$i24a_sex_hx_past1yr_num)
+table(inddata1$i24a_sex_hx_past1yr_num_f)
+
 inddata1 = inddata1 %>%
   mutate(partnew12mo_cat = case_when(
-    i24a_sex_hx_past1yr_num > 0 & i24a_sex_hx_past1yr_num < 95 ~ 1, 
-    i24a_sex_hx_past1yr_num >= 95  ~ 2,
-    i24a_sex_hx_past1yr_num <= 0 ~ 0,
+    i24a_sex_hx_past1yr_num > 0 & i24a_sex_hx_past1yr_num < 99 ~ 1, # AT LEAST ONE/DONT KNOW
+    i24a_sex_hx_past1yr_num == 99  ~ 9, # refused
+    i24a_sex_hx_past1yr_num <= 0 ~ 0, # no new sexual partners
     TRUE ~ NA_real_
   ) %>% as.factor())
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(partnew12mo_cat=factor(
+    inddata1$partnew12mo_cat, 
+    levels = c(0, 1, 9),
+    # labels = c("Household member", "Index mother")))
+    labels = c("No new sexual partners","At least 1/ Don't know","Refused")))
+table(inddata1$partnew12mo_cat)
+
 
 # marital status
 inddata1 = inddata1 %>%
@@ -1169,6 +1248,12 @@ inddata1 = inddata1 %>%
     hr8_marital_status > 1  ~ 2,# divorced/sep/widowed/N/A - not sure what N/A is
     TRUE ~ NA_real_
   ) %>% as.factor())
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(maritalrisk_f=factor(
+    inddata1$maritalrisk, 
+    levels = c(0, 1, 2),
+    labels = c("Married/living together","Not married","Divorced/Widowed")))
 
 # add index mother age to both datasets-------
 moms <- inddata1 %>% group_by(hrhhid) %>% filter(hr3_relationship == 1) # %>% rename(indexmotherage = age_combined)
@@ -1200,17 +1285,114 @@ table(inddata1$agediff_grands) #n=3 with grandchildren, might as well verify all
 
 # save clean and remove those added during fogarty---------------------------
 inddata1$pid <- paste0(inddata1$hrhhid,"-",inddata1$participant_code)
+# ind_clean is cleaned dataset including those added during fogarty visits (date of enrollment is only on household survey so all new ones have original household date )
 ind_clean <- inddata1
 
-test <- subset(inddata1, (inddata1$pid %in% ind1006$pid2))
-notmatching <- subset(ind1006, !(ind1006$pid2 %in% test$pid))
-
-ind1006 <- ind1006 %>% mutate(pid2 = case_when(
-  hrhhid == "HRB-1082" ~ paste0(ind1006$hrhhid,"-0",ind1006$redcap_repeat_instance),
-  TRUE ~ pid
-))
+ind1006$participant_code <- ifelse(ind1006$pid=="HRK2043-02" & ind1006$hrname_first=="Precieuse","03",ind1006$participant_code)
+ind1006$pid <- paste0(ind1006$hrhhid,"-",ind1006$participant_code)
+ind1006 %>% filter(hrhhid=="HRK2043") %>% select("pid")
 
 inddata1 <- subset(inddata1, (inddata1$pid %in% ind1006$pid2))
-notmatching <- subset(ind_clean, !(ind_clean$pid %in% test$pid))
-# proceed with 1005
+fognewenroll <- subset(ind_clean, !(ind_clean$pid %in% test$pid))
 
+# summary of datasets:.......................
+# inddata1 - dataset to use for analysis because all code was written using this name
+# ind1006 - saved version of the last download before fogarty began (since the new enrollments don't have dates-only on original hh enrollment data)
+# ind_clean - cleaned dataset post fogarty (ongoing) that includes new enrollments
+# fognewenroll - new enrollments in fogarty (future analysis of fog data)
+#...........................................
+
+# additional variables - should add these to the cleaned dataset that includes new enrollments
+
+# .....................................
+# indicator for cps vaccination based on age: cpshbvprox, cpshbvprox_rev 
+# we have an indicator for 14 years or younger, or >= 15 years: agegrp15_2
+# should distinguish between enrollments in 2021 vs 2022: for 2021 use 14 or younger, for 2022, use 15 or younger
+# also should make 3 groups: 1) >=16 years and definitely not vaccinated in CPS; 2) 12-16 years and possibly vaccinated during roll-out
+# and 3) <12 years most likely vaccinated 
+
+# sens analysis with 2021 vs 2022 enrollments, potential birth at beginning vs end of year
+inddata1 = inddata1 %>%
+  mutate(cpshbvprox = case_when(
+    hdov < '2022-01-01' & age_combined >= 15 ~ 0, # prob not vacc 2021 enroll: 14 oldest born in 2007 so 15yo and above likely wouldn't be vacc
+    hdov > '2022-01-01' & age_combined >= 16 ~ 0, # prob not vacc 2022 enroll: 15 oldest born in 2007 so 16yo and above likely wouldn't be vacc
+    hdov < '2022-01-01' & age_combined < 15 & age_combined >11  ~ 1, # poss vacc during rollout 2021 enroll: 12-14 yos in rollout
+    hdov > '2022-01-01' & age_combined < 16 & age_combined >12 ~ 1, # poss vacc during rollout2 022 enroll: 13-15 yos in rollout
+    hdov < '2022-01-01' & age_combined <= 11 ~ 2, # likely vacc 2021 enroll: <=11 likely vacc
+    hdov > '2022-01-01' & age_combined <= 12 ~ 2, # likely vacc 2022 enroll: <=12 likely vacc
+    TRUE ~ 0) %>% as.numeric())
+table(inddata1$cpshbvprox, inddata1$age_combined)
+
+#make a reverse of this so referent is likely vaccinated
+inddata1$cpshbvprox_rev <- 2 - inddata1$cpshbvprox
+table(inddata1$cpshbvprox_rev, useNA = "always")
+
+inddata1 <- inddata1 %>% 
+  dplyr::mutate(cpshbvprox_rev=factor(
+    inddata1$cpshbvprox_rev, 
+    levels = c(0, 1, 2),
+    #    labels = c("Non", "Oui", "Refusé")))
+    labels = c("Likely vaccinated", "Possibly vaccinated", "Probably not vaccinated")))
+table(inddata1$cpshbvprox_rev, useNA = "always")
+table(inddata1$cpshbvprox, useNA = "always")
+
+#.....................................
+# lives with another positive
+inddata1$anotherpos <- ifelse(inddata1$totalpositive - inddata1$i27a_rdt_result > 0 , 1,0)
+table(inddata1$anotherpos)
+#.................................
+# now look at households with at least one direct offspring in levels 0/1 vs hh with only group 2
+# only for direct offspring: hr3_relationship == 3
+diroff <- inddata1 %>% filter(hr3_relationship == 3) %>% select("hrhhid", "pid","h10_hbv_rdt","hr3_relationship", "i27a_rdt_result","i27a_rdt_result_f", "age_combined","cpshbvprox")
+table(diroff$i27a_rdt_result_f, useNA = "always")
+
+# count of HBV+ direct offspring in hh
+diroffhh <- diroff %>% group_by(hrhhid) %>% summarise(hbvposdiroff = sum(i27a_rdt_result))
+
+# understand NAs of hbvposdiroff
+nas <- diroffhh %>% filter(is.na(hbvposdiroff))
+nasid <- inddata1 %>% filter((hrhhid %in% nas$hrhhid))
+table(nasid$hrhhid, nasid$i27_rdt_notdone_reason)
+# unable to get sample - set hbvposdiroff==0 in this case
+diroffhh$hbvposdiroff <- ifelse(is.na(diroffhh$hbvposdiroff),0,diroffhh$hbvposdiroff)
+
+# indicator for has direct offspring
+diroffhh$hasdiroff <- 1
+
+#hbvposdiroff, hasdiroff
+#put this variable back onto hh and indd datasets
+inddata1 <- left_join(inddata1, diroffhh,  by = "hrhhid")
+hhdata1 <- left_join(hhdata1, diroffhh, by = "hrhhid")
+# for those without diroff, set value to 0 to both variables
+table(inddata1$hasdiroff, useNA = "always")
+hhdata1$hasdiroff <- ifelse(is.na(hhdata1$hasdiroff), 0,hhdata1$hasdiroff)
+inddata1$hasdiroff <- ifelse(is.na(inddata1$hasdiroff), 0,inddata1$hasdiroff)
+table(inddata1$hbvposdiroff, useNA = "always")
+hhdata1$hbvposdiroff <- ifelse(is.na(hhdata1$hbvposdiroff), 0,hhdata1$hbvposdiroff)
+inddata1$hbvposdiroff <- ifelse(is.na(inddata1$hbvposdiroff), 0,inddata1$hbvposdiroff)
+
+# male partner is positive, var malepartner means a male partner was enrolled
+inddata1 %>% filter(malepartner==2) %>% reframe(pid, hr3_relationship)
+# this was before removing those newly enrolled
+# change in inddata1 to 1 for 2015
+inddata1$malepartner <- ifelse(inddata1$hrhhid=="HRK2015",1,inddata1$malepartner)
+table(inddata1$malepartner)
+
+men <- inddata1 %>% filter(hr3_relationship == 2) %>% select("hrhhid", "pid","hdov","h10_hbv_rdt","hr3_relationship_f", "i3_hiv_pos_test_f","acq_ind","avert_indic","astmh_indic","i27a_rdt_result","i27a_rdt_result_f", 
+                                                               "age_combined","cpshbvprox","serostatchange","serochangedir","i23_sex_hx_part_past3mo","i23a_sex_hx_past3mo_num","i24_sex_hx_part_past1yr","i24a_sex_hx_past1yr_num","malepartner")
+
+men <- men %>% mutate(malepartpos = case_when(
+  i27a_rdt_result==1 ~ 1,
+  i27a_rdt_result==0 ~ 0,
+  TRUE ~ NA_real_ ))
+table(men$malepartner, men$malepartpos)
+inddata1 <- left_join(inddata1, men[,c("hrhhid","malepartpos")],  by = "hrhhid")
+table(inddata1$hr3_relationship, inddata1$malepartpos, useNA = "always")
+
+inddata1$malepartpos <- ifelse(is.na(inddata1$malepartpos), 0,inddata1$malepartpos)
+
+# datasets of individuals for each subgroup - also in other parts
+moms <- inddata1 %>% group_by(hrhhid) %>% filter(hr3_relationship == 1)
+directoff <- inddata1 %>% filter(hr3_relationship == 3)
+othermember <- inddata1 %>% filter(hhmemcat==0)
+men <- othermember %>% filter(hr3_relationship==2)
