@@ -15,6 +15,20 @@ library(lubridate)
 # Load data-------------
 ind_con <- readRDS('./ind_con.rds')
 
+# Knowledge subset-------------------
+# remove names and GPS ("ind_con" = individual, connaissance)
+ind_con <- inddata1 %>% select(-c(hrname_last,hrname_post,hrname_first,hxcoord, hycoord))
+# save to use in 09_connaissance.R file
+saveRDS(ind_con, file = "ind_con.rds")
+# saveRDS(ind_con_2, file = "ind_con_2.rds")
+
+# number of household members expsed to HBV in household
+anyhbv <- hhdata2 %>% filter(totalpositive >0) 
+exphhmem <- inddata1 %>% filter(hrhhid %in% anyhbv$hrhhid)
+
+table(exphhmem$i27a_rdt_result_f, exphhmem$h10_hbv_rdt)
+
+
 # se concentrer d'abord sur un sous-ensemble de questions de connaissance
 ind_con_2 <- ind_con %>% 
   dplyr::select("hrhhid", "maternity","participant_code", "h10_hbv_rdt","h10_hbv_rdt_f","hr3_relationship","hr3_relationship_fr","hhmemcat_f","age_combined","avert_indic","astmh_indic","acq_ind",contains("hbv_percep"),"i27a_rdt_result_f")
