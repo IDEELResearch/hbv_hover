@@ -33,7 +33,244 @@ pacman::p_load(fs,
                sfnetworks,
                tidygraph)
 
-#B. Visualize networks --------------------------------
+#B. By exposure --------------------------------
+# start with 200
+## 1. Read in the hovernet200 data ----
+hovernet200 <- inddata1 %>% select("hrhhid","pid","h10_hbv_rdt","hr3_relationship","hr4_sex","totalpositive","i27a_rdt_result","cpn_maternity","tab3hbv") #"i27a_rdt_result_f","age_combined", "hr4_sex_f","hdov",
+# from step below that subsets these, but want to keep the same code
+hovernet <- hovernet200 
+# value for type of relationship
+hovernet <- hovernet %>%
+  mutate(
+    value = case_when(
+      hr3_relationship == 1 ~ 1, # index mothers
+      hr3_relationship == 2 ~ 2, # male partners (sexual)
+      hr3_relationship == 3 ~ 3, # offspring (vertical)
+      hr3_relationship == 6 & hr4_sex == 1 ~ 3, # mother's mother (vertical)
+      TRUE ~ 4
+    ) %>% as.numeric()
+  )
+table(hovernet$value)
+
+indexmoIDs <- hovernet %>% filter(hr3_relationship==1) %>% select(hrhhid, pid) %>% rename(sourceid = pid)
+
+hovernet <- left_join(hovernet, indexmoIDs, by = "hrhhid")
+# relocate the sourceID (index mothers's ID) and participat ID to front of dataframe
+hovernet <- hovernet %>% relocate(sourceid, pid) 
+
+#subset for edge list
+hover_edge <- hovernet %>% select(sourceid, pid, value, h10_hbv_rdt, hr3_relationship,cpn_maternity) %>% filter(hr3_relationship != 1) %>% rename(mat = cpn_maternity)
+# add edges going from male partner to index mother to create two-way arrows
+maleedge <- hovernet %>% select(sourceid, pid, value, h10_hbv_rdt, hr3_relationship,cpn_maternity) %>% filter(hr3_relationship == 2) %>% rename(pidman = pid, pidindexmo = sourceid, mat = cpn_maternity)  %>% rename(pid = pidindexmo, sourceid = pidman) %>% relocate(sourceid, pid)
+hover_edge <- rbind(hover_edge, maleedge)
+
+# Create a dataframe of node attributes (hovernet_attr) using pid as the node ID
+hovernet_attr <- hovernet %>%
+  select(pid, hr4_sex, value,hr3_relationship, tab3hbv,i27a_rdt_result, totalpositive, cpn_maternity) %>%
+  distinct()
+hovernet_attr <- hovernet_attr %>% mutate(hbvnodecross = case_when(
+  hr3_relationship==1 & tab3hbv==1 ~ 1, # index mother pos at cpn (exposed)
+  hr3_relationship==1 & tab3hbv==0 ~ 2, # index mother neg at cpn (unexposed)
+  hr3_relationship!=1 & tab3hbv==1 ~ 3, # alter pos 
+  hr3_relationship!=1 & tab3hbv==0 ~ 4, # alter neg
+))
+table(hovernet_attr$hbvnodecross, useNA = "always")
+
+## 2. Exposed subset------------
+### 5.1 Subset-------------------------------
+sub_exphh_edge <- hover_edge %>% filter(h10_hbv_rdt == 1)
+hvr_ed_gsimp <- graph_from_data_frame(sub_exphh_edge, directed = TRUE)
+
+### 5.2 Formatting-------------------------------
+# Add node attributes to the igraph object
+V(hvr_ed_gsimp)$sex <-
+  hovernet_attr$hr4_sex[match(V(hvr_ed_gsimp)$name, hovernet_attr$pid)]
+V(hvr_ed_gsimp)$hbsag <-
+  hovernet_attr$hbvnodecross[match(V(hvr_ed_gsimp)$name, hovernet_attr$pid)]
+V(hvr_ed_gsimp)$totalpos <-
+  hovernet_attr$totalpositive[match(V(hvr_ed_gsimp)$name, hovernet_attr$pid)]
+V(hvr_ed_gsimp)$maternity <-
+  hovernet_attr$cpn_maternity[match(V(hvr_ed_gsimp)$name, hovernet_attr$pid)]
+
+# Nodes, colors (w maternities)
+V(hvr_ed_gsimp)$color <-
+  ifelse(V(hvr_ed_gsimp)$hbsag==0,"#bbd458",
+         ifelse(V(hvr_ed_gsimp)$hbsag == 1, "#B2182B", 
+                ifelse(V(hvr_ed_gsimp)$hbsag == 2,"black",
+                       ifelse(V(hvr_ed_gsimp)$hbsag == 3,"#f4a582",  "gray70"))))
+
+#####use for edge list WITHOUT maternity edges
+# node_colors <- c("#B2182B","black", "#f4a582","gray70")
+# V(hvr_ed_gsimp)$color <- node_colors[V(hvr_ed_gsimp)$hbsag]
+
+# Define node shapes
+# shape options; names(igraph:::.igraph.shapes)
+# "pie" shape is interesting - use for household level plotting on map?
+node_shapes <- c("square","circle",  "sphere") # "none" for maternity (will have NA in attribute table), square=male, circle=female
+
+V(hvr_ed_gsimp)$shape <-
+  node_shapes[ifelse(is.na(V(hvr_ed_gsimp)$sex), 3, V(hvr_ed_gsimp)$sex + 1)]
+
+# Edges
+# solid vs dotted to distinguish sexual/vertical vs other
+E(hvr_ed_gsimp)$lty <-
+  ifelse(E(hvr_ed_gsimp)$value == 4, "dotted", "solid")
+
+# make sexual and vertical routes stand out
+#edge_colors <- c("gray70","#60bfc1","#5d8eb6","gray70") # 1-mothers (doesn't exist), 2 sexual, 3 vertical, 4 other
+
+#edge_colors <- c("gray70","#1f4a76", "#65b5c0","gray70")
+
+#edge_colors <- c("gray70","#1f4a76", "#1F3B4D","gray70")
+edge_colors <- c("gray70","#479cf8", "#1F3B4D","gray70")
+edge_colors <- c("gray70","#3b7e88", "#1F3B4D","gray70")
+
+# edge color seems distracting
+E(hvr_ed_gsimp)$color <- edge_colors[E(hvr_ed_gsimp)$value]
+E(hvr_ed_gsimp)$width = E(hvr_ed_gsimp)$value
+
+# alternatively could show transmission route by edge weight
+# E(hvr_ed_gsimp)$weight <- E(hvr_ed_gsimp)$value
+
+# Add vertex labels
+V(hvr_ed_gsimp)$label.cex <- 1 # was 0.5
+V(hvr_ed_gsimp)$label.family <- "Helvetica"
+V(hvr_ed_gsimp)$label <- V(hvr_ed_gsimp)$name
+
+# Compute the layout with minimal overlap
+l <- layout_with_fr(hvr_ed_gsimp)
+l <- norm_coords(l, ymin=-1, ymax=1, xmin=-1, xmax=1)
+
+l <- layout_with_kk(hvr_ed_gsimp)
+
+node.size= c(10,10,10)
+# Plot the igraph object
+#png(file="./plots/network_hhclusters.png", quality=100)#, width=600, height=350)
+# subset by structure
+
+### 5.3 Plot -------------------------------
+setEPS()
+postscript("./plots/network_exp.eps")# quality=100)#, width=600, height=350)
+plot(
+  hvr_ed_gsimp,
+  vertex.size = 3,
+  vertex.color = V(hvr_ed_gsimp)$color,
+  #vertex.label = V(hvr_ed_gsimp)$label, # was NA
+  vertex.label = ifelse(is.na(V(hvr_ed_gsimp)$sex), V(hvr_ed_gsimp)$name, NA),
+  vertex.label.dist = 1,
+  # vertex.label.cex = 0.6,
+  edge.arrow.size = 0.05,
+  edge.width = (E(hvr_ed_gsimp)$width)*0.5,
+  edge.color = E(hvr_ed_gsimp)$color,
+  edge.lty = E(hvr_ed_gsimp)$lty,
+  vertex.shape = V(hvr_ed_gsimp)$shape,
+  # main = "HOVER households with ≥2 HBV infections (n=14)",
+  main = "Exposed households",
+  layout=layout.auto,
+  vertex.size=node.size*0.25) # layout_with_lgl, layout_nicely, layout.auto
+dev.off()
+
+## 3. Unexposed subset------------
+### 5.1 Subset-------------------------------
+sub_unexphh_edge <- hover_edge %>% filter(h10_hbv_rdt == 0)
+hvr_ed_gsimp <- graph_from_data_frame(sub_unexphh_edge, directed = TRUE)
+
+### 5.2 Formatting-------------------------------
+# Add node attributes to the igraph object
+V(hvr_ed_gsimp)$sex <-
+  hovernet_attr$hr4_sex[match(V(hvr_ed_gsimp)$name, hovernet_attr$pid)]
+V(hvr_ed_gsimp)$hbsag <-
+  hovernet_attr$hbvnodecross[match(V(hvr_ed_gsimp)$name, hovernet_attr$pid)]
+V(hvr_ed_gsimp)$totalpos <-
+  hovernet_attr$totalpositive[match(V(hvr_ed_gsimp)$name, hovernet_attr$pid)]
+V(hvr_ed_gsimp)$maternity <-
+  hovernet_attr$cpn_maternity[match(V(hvr_ed_gsimp)$name, hovernet_attr$pid)]
+
+# Nodes, colors (w maternities)
+V(hvr_ed_gsimp)$color <-
+  ifelse(V(hvr_ed_gsimp)$hbsag==0,"#bbd458",
+         ifelse(V(hvr_ed_gsimp)$hbsag == 1, "#B2182B", 
+                ifelse(V(hvr_ed_gsimp)$hbsag == 2,"black",
+                       ifelse(V(hvr_ed_gsimp)$hbsag == 3,"#f4a582",  "gray70"))))
+
+#####use for edge list WITHOUT maternity edges
+# node_colors <- c("#B2182B","black", "#f4a582","gray70")
+# V(hvr_ed_gsimp)$color <- node_colors[V(hvr_ed_gsimp)$hbsag]
+
+# Define node shapes
+# shape options; names(igraph:::.igraph.shapes)
+# "pie" shape is interesting - use for household level plotting on map?
+node_shapes <- c("square","circle",  "sphere") # "none" for maternity (will have NA in attribute table), square=male, circle=female
+
+V(hvr_ed_gsimp)$shape <-
+  node_shapes[ifelse(is.na(V(hvr_ed_gsimp)$sex), 3, V(hvr_ed_gsimp)$sex + 1)]
+
+# Edges
+# solid vs dotted to distinguish sexual/vertical vs other
+E(hvr_ed_gsimp)$lty <-
+  ifelse(E(hvr_ed_gsimp)$value == 4, "dotted", "solid")
+
+# make sexual and vertical routes stand out
+#edge_colors <- c("gray70","#60bfc1","#5d8eb6","gray70") # 1-mothers (doesn't exist), 2 sexual, 3 vertical, 4 other
+
+#edge_colors <- c("gray70","#1f4a76", "#65b5c0","gray70")
+
+#edge_colors <- c("gray70","#1f4a76", "#1F3B4D","gray70")
+edge_colors <- c("gray70","#479cf8", "#1F3B4D","gray70")
+edge_colors <- c("gray70","#3b7e88", "#1F3B4D","gray70")
+
+# edge color seems distracting
+E(hvr_ed_gsimp)$color <- edge_colors[E(hvr_ed_gsimp)$value]
+E(hvr_ed_gsimp)$width = E(hvr_ed_gsimp)$value
+
+# alternatively could show transmission route by edge weight
+# E(hvr_ed_gsimp)$weight <- E(hvr_ed_gsimp)$value
+
+# Add vertex labels
+V(hvr_ed_gsimp)$label.cex <- 1 # was 0.5
+V(hvr_ed_gsimp)$label.family <- "Helvetica"
+V(hvr_ed_gsimp)$label <- V(hvr_ed_gsimp)$name
+
+# Compute the layout with minimal overlap
+l <- layout_with_fr(hvr_ed_gsimp)
+l <- norm_coords(l, ymin=-1, ymax=1, xmin=-1, xmax=1)
+
+l <- layout_with_kk(hvr_ed_gsimp)
+
+node.size= c(10,10,10)
+# Plot the igraph object
+#png(file="./plots/network_hhclusters.png", quality=100)#, width=600, height=350)
+# subset by structure
+
+### 5.3 Plot -------------------------------
+setEPS()
+postscript("./plots/network_unexp.eps")# quality=100)#, width=600, height=350)
+plot(
+  hvr_ed_gsimp,
+  vertex.size = 3,
+  vertex.color = V(hvr_ed_gsimp)$color,
+  #vertex.label = V(hvr_ed_gsimp)$label, # was NA
+  vertex.label = ifelse(is.na(V(hvr_ed_gsimp)$sex), V(hvr_ed_gsimp)$name, NA),
+  vertex.label.dist = 1,
+  # vertex.label.cex = 0.6,
+  edge.arrow.size = 0.05,
+  edge.width = (E(hvr_ed_gsimp)$width)*0.5,
+  edge.color = E(hvr_ed_gsimp)$color,
+  edge.lty = E(hvr_ed_gsimp)$lty,
+  vertex.shape = V(hvr_ed_gsimp)$shape,
+  # main = "HOVER households with ≥2 HBV infections (n=14)",
+  main = "Unexposed households",
+  layout=layout.auto,
+  vertex.size=node.size*0.25) # layout_with_lgl, layout_nicely, layout.auto
+dev.off()
+
+
+
+
+
+
+
+#C. By maternity --------------------------------
 # start with 200
 ## 1. Read in the hovernet200 data ----
 hovernet200 <- inddata1 %>% select("hrhhid","pid","h10_hbv_rdt","hr3_relationship","hr4_sex","totalpositive","i27a_rdt_result","cpn_maternity","tab3hbv") #"i27a_rdt_result_f","age_combined", "hr4_sex_f","hdov",
@@ -47,7 +284,6 @@ hovernet200 <- inddata1 %>% select("hrhhid","pid","h10_hbv_rdt","hr3_relationshi
 hovernet <- hovernet200 
 
 # Create a value variable for the edges (1 for ego, 2 for sexual relationship, 3 for vertical transmission, 4 for other relationship)
-# NOTE TO CAMILLE: I CHANGED THE VALUE ASSIGNMENTS TO MAKE THE COLORS EASIER
 hovernet <- hovernet %>%
   mutate(
     value = case_when(
@@ -59,6 +295,7 @@ hovernet <- hovernet %>%
     ) %>% as.numeric()
   )
 table(hovernet$value)
+
 
 ## 3. Edge list ----
 # Create the igraph object (hvr_ed_gsimp) from the edge list (hover_edge)
@@ -575,10 +812,10 @@ plot(
   edge.lty = E(hvr_ed_gsimp)$lty,
   vertex.shape = V(hvr_ed_gsimp)$shape,
   # main = "HOVER households with ≥2 HBV infections (n=14)",
-  main = "HOVER household networks recruited from Binza",
+  main = "",
   layout=layout.auto,
   vertex.size=node.size*0.25) # layout_with_lgl, layout_nicely, layout.auto
-dev.off()
+#dev.off()
 
 #legends - need to figure out
 legend("topright",
@@ -586,7 +823,8 @@ legend("topright",
        legend = c("Sexual", "Vertical", "Other"),
        col = c("#3b7e88", "#1F3B4D","gray70"),
        lty = 1, # line type 1-solid
-       cex = 0.3, # relative size
+       lwd = 3, # line type 1-solid
+       cex = 1, # relative size
        text.font = 10
        # lwd = 1.7,
        #box.lwd = 1,
@@ -608,10 +846,23 @@ legend(title = "Nodes",
        pch = c(21, 21, 22, 22, 21,21, 25),
        pt.cex = 1,
        cex = 0.7,
+       #lwd = 1,
        box.lwd = 0,
        x = 1.1,
        y = 0.5)
-
+legend("topright",
+       title = "Transmission probability",
+       legend = c("More likely", "Less likely"),
+       col = c("black"),
+       lty = c(1,3), # line type 1-solid
+       cex = 1, # relative size
+       text.font = 10,
+       lwd = 5
+       # lwd = 1.7,
+       #box.lwd = 1,
+       #x = 1.1,
+       #y = 1
+)
 #C. Network stats----------------------------
 # choosing these stats to analyze within communities to show they are the same
 # Which community is the largest? The densest? The most interconnected? The most highly clustered? Has the shortest mean distances?
@@ -632,6 +883,8 @@ t[1, 6] <- "Mean Distance"
 hov_ed_stats_binz <- graph_from_data_frame(hover_edge_binz, directed = TRUE)
 
 V(hov_ed_stats_binz)$degree <- degree(hov_ed_stats_binz)
+
+
 
 t[2, 1] <- "Binza"
 t[2, 2] <- length(V(hov_ed_stats_binz))
@@ -670,5 +923,98 @@ t[4, 5] <- round(transitivity(hov_ed_stats_oth), 2)
 t[4, 6] <- round(mean_distance(hov_ed_stats_oth), 2)
 
 # 
+# Fogarty network------------------------------------------------------------------
+library(readxl)
+fogedge <- read_excel("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/Fogarty work/Data and analysis/FOGARTY DATASET.xlsx", sheet = "fog_edg_ex")
+
+fogedge <- fogedge %>% filter(relationshipcat != "self")
+fog_gr <- graph_from_data_frame(fogedge, directed = FALSE)
 
 
+V(fogedge)$sex <-
+  hovernet_attr$hr4_sex[match(V(hvr_ed_gsimp)$name, hovernet_attr$pid)]
+V(hvr_ed_gsimp)$hbsag <-
+  hovernet_attr$hbvnodecross[match(V(hvr_ed_gsimp)$name, hovernet_attr$pid)]
+V(hvr_ed_gsimp)$totalpos <-
+  hovernet_attr$totalpositive[match(V(hvr_ed_gsimp)$name, hovernet_attr$pid)]
+V(hvr_ed_gsimp)$maternity <-
+  hovernet_attr$cpn_maternity[match(V(hvr_ed_gsimp)$name, hovernet_attr$pid)]
+
+# Nodes, colors (w maternities)
+V(hvr_ed_gsimp)$color <-
+  ifelse(V(hvr_ed_gsimp)$hbsag==0,"#bbd458",
+         ifelse(V(hvr_ed_gsimp)$hbsag == 1, "#B2182B", 
+                ifelse(V(hvr_ed_gsimp)$hbsag == 2,"black",
+                       ifelse(V(hvr_ed_gsimp)$hbsag == 3,"#f4a582",  "gray70"))))
+
+#####use for edge list WITHOUT maternity edges
+# node_colors <- c("#B2182B","black", "#f4a582","gray70")
+# V(hvr_ed_gsimp)$color <- node_colors[V(hvr_ed_gsimp)$hbsag]
+
+# Define node shapes
+# shape options; names(igraph:::.igraph.shapes)
+# "pie" shape is interesting - use for household level plotting on map?
+node_shapes <- c("square","circle",  "sphere") # "none" for maternity (will have NA in attribute table), square=male, circle=female
+
+V(hvr_ed_gsimp)$shape <-
+  node_shapes[ifelse(is.na(V(hvr_ed_gsimp)$sex), 3, V(hvr_ed_gsimp)$sex + 1)]
+
+# Edges
+# solid vs dotted to distinguish sexual/vertical vs other
+E(hvr_ed_gsimp)$lty <-
+  ifelse(E(hvr_ed_gsimp)$value == 4, "dotted", "solid")
+
+# make sexual and vertical routes stand out
+#edge_colors <- c("gray70","#60bfc1","#5d8eb6","gray70") # 1-mothers (doesn't exist), 2 sexual, 3 vertical, 4 other
+
+#edge_colors <- c("gray70","#1f4a76", "#65b5c0","gray70")
+
+#edge_colors <- c("gray70","#1f4a76", "#1F3B4D","gray70")
+edge_colors <- c("gray70","#479cf8", "#1F3B4D","gray70")
+edge_colors <- c("gray70","#3b7e88", "#1F3B4D","gray70")
+
+# edge color seems distracting
+E(hvr_ed_gsimp)$color <- edge_colors[E(hvr_ed_gsimp)$value]
+E(hvr_ed_gsimp)$width = E(hvr_ed_gsimp)$value
+
+# alternatively could show transmission route by edge weight
+# E(hvr_ed_gsimp)$weight <- E(hvr_ed_gsimp)$value
+
+# Add vertex labels
+V(hvr_ed_gsimp)$label.cex <- 1 # was 0.5
+V(hvr_ed_gsimp)$label.family <- "Helvetica"
+V(hvr_ed_gsimp)$label <- V(hvr_ed_gsimp)$name
+
+# Compute the layout with minimal overlap
+l <- layout_with_fr(hvr_ed_gsimp)
+l <- norm_coords(l, ymin=-1, ymax=1, xmin=-1, xmax=1)
+
+l <- layout_with_kk(hvr_ed_gsimp)
+
+node.size= c(10,10,10)
+# Plot the igraph object
+#png(file="./plots/network_hhclusters.png", quality=100)#, width=600, height=350)
+# subset by structure
+
+### 5.3 Plot -------------------------------
+
+plot(
+  hvr_ed_gsimp,
+  vertex.size = 3,
+  vertex.color = V(hvr_ed_gsimp)$color,
+  #vertex.label = V(hvr_ed_gsimp)$label, # was NA
+  vertex.label = ifelse(is.na(V(hvr_ed_gsimp)$sex), V(hvr_ed_gsimp)$name, NA),
+  vertex.label.dist = 1,
+  # vertex.label.cex = 0.6,
+  edge.arrow.size = 0.05,
+  edge.width = (E(hvr_ed_gsimp)$width)*0.5,
+  edge.color = E(hvr_ed_gsimp)$color,
+  edge.lty = E(hvr_ed_gsimp)$lty,
+  vertex.shape = V(hvr_ed_gsimp)$shape,
+  # main = "HOVER households with ≥2 HBV infections (n=14)",
+  main = "Exposed households",
+  layout=layout.auto,
+  vertex.size=node.size*0.25) # layout_with_lgl, layout_nicely, layout.auto
+
+
+plot(fog_gr)
