@@ -133,6 +133,9 @@ mat_gps <- read_excel("/Users/camillem/OneDrive - University of North Carolina a
 
 mat_gps_nomiss <- mat_gps %>% filter(!is.na(mat_long)) # waiting for input from Patrick on missing locations
 mat_gps_sf <-  st_as_sf(mat_gps_nomiss, coords = c("mat_long","mat_lat"), crs= 4326)
+# add value for size on map
+mat_gps_sf$binzking <- ifelse(mat_gps_sf$cpn_maternity=="Binza" | mat_gps_sf$cpn_maternity=="Kingasani", 4,1)
+table(mat_gps_sf$binzking)
 
 # check GPS data formatting
 hhdata1$hycoord_edit <- ifelse(floor(log10(hhdata1$hycoord))==7,
