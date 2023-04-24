@@ -218,3 +218,21 @@ ggplot(df) +
   geom_col() +
   facet_zoom(ylim = c(0, 10))
 
+# samples reformat dataset------
+library(readxl)
+fogsamp <- read_excel("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/Fogarty work/Data and analysis/FOGARTY DATASET.xlsx", sheet = "Sheet3")
+
+fogsamp_long <- gather(fogsamp, aliquot, newpid, aPL1:fPL3, factor_key=TRUE)
+table(fogsamp_long$sequencing)
+fogsamp_long$box <- ifelse(fogsamp_long$sequencing=="positive" & fogsamp_long$aliquot=="cSH1","Box 12","")
+
+fogsamp_long <- fogsamp_long %>% filter(newpid != "")
+
+fogsamp_long$box <- ifelse(fogsamp_long$aliquot=="aPL1","Abbott",fogsamp_long$box)
+
+fogsamp_long <- fogsamp_long[order(fogsamp_long$box, fogsamp_long$orderind, fogsamp_long$aliquot),]
+
+library(writexl)
+write_xlsx(fogsamp_long, "/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/Fogarty work/Data and analysis/fogsamp_long.xlsx")
+
+
