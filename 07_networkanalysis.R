@@ -929,7 +929,7 @@ fogedge <- read_excel("/Users/camillem/OneDrive - University of North Carolina a
 
 fogedge <- fogedge %>% filter(relationshipcat != "self")
 fog_gr <- graph_from_data_frame(fogedge, directed = FALSE)
-
+plot(fog_gr)
 
 V(fogedge)$sex <-
   hovernet_attr$hr4_sex[match(V(hvr_ed_gsimp)$name, hovernet_attr$pid)]
