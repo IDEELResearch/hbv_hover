@@ -540,5 +540,30 @@ map1 <- make_polygon_map()
 
 # another example: https://gis.stackexchange.com/questions/332109/extract-population-density-data-from-a-raster-by-shapefile
 
+# Fogarty map------------------
 
+fogpids <- read_excel("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/Fogarty work/Data and analysis/FOGARTY DATASET.xlsx", sheet = "fogpids")
 
+hover_gps_full_jitt <-st_jitter(hover_gps_full,  factor = 0.01)
+
+foggps_jitt <- hover_gps_full_jitt %>% filter(hrhhid %in% fogpids$hrhhid)
+# check not matching
+# fogmapmiss <- fogpids %>% filter(!(hrhhid %in% foggps_jitt$hrhhid))
+ggplot() + 
+  layer_spatial(r3, mapping = aes(fill = after_stat(band1))) +
+  #layer_spatial(drcpop_crop, mapping = aes(fill = after_stat(band1))) +
+  scale_fill_viridis_c(option = "magma",na.value = NA, name="Pop per 100m", direction = -1)+ #zero value "#fcea66"
+  new_scale("fill") +
+  geom_sf(data=congo_br, fill = "gray75", size=0.2)+
+  geom_sf(drc_healtharea_Kin, mapping = aes(alpha=0.5, size = 0.1)) + # province shapefile covers river, but health area does not (could also check health zone)
+  geom_sf(data=foggps_jitt, aes(fill=h10_hbv_rdt_f, color=h10_hbv_rdt_f), size=3)+ #or 3 for standalone
+  scale_color_manual(values = c("#4D4D4D","#B2182B",'ghostwhite'))+
+  #new_scale("fill") +
+  geom_sf(data=mat_gps_sf, color = "gray39", fill="#fee090", shape = 23, aes(size= binzking*2))+ # size=5, colors: # , #F5B24E
+  coord_sf(xlim = c(15.2, 15.6), ylim = c(-4.48, -4.07), expand = FALSE)+
+  theme(panel.background = element_rect(fill = "aliceblue"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_blank())
+ggsave('./plots/hhexp_pop.png', width=9, height=9, dpi = 300)
