@@ -26,6 +26,12 @@ vhs_merg <- rbind(vhs_demog,vhs_nomatch_data)
 vhs_stillnomatch <- vhs_pids %>% filter(!(`HOVER ID` %in% vhs_merg$pid))
 # 2011-03 is duplicated, 2085-06 is duplicated, 2089-07 does not exist
 
+# 31 July 2023
+inddata1 %>% filter(pid=="HRB -1010-02") %>%  select(pid, age_combined, hr4_sex_f,hr3_relationship_f, hr9_school_gr_f, hr11_religion_f, hr10_occupation_gr_f)
+inddata1 %>% filter(pid=="HRK2057-02") %>%  select(pid, age_combined, hr4_sex_f,hr3_relationship_f, hr9_school_gr_f, hr11_religion_f, hr10_occupation_gr_f)
+inddata1 %>% filter(pid=="HRK-2003-02") %>%  select(pid, age_combined,hr4_sex_f, hr9_school_gr_f, hr11_religion_f, hr10_occupation_gr_f) #hr3_relationship_f
+inddata1 %>% filter(pid=="HRB-1037-03") %>%  select(pid, age_combined,hr4_sex_f, hr9_school_gr_f, hr11_religion_f, hr10_occupation_gr_f) #hr3_relationship_f
+
 
 write_xlsx(vhs_merg,"~/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/Vaccine hesitancy/VHS Data/vhs_merg.xlsx")
 
@@ -188,8 +194,9 @@ hhwpos <- hhwpos %>% select(c("hrhhid","participant_code", "h10_hbv_rdt_f","i27a
 
 # fogarty of interest - Oct 4----------
 fogarty_1 <- read_excel("~/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/Fogarty work/HOVER households of interest.xlsx", sheet = "List de priorité")
+fogarty_fin <- read_excel("~/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/Fogarty work/Data and analysis/FOGARTY DATASET.xlsx", sheet = "fogpids")
 
-fogarty_hoverdata <- inddata1 %>% filter(hrhhid %in% fogarty_1$`HOVER PID`)
+fogarty_hoverdata <- inddata1 %>% filter(hrhhid %in% fogarty_fin$hrhhid)
 
 momnames <- fogarty_hoverdata %>% filter(indexmom_indic==1) %>% select(c("hrhhid","hrname_last","hrname_post","hrname_first"))
 
@@ -367,6 +374,7 @@ addmargins(table(ind_know_mtct_denom$vhselig, ind_know_mtct_denom$i20_hbv_percep
 
 # Quant visualization----------------------------------
 vhs_quant <- read_excel("~/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/Vaccine hesitancy/VHS Data/vhs_quant.xlsx", sheet = "vhs_quant")
+vhs_quant <- read_excel("~/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/Vaccine hesitancy/VHS Data/vhs_quant_aug2023.xls")
 
 # save column names for function
 vars <- noquote(colnames(vhs_quant)[4:13])
@@ -404,32 +412,115 @@ conf_prevent_before$variable <- "conf_prevent_before"
 conf_prevent_before <-  as.data.frame(str_match(conf_prevent_before$variable, "_(.*?)_")) %>% select(c(2)) %>% rename(topic = V2) %>% bind_cols(conf_prevent_before)
 conf_prevent_before <- conf_prevent_before %>% mutate(time = sapply(strsplit(conf_prevent_before$variable, split= "_", fixed = TRUE), tail, 1L))
 
-conf_prevent_now <- vhs_quant %>% count(conf_prevent_now) %>% rename(response = conf_prevent_now)
-conf_prevent_now$variable <- "conf_prevent_now"
-conf_prevent_now <-  as.data.frame(str_match(conf_prevent_now$variable, "_(.*?)_")) %>% select(c(2)) %>% rename(topic = V2) %>% bind_cols(conf_prevent_now)
-conf_prevent_now <- conf_prevent_now %>% mutate(time = sapply(strsplit(conf_prevent_now$variable, split= "_", fixed = TRUE), tail, 1L))
-view(conf_prevent_now)
-
-conf_danger_before <- vhs_quant %>% count(conf_danger_before) %>% rename(response = conf_danger_before)
-conf_danger_before$variable <- "conf_danger_before"
-conf_danger_before <-  as.data.frame(str_match(conf_danger_before$variable, "_(.*?)_")) %>% select(c(2)) %>% rename(topic = V2) %>% bind_cols(conf_danger_before)
-conf_danger_before <- conf_danger_before %>% mutate(time = sapply(strsplit(conf_danger_before$variable, split= "_", fixed = TRUE), tail, 1L))
-view(conf_danger_before)
-
-conf_danger_now <- vhs_quant %>% count(conf_danger_now) %>% rename(response = conf_danger_now)
-conf_danger_now$variable <- "conf_danger_now"
-conf_danger_now <-  as.data.frame(str_match(conf_danger_now$variable, "_(.*?)_")) %>% select(c(2)) %>% rename(topic = V2) %>% bind_cols(conf_danger_now)
-conf_danger_now <- conf_danger_now %>% mutate(time = sapply(strsplit(conf_danger_now$variable, split= "_", fixed = TRUE), tail, 1L))
-view(conf_danger_now)
-
-conf_babyhealth_before <- vhs_quant %>% count(conf_babyhealth_before) %>% rename(response = conf_babyhealth_before)
-conf_babyhealth_before$variable <- "conf_babyhealth_before"
-conf_babyhealth_before <-  as.data.frame(str_match(conf_babyhealth_before$variable, "_(.*?)_")) %>% select(c(2)) %>% rename(topic = V2) %>% bind_cols(conf_babyhealth_before)
-conf_babyhealth_before <- conf_babyhealth_before %>% mutate(time = sapply(strsplit(conf_babyhealth_before$variable, split= "_", fixed = TRUE), tail, 1L))
-view(conf_babyhealth_before)
 
 
-all <- rbind(conf_prevent_before,conf_prevent_now,conf_danger_before,conf_danger_now,conf_babyhealth_before)
+# long form
+vhs_quant_long <- gather(vhs_quant, variable, result,conf_prevent_before:conf_newrisks_now )
+vhs_quant_long <- vhs_quant_long %>% mutate(time = sapply(strsplit(vhs_quant_long$variable, split= "_", fixed = TRUE), tail, 1L))
+vhs_quant_long <- vhs_quant_long %>% mutate(topic = sapply(strsplit(vhs_quant_long$variable, split= "_", fixed = TRUE), '[',2))
+
+vhs_quant_long_sum <- vhs_quant_long %>% group_by(variable) %>% count(result)
+vhs_quant_long_sum <- vhs_quant_long_sum %>% mutate(time = sapply(strsplit(variable, split= "_", fixed = TRUE), tail, 1L))
+vhs_quant_long_sum <- vhs_quant_long_sum %>% mutate(topic = sapply(strsplit(variable, split= "_", fixed = TRUE), '[',2))
+
+vhs_quant_long_sum$resperc <- round((vhs_quant_long_sum$n/42)*100,2)
+
+vhs_quant_long_sum$result2 <- ifelse(vhs_quant_long_sum$topic=="newrisks" & vhs_quant_long_sum$result=="Oui",
+         "Non",ifelse(vhs_quant_long_sum$topic=="newrisks" & vhs_quant_long_sum$result=="Non","Oui",vhs_quant_long_sum$result ))
+vhs_quant_long_sum$result2_eng <- ifelse(vhs_quant_long_sum$topic=="newrisks" & vhs_quant_long_sum$result_eng=="Yes",
+                                     "No",ifelse(vhs_quant_long_sum$topic=="newrisks" & vhs_quant_long_sum$result_eng=="No","Yes",vhs_quant_long_sum$result_eng ))
+
+vhs_quant_long_sum <- vhs_quant_long_sum %>% mutate(
+  result_eng = case_when(
+    result=="Oui" ~ "Yes",
+    result=="Non" ~ "No",
+    result=="Ne sais pas" ~ "Don't know"),
+  time_fr = case_when(
+    time == "before" ~ "Avant",
+    time == "now" ~ "En ce moment (2022)"),
+  time_eng = case_when(
+    time == "before" ~ "Before (<2020)",
+    time == "now" ~ "Now (2022)"),
+  )
+
 
 # plot
+
+library(wesanderson) # for colors
+var_names <- c(
+  "babyhealth" = "Vaccines are important for child's health",
+  "yourhealth" = "Vaccines are important for your health",
+  "prevent" = "Vaccines prevent disease",
+  "danger" = "Vaccines are safe",
+  "newrisks" = "New vaccines do not pose more risk")
+var_names_fr <- c(
+  "babyhealth" = "Les vaccins sont importants pour la santé de mon enfant",
+  "yourhealth" = "Les vaccins sony importants pour ma santé",
+  "prevent" = "Les vaccins permettaient de prévenir la maladie",
+  "danger" = "Vaccins sont sans danger",
+  "newrisks" = "Les nouveaux vaccins ne comportent pas plus de risques")
+
+
+# English
+ggplot(vhs_quant_long_sum,                         
+       aes(x = time_eng,
+           y = resperc,
+           fill = factor(result2_eng,levels=c("No","Don't know","Yes")))) + 
+  geom_bar(stat = "identity",
+           position = "stack") +
+  labs(x="Time relative to pandemic", y="%")+
+ # coord_flip()+
+  scale_fill_manual(values = c("#676767","#466AF0","#1D4399"))+
+  #scale_fill_manual(values = wes_palette("Zissou1", n = 3))+
+  theme(panel.background = element_blank(),
+        legend.title = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 12),
+        strip.text = element_text(size=15),
+        axis.text.x = element_text(angle = 45, vjust = 1.2,hjust=1))+
+  facet_grid(~ factor(topic, levels = c("babyhealth","yourhealth","prevent","danger","newrisks")), labeller = as_labeller(var_names, label_wrap_gen(width=15)))
+ggsave("~/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/Vaccine hesitancy/VHS Data/vhs_quant_eng_aug2023.png", width = 9, height = 6)
+
+# flip axis
+ggplot(vhs_quant_long_sum,                         
+       aes(y = resperc,
+           x = time_eng,
+           fill = factor(result2_eng,levels=c("No","Don't know","Yes")))) + 
+  geom_bar(stat = "identity",
+           position = "stack") +
+  labs(x="Time relative to pandemic", y="%")+
+   coord_flip()+
+  scale_fill_manual(values = c("#676767","#466AF0","#1D4399"))+
+  #scale_fill_manual(values = wes_palette("Zissou1", n = 3))+
+  theme(panel.background = element_blank(),
+        legend.title = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 12),
+        strip.text = element_text(size=15),
+        axis.text.y = element_text(angle = 0, vjust = 1.2,hjust=1))+
+  facet_grid(factor(topic, levels = c("babyhealth","yourhealth","prevent","danger","newrisks"))~., labeller = as_labeller(var_names, label_wrap_gen(width=15)))
+ggsave("~/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/Vaccine hesitancy/VHS Data/vhs_quant_eng_flip_aug2023_long.png", width = 9, height = 11)
+
+
+#French
+ggplot(vhs_quant_long_sum,                         
+       aes(x = time_fr,
+           y = resperc,
+           fill = factor(result2,levels=c("Non","Ne sais pas","Oui")))) + 
+  geom_bar(stat = "identity",
+           position = "stack") +
+  labs(x="Le moment relative de la pandemie", y="%")+
+  #scale_fill_manual(values = "RdYlBu", n = 3))+
+  scale_fill_manual(values = wes_palette("GrandBudapest1", n = 3))+
+  theme(panel.background = element_blank(),
+        legend.title = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 12),
+        strip.text = element_text(size=15),
+        axis.text.x = element_text(angle = 45, vjust = 1.1,hjust=1))+
+  facet_grid(~ factor(topic, levels = c("babyhealth","yourhealth","prevent","danger","newrisks")), labeller = as_labeller(var_names_fr, label_wrap_gen(width=15)))
+ggsave("~/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/Vaccine hesitancy/VHS Data/vhs_quant_fr_aug2023.png", width = 12, height = 6)
 
