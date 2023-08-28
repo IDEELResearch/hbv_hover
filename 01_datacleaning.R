@@ -117,6 +117,7 @@ summary(hhdata1$hhprev)
 hist(hhdata1$hhprev)
 
 
+
 #Recruitment maternity--------------------
 library(readxl)
 priorstudies <- read_excel("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/Patrick data updates/HOVER etudes precedentes.xlsx", sheet = "forimport")
@@ -516,8 +517,7 @@ pca_R_output = pca_R_output %>%
     PC1 > -0.3325 & PC1 <= 1.16834 ~ 2,
     PC1 > 1.16834  ~ 3,
     TRUE ~ wealth_R
-  ) %>% as.numeric()
-  )
+  ) %>% as.numeric())
 
 table(pca_R_output$wealth_R, useNA = "always")
 # rename PID variable so it matches enrollment and merge will work in next step
@@ -535,6 +535,22 @@ inddata1 <- left_join(inddata1, hhdata1[,c("hrhhid","wealth_R")],  by = "hrhhid"
 table(inddata1$wealth_R)
 
 inddata1$wealth_R <- as.factor(inddata1$wealth_R)
+
+# indicators
+inddata1$wealth_R_num <- as.numeric(inddata1$wealth_R) # lowest to highest = poorest to richest
+
+inddata1 = inddata1 %>%
+  mutate(wealth_R_lowestv = case_when(
+      wealth_R_num == 1 ~ 0, #lowest vs upper 3
+      wealth_R_num > 1 ~ 1),
+    wealth_R_highestv = case_when(
+      wealth_R_num < 4 ~ 0,
+      wealth_R_num == 4 ~ 1))
+table(inddata1$wealth_R_lowestv)
+table(inddata1$wealth_R_highestv)
+table(inddata1$wealth_R_num)
+table(inddata1$wealth_R)
+
 #Sharing personal items---------------------------
 # nail clippers
 table(hhdata1$h8_nail_cutting)
@@ -910,6 +926,14 @@ inddata1 <- inddata1 %>%
 #    labels = c("Non", "Oui", "Refusé")))
 labels = c("No", "Yes", "Refused")))
 
+# variable for any shared hh objects
+inddata1 = inddata1 %>%
+  mutate(sharedhhobj = case_when(
+    i14_shared_razor == 0 & i15_shared_nailclippers == 0 & i13_shared_toothbrush == 0 ~ 0, #
+    i14_shared_razor >= 1 | i15_shared_nailclippers >= 1 | i13_shared_toothbrush >= 1 ~ 1 #
+) %>% as.factor() ) # save as factor for analysis
+table(inddata1$sharedhhobj, useNA = "always")
+
 inddata1$i8a_transfusion_number <- as.numeric(inddata1$i8a_transfusion_number)
 table(inddata1$i8a_transfusion_number)
 
@@ -923,6 +947,28 @@ inddata1 = inddata1 %>%
   ) %>% as.factor() ) # save as factor for analysis
 table(test$transfus_num, useNA = "always")
 
+inddata1 = inddata1 %>%
+  mutate(transfus_num2 = case_when(
+    is.na(i8a_transfusion_number) ~ 0, #
+    i8a_transfusion_number == 1 ~ 1, #
+    i8a_transfusion_number >= 2 ~ 2 # 2 or more or refused (1 refuse)
+  ) %>% as.factor() ) # save as factor for analysis
+table(inddata1$transfus_num2, useNA = "always")
+
+inddata1 = inddata1 %>%
+  mutate(
+      trans_bin = case_when(
+        i8_transfusion == 1 ~ 1, # 1 or more + 4 refused
+        i8_transfusion == 99 ~ 1,  # 1 or more + 4 refused
+        is.na(i8_transfusion) ~ 0, # one missing (combine with none)
+        i8_transfusion == 0 ~ 0) %>% as.factor()) 
+table(inddata1$trans_bin, inddata1$i8_transfusion_f, useNA = "always")
+
+# missing transfusion
+inddata1 %>% filter(is.na(i8_transfusion)) %>% summarise(pid, redcap_repeat_instance,hr3_relationship_f, i8_transfusion,i8a_transfusion_number)
+inddata1 %>% filter(i8_transfusion==99) %>% summarise(pid, hr3_relationship_f,age_combined, i8_transfusion,i8a_transfusion_number)
+
+inddata1$redcap_repeat_instance
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i9_iv_drug_use_f=factor(
     inddata1$i9_iv_drug_use, 
@@ -936,6 +982,26 @@ inddata1 <- inddata1 %>%
     levels = c(0, 1, 99),
 #    labels = c("Non", "Oui", "Refusé")))
 labels = c("No", "Yes", "Refused")))
+
+inddata1 = inddata1 %>%
+  mutate(i10_street_salon_bin = case_when(
+      i10_street_salon == 1 ~ 1, # 1 = uses street salons or refuses
+      i10_street_salon == 99 ~ 1,  # 1 = uses street salons or refuses
+      is.na(i10_street_salon) ~ 0, # one missing (combine with none)
+      i10_street_salon == 0 ~ 0) %>% as.factor()) 
+table(inddata1$i10_street_salon_bin, inddata1$i10_street_salon, useNA = "always")
+
+inddata1$street_salon_permo <- as.numeric(inddata1$i10a_street_salon_number)
+table(inddata1$street_salon_permo, useNA = "always")
+
+inddata1 = inddata1 %>%
+  mutate(street_salon_permo_4 = case_when(
+    street_salon_permo > 4 ~ 4, # 1 = uses street salons or refuses
+    i10_street_salon_f == "Refused" ~ 4,
+    #street_salon_permo  4 ~ 4, # 1 = uses street salons or refuses
+    TRUE ~ street_salon_permo) %>% as.factor()) 
+table(inddata1$street_salon_permo_4, inddata1$i10_street_salon_f ,useNA = "always")
+
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i11_manucure_f=factor(
@@ -985,6 +1051,14 @@ inddata1 <- inddata1 %>%
     #    labels = c("Non", "Oui", "Refusé")))
     labels = c("No", "Yes", "Refused")))
 
+inddata1 = inddata1 %>%
+  mutate(i17_tattoo_bin = case_when(
+    i17_tattoo == 1 ~ 1, # 1 = uses street salons or refuses
+    i17_tattoo == 99 ~ 1,  # 1 = uses street salons or refuses
+    is.na(i17_tattoo) ~ 0, # one missing (combine with none)
+    i17_tattoo == 0 ~ 0) %>% as.factor()) 
+table(inddata1$i17_tattoo_bin, inddata1$i17_tattoo, useNA = "always")
+
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i25_sex_hx_receive_money_f=factor(
     inddata1$i25_sex_hx_receive_money, 
@@ -998,6 +1072,15 @@ inddata1 <- inddata1 %>%
     levels = c(0, 1, 99),
 #    labels = c("Non", "Oui", "Refusé")))
 labels = c("No", "Yes", "Refused")))
+
+inddata1 = inddata1 %>%
+  mutate(transactionalsex = case_when(
+    i26_sex_hx_given_money >= 1 |  i25_sex_hx_receive_money >= 1 ~ 1, # has engaged or refused to answer to give/receive sex
+    i26_sex_hx_given_money == 0 &  i25_sex_hx_receive_money == 0 ~ 0, # refused = own category
+     TRUE ~ NA_real_
+  ) %>% as.factor())
+table(inddata1$transactionalsex, inddata1$i26_sex_hx_given_money,useNA = "always")
+table(inddata1$transactionalsex, inddata1$i25_sex_hx_receive_money,useNA = "always")
 
 #indic for indexmom/offspring----------------
 inddata1$indexmom_indic <- ifelse(inddata1$hr3_relationship==1,1,0)
@@ -1032,8 +1115,7 @@ inddata1 = inddata1 %>%
     hr3_relationship == 3 ~ 2, #hh member is direct offspring
     hr3_relationship == 2 ~ 1, #hh member is male partner
     TRUE ~ 0 # hh mmeber is all other types of relationships
-  ) %>% as.numeric()
-  )
+  ) %>% as.numeric())
 inddata1 <- inddata1 %>% 
   dplyr::mutate(hhmemcat_4_f=factor(
     inddata1$hhmemcat_4, 
@@ -1113,11 +1195,17 @@ inddata1 = inddata1 %>%
     i22_sex_hx_age_1st < 18 ~ 1,
     i22_sex_hx_age_1st >= 18 & i22_sex_hx_age_1st < 95 ~ 0,
     i22_sex_hx_age_1st >= 95 ~ 2,
-    TRUE ~ NA_real_
-  ) %>% as.factor() )
+    TRUE ~ NA_real_) %>% as.factor(),
+    debutsex_indic = case_when(
+      i22_sex_hx_age_1st < 18 ~ 1,
+      i22_sex_hx_age_1st >= 18 & i22_sex_hx_age_1st < 95 ~ 0,
+      i22_sex_hx_age_1st >= 95 ~ 1, # refused/don't know = with "higher" risk <18 
+      TRUE ~ NA_real_) %>% as.factor())
 # check grouping of don't know age/refused to answer age of sexual debut
 inddata1 %>% filter(indexmom_indic==1) %>% count(i27a_rdt_result_f,debutsex_cat,i22_sex_hx_age_1st)
 # more HBsAg+ index mothers refused/didin't know age of sexual debut - shouldn't group with older age 
+addmargins(table(inddata1$debutsex_cat, inddata1$i27a_rdt_result_f, useNA = "always"))
+addmargins(table(inddata1$debutsex_indic, inddata1$i27a_rdt_result_f, useNA = "always"))
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(debutsex_cat=factor(
@@ -1127,9 +1215,10 @@ inddata1 <- inddata1 %>%
     labels = c( "≥18","<18", "Refused/don't know")))
 table(inddata1$debutsex_cat)
 
-# Final list of sexual hx questions: debutsex_cat, part3mo_cat, i23a_sex_hx_past3mo_num_f, part12mo_cat, partnew12mo_cat
+# Final list of sexual hx questions: debutsex_cat, partner3mo_bin, newpartner3mo_indic
+# other variables are left to show how they were calculated
 
-#var of  partners:
+# original var of  partners:
 # i23_sex_hx_part_past3mo: # sexual partners in last 3 mo
 # i23a_sex_hx_past3mo_num: # of these who are new
 # i24_sex_hx_part_past1yr: # sexual partners in last year
@@ -1148,7 +1237,6 @@ inddata1 <- inddata1 %>%
   dplyr::mutate(i23_sex_hx_part_past3mo_f=factor(
     inddata1$i23_sex_hx_part_past3mo_f, 
     levels = c(0, 1, 2,3,5,17,95,96,98,99),
-    # labels = c("Household member", "Index mother")))
     labels = c("0","1" ,"2","3","5","17","Don't know/refused","Don't know/refused","Don't know/refused","Don't know/refused")))
 table(inddata1$i23_sex_hx_part_past3mo_f)
 
@@ -1166,10 +1254,17 @@ inddata1 <- inddata1 %>%
   dplyr::mutate(part3mo_cat=factor(
     inddata1$part3mo_cat, 
     levels = c(0, 1, 2,9),
-    # labels = c("Household member", "Index mother")))
     labels = c("0","1" ,"More than 1","Refused")))
 table(inddata1$part3mo_cat)
 
+inddata1 = inddata1 %>%
+  mutate(partner3mo_bin = case_when(
+    i23_sex_hx_part_past3mo > 1 ~ 1, # more than 1, refused, don't know
+    i23_sex_hx_part_past3mo <= 1 ~ 0, # 0 or 1 sexual partners
+    TRUE ~ NA_real_
+  ) %>% as.factor())
+table(inddata1$partner3mo_bin,inddata1$i23_sex_hx_part_past3mo ,useNA = 'always')
+table(inddata1$partner3mo_bin,inddata1$part3mo_cat, useNA = 'always')
 
 # new partners in last 3 months
 inddata1$i23a_sex_hx_past3mo_num <- as.numeric(inddata1$i23a_sex_hx_past3mo_num)
@@ -1186,18 +1281,22 @@ inddata1 <- inddata1 %>%
 table(inddata1$i23a_sex_hx_past3mo_num_f)
 table(inddata1$i23a_sex_hx_past3mo_num)
 
-# OTHER OPTION TO CODE:
-
 inddata1 = inddata1 %>%
   mutate(partnew3mo_cat = case_when(
     i23a_sex_hx_past3mo_num > 0 & i23a_sex_hx_past3mo_num < 95 ~ 1, # 
     i23a_sex_hx_past3mo_num >= 95  ~ 9, # 
     i23a_sex_hx_past3mo_num <= 0 ~ 0,
-    TRUE ~ NA_real_
-  ) %>% as.factor())
+    TRUE ~ NA_real_) %>% as.factor(),
+    newpartner3mo_indic = case_when(
+      i23a_sex_hx_past3mo_num <= 0 ~ 0,
+      i23a_sex_hx_past3mo_num > 0 ~ 1, #at least one new, don't know, refused
+      TRUE ~ NA_real_) %>% as.factor())
 table(inddata1$partnew3mo_cat, useNA = "always")
+table(inddata1$newpartner3mo_indic,inddata1$i23a_sex_hx_past3mo_num, useNA = "always")
 
 table(inddata1$partnew3mo_cat,inddata1$i23a_sex_hx_past3mo_num_f)
+
+
 #  partners in last year
 inddata1$i24_sex_hx_part_past1yr <- as.numeric(inddata1$i24_sex_hx_part_past1yr)
 
@@ -1220,6 +1319,14 @@ inddata1 <- inddata1 %>%
     # labels = c("Household member", "Index mother")))
     labels = c("No sexual partners","1","More than 1/Don't know","Refused")))
 table(inddata1$part12mo_cat)
+
+inddata1 = inddata1 %>%
+  mutate(partner12mo_bin = case_when(
+    i24_sex_hx_part_past1yr > 1 ~ 1, # more than 1, refused, don't know
+    i24_sex_hx_part_past1yr <= 1 ~ 0, # 0 or 1 sexual partners
+    TRUE ~ NA_real_
+  ) %>% as.factor())
+table(inddata1$partner12mo_bin,inddata1$i24_sex_hx_part_past1yr ,useNA = 'always')
 
 # new partners in last year
 inddata1$i24a_sex_hx_past1yr_num <- as.numeric(inddata1$i24a_sex_hx_past1yr_num)
@@ -1399,3 +1506,12 @@ moms <- inddata1 %>% group_by(hrhhid) %>% filter(hr3_relationship == 1)
 directoff <- inddata1 %>% filter(hr3_relationship == 3)
 othermember <- inddata1 %>% filter(hhmemcat==0)
 men <- othermember %>% filter(hr3_relationship==2)
+
+# IRB checks-----
+table(inddata1$h10_hbv_rdt)
+inddata1 %>% filter(age_combined<18) %>% summarise(count = n())
+table(inddata1$i5_pregnancy_f, useNA = "always")
+
+
+
+

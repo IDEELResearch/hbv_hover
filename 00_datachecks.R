@@ -99,9 +99,25 @@ inddata1 %>% filter(hrhhid == "HRB-1029") %>% summarise(hdov,hr3_relationship_f,
 
 inddata1 %>% filter(hrhhid == "HRB-1052") %>% summarise(hdov,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, i3_hiv_pos_test,hivhaart)
 
+ind_clean %>% filter(hrhhid == "HRK-2089") %>% summarise(pid,i27a_rdt_result_f,age_combined,	hr4_sex_f,hrname_first, hrname_post, hrname_last,	hr9_school_gr_f,	hr11_religion_f,	hr10_occupation_gr_f)
+ind_clean %>% filter(hrhhid == "HRK-2085") %>% summarise(pid,i27a_rdt_result_f,hr3_relationship_f,age_combined,	hr4_sex_f,	hr9_school_gr_f,	hr11_religion_f,	hr10_occupation_gr_f)
+ind_clean %>% filter(hrhhid == "HRK-2085") %>% summarise(pid,i27a_rdt_result_f,hr3_relationship_f,age_combined,	hr4_sex_f,hrname_first, hrname_post, hrname_last)
+
+ind_clean %>% filter(hrhhid == "HRK2083") %>% summarise(pid,i27a_rdt_result_f,hr3_relationship_f,age_combined,	hr4_sex_f,hrname_first, hrname_post, hrname_last)
+ind_clean %>% filter(hrhhid == "HRK2083") %>% summarise(pid,i27a_rdt_result_f,hr3_relationship_f,age_combined,	hr4_sex_f,	hr9_school_gr_f,	hr11_religion_f,	hr10_occupation_gr_f)
+ind_clean %>% filter(hrhhid == "HRB-1067") %>% summarise(pid,i27a_rdt_result_f,hr3_relationship_f,age_combined,	hr4_sex_f,	hr9_school_gr_f,	hr11_religion_f,	hr10_occupation_gr_f)
+
+
+
+ind_clean %>% filter(hrhhid == "HRB -1010") %>% summarise(pid,i27a_rdt_result_f,hr3_relationship_f,age_combined,	hr4_sex_f, hrname_last,hrname_post, hrname_first)
+
+ind_clean %>% filter(hrhhid == "HRK2015") %>% summarise(paststudymutexcl,pid,i27a_rdt_result_f,hr3_relationship_f,age_combined,	hr4_sex_f,hrname_last,hrname_post, hrname_first)
+library(tidyverse)
+
+
+
 # check for Sarah on Mar 21
 inddata1 %>% filter(hrhhid == "HRK2081") %>% reframe(hdov,hr3_relationship_f,age_combined, hr4_sex_f, i27a_rdt_result_f, i3_hiv_pos_test,hivhaart,hrname_last, hrname_post, hrname_first)
-library(tidyverse)
 
 ## grandchildren
 inddata1 %>% filter(hr3_relationship == 5) %>% summarise(min(age_combined), max(age_combined))
@@ -234,5 +250,113 @@ fogsamp_long <- fogsamp_long[order(fogsamp_long$box, fogsamp_long$orderind, fogs
 
 library(writexl)
 write_xlsx(fogsamp_long, "/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/Fogarty work/Data and analysis/fogsamp_long.xlsx")
+
+# look to simplify fig 3 variables-------------------
+
+# transfusions
+table(inddata1$i8a_transfusion_number, inddata1$i8_transfusion, useNA = "always")
+table(inddata1$transfus_num, inddata1$i8_transfusion_f, useNA = "always")
+addmargins(table(inddata1$transfus_num, inddata1$i27a_rdt_result_f, useNA = "always"))
+
+transfcheck <- glm(i27a_rdt_result ~ trans_bin, family = binomial(link = "logit"), data=inddata1)
+summary(transfcheck)
+
+addmargins(table(moms$transfus_num2, moms$i27a_rdt_result_f, useNA = "always"))
+trmom <- glm(i27a_rdt_result ~ trans_bin, family = binomial(link = "logit"), data=moms)
+summary(trmom)
+
+addmargins(table(directoff$trans_bin, directoff$i27a_rdt_result_f, useNA = "always"))
+addmargins(table(directoff$transfus_num2, directoff$i27a_rdt_result_f, useNA = "always"))
+trdo <- glm(i27a_rdt_result ~ trans_bin + h10_hbv_rdt+age_combined, family = binomial(link = "logit"), data=directoff)
+summary(trdo)
+
+addmargins(table(othermember$transfus_num2, othermember$i27a_rdt_result_f, useNA = "always"))
+troth <- glm(i27a_rdt_result ~ trans_bin, family = binomial(link = "logit"), data=othermember)
+summary(troth)
+
+# sexual history
+# any partners
+addmargins(table(moms$i24_sex_hx_part_past1yr, useNA = "always"))
+addmargins(table(moms$part3mo_cat,moms$part12mo_cat, useNA = "always"))
+addmargins(table(moms$part3mo_cat,moms$i27a_rdt_result_f, useNA = "always"))
+addmargins(table(moms$part12mo_cat,moms$i27a_rdt_result_f, useNA = "always"))
+
+addmargins(table(moms$partner3mo_bin,useNA = "always"))
+
+sx3momom <- glm(h10_hbv_rdt ~ transactionalsex, family = binomial(link = "logit"), data=moms)
+summary(sx3momom)
+exp(sx3momom$coefficients)
+exp(confint(sx3momom))
+
+sx12mooth <- glm(i27a_rdt_result ~ transactionalsex, family = binomial(link = "logit"), data=othermember)
+summary(sx12mooth)
+exp(sx12mooth$coefficients)
+exp(confint(sx12mooth))
+
+# new sexual partners
+addmargins(table(moms$i24_sex_hx_part_past1yr, useNA = "always"))
+addmargins(table(moms$part3mo_cat,moms$part12mo_cat, useNA = "always"))
+addmargins(table(moms$part3mo_cat,moms$i27a_rdt_result_f, useNA = "always"))
+addmargins(table(moms$part12mo_cat,moms$i27a_rdt_result_f, useNA = "always"))
+
+# given or received moeny for sex
+addmargins(table(moms$transactionalsex, moms$h10_hbv_rdt_f, useNA = "always"))
+
+addmargins(table(moms$i25_sex_hx_receive_money, moms$h10_hbv_rdt_f,useNA = "always"))
+addmargins(table(moms$i26_sex_hx_given_money_f, moms$h10_hbv_rdt_f,useNA = "always"))
+addmargins(table(moms$i26_sex_hx_given_money_f, moms$i25_sex_hx_receive_money,useNA = "always"))
+
+# shared objects in household
+
+addmargins(table(inddata1$i14_shared_razor_f, inddata1$i27a_rdt_result_f, useNA = "always"))
+addmargins(table(inddata1$i15_shared_nailclippers_f, inddata1$i27a_rdt_result_f, useNA = "always"))
+addmargins(table(inddata1$i13_shared_toothbrush_f, inddata1$i27a_rdt_result_f, useNA = "always"))
+
+addmargins(table(inddata1$sharedhhobj, inddata1$i27a_rdt_result_f, useNA = "always"))
+# just among moms
+addmargins(table(moms$sharedhhobj, moms$i27a_rdt_result_f, useNA = "always"))
+addmargins(table(moms$i14_shared_razor_f, moms$i27a_rdt_result_f, useNA = "always"))
+addmargins(table(moms$i13_shared_toothbrush_f, moms$i27a_rdt_result_f, useNA = "always"))
+
+# wealth
+wealthlow <- glm(i27a_rdt_result_f ~ wealth_R_lowestv, family = binomial(link = "logit"), data=othermember)
+summary(wealthlow)
+exp(wealthlow$coefficients)
+exp(confint(wealthlow))
+
+wealthhigh <- glm(i27a_rdt_result_f ~ wealth_R_highestv, family = binomial(link = "logit"), data=othermember)
+summary(wealthhigh)
+exp(wealthhigh$coefficients)
+exp(confint(wealthhigh))
+
+wealth <- glm(i27a_rdt_result_f ~ wealth_R, family = binomial(link = "logit"), data=othermember)
+summary(wealth)
+exp(wealth$coefficients)
+exp(confint(wealth))
+addmargins(table(othermember$wealth_R, othermember$i27a_rdt_result_f,useNA = "always"))
+addmargins(table(othermember$wealth_R_lowestv, othermember$i27a_rdt_result_f,useNA = "always"))
+
+addmargins(table(moms$i12_food_first_chew_f, moms$i27a_rdt_result_f, useNA = "always"))
+
+addmargins(table(directoff$i16_traditional_scarring_f, directoff$i27a_rdt_result_f, useNA = "always"))
+addmargins(table(othermember$i16_traditional_scarring_f, othermember$i27a_rdt_result_f, useNA = "always"))
+
+# updated model
+table(directoff$h10_hbv_rdt)
+alldovar <- c("age_combined","hr4_sex_f","cpshbvprox_rev", "wealth_R_lowestv","sharedhhobj",'i12_food_first_chew_f','trans_bin', "i10_street_salon_f", "i11_manucure_f","i17_tattoo_f", "i16_traditional_scarring_f","transactionalsex", "debutsex_indic", "partner3mo_bin","newpartner3mo_indic")
+
+directoffexp <-directoff %>% filter(h10_hbv_rdt == 1)
+directoffunexp <-directoff %>% filter(h10_hbv_rdt == 0)
+library(lme4) 
+library(tidyr)
+
+  m <- glmer(i27a_rdt_result ~  (1 | hrhhid) + sharedhhobj, data=directoffexp, family=binomial("logit"))
+  summary(m)
+exp( -0.8154 )
+  
+
+m_0 <- glmer(i27a_rdt_result ~  (1 | hrhhid) + sharedhhobj, data=directoffunexp, family=binomial("logit"))
+summary(m_0)
+exp( 0.4702)
 
 

@@ -9,7 +9,10 @@ library(tidyverse)
 hhIDs <- inddata1 %>%
   group_by(hrhhid) %>% summarize(hhsize=n())
 
-hhdata2 <- merge(hhdata2, hhIDs, by = c("hrhhid"), all.x = T)
+table(hhIDs$hhsize)
+hhIDs <- merge(hhIDs, hhdata1[,c("hrhhid","h10_hbv_rdt_f")],by = c("hrhhid"), all.x = T)
+hhIDs %>% group_by(h10_hbv_rdt_f) %>% reframe(quantile(hhsize, c(0.25, 0.5, 0.75)))
+hhIDs %>% reframe(quantile(hhsize, c(0.25, 0.5, 0.75)))
 
 # summary(hhdata2)
 
@@ -22,7 +25,7 @@ numericvars <- c("n") # age, under 5s in hh, total hh members
 catvars <- c("maternity" ,"modernfloor", "modernroof","modernwindow","modernwalls","modernhousing", "h5_cultivable_land_f", "privatewater","h3_hh_wealth_electr","wealth_R", "h8_nail_cutting_f", "h8a_nail_clippers_owned", "h8b_nail_filer_owned", "h9_razor_f", "h8a_razer_owned")
 
 #first step in create table 1
-hover_hh_tab1 <- CreateTableOne(vars = tab1varcleaned, factorVars = catvars, data=hhdata2, strata = "h10_hbv_rdt", addOverall = T)
+hover_hh_tab1 <- CreateTableOne(vars = tab1varcleaned, factorVars = catvars, data=hhdata2, strata = "h10_hbv_rdt", addOverall = T )
 
 tab1hhexport <- print(hover_hh_tab1 ,quote = FALSE, noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE, formatOptions = list(big.mark = ","))
 tab1hhexport
@@ -36,7 +39,7 @@ inddata1 %>% group_by(h10_hbv_rdt) %>% reframe(quantile = scales::percent(c(0.25
 
 
 ##All individuals------------------------------
-# use inddata1_dc for main hover paper
+# use inddata1_dc for main hover paper; or ind1006pids
 inddata1 <- inddata1_dc
 # all vars
 tab1_ind <- c("i27a_rdt_result_f","hhmemcat_f","hr3_relationship_f","age_combined","agegrp15_2", "hr4_sex_f", "maritalrisk","educ_simp_f","hr10_occupation_gr_f","religion_simp_f","hr5_primary_residence_f","hr6_last_night_residence_f","i2_past_hbv_dx_f", "i1_hbv_positive_f",  "i3_hiv_pos_test_f", "i3a_hiv_treatment_f","i4_fever_f", 
@@ -211,6 +214,7 @@ tab1_exp_memb <- print(hover_all_tab1 ,quote = FALSE, noSpaces = TRUE, printTogg
 tab1_exp_memb
 write.csv(tab1_exp_memb, file = "tab1_exp_memb.csv")
 
+
 # removed HBV risk factors  - for subsequent analysis
 #"i14_shared_razor_f", "i15_shared_nailclippers_f","i8_transfusion_f", "i9_iv_drug_use_f","i10_street_salon_f","i11_manucure_f", "i12_food_first_chew_f",
 # "i13_shared_toothbrush_f","i16_traditional_scarring_f", "i25_sex_hx_receive_money_f","i26_sex_hx_given_money_f"
@@ -221,9 +225,7 @@ inddata1 %>% group_by(hhmemcat_f,h10_hbv_rdt_f) %>% filter(is.na(i6_comb_yr) | i
 # median, IQR time at residence if not missing/0
 inddata1 %>% group_by(hhmemcat_f,h10_hbv_rdt_f) %>% filter(!is.na(i6_comb_yr) & i6_comb_yr!=0) %>%  summarise(median(i6_comb_yr), quantile(i6_comb_yr, probs=c(0.25, 0.75)))
 # overall
-inddata1  %>% filter(!is.na(i6_comb_yr) & i6_comb_yr!=0) %>%  summarise(median(i6_comb_yr), quantile(i6_comb_yr, probs=c(0.25, 0.75)))
-
-
+inddata1  %>%  group_by(h10_hbv_rdt_f) %>% filter(!is.na(i6_comb_yr) & i6_comb_yr!=0) %>%  summarise(median(i6_comb_yr), quantile(i6_comb_yr, probs=c(0.25, 0.75)))
 
 ## misc for IRB renewal---------
 hhsincerenew <- (hhdata1 %>% filter(hdov > '2021-10-11'))
@@ -539,6 +541,14 @@ write.csv(tab3_dooth_p, file = "tab3_dooth_p.csv")
 
 
 #Exploratory data analysis for vertical/horizontal relationships------------------------------
+table(directoff$i3_hiv_pos_test, useNA = "always", directoff$paststudymutexcl)
+
+hivdo <- directoff %>% filter(i3_hiv_pos_test==1)
+
+table(hivdo$age_combined, useNA = "always", hivdo$paststudymutexcl)
+median(othermemb$age_combined)
+table(othermemb$hr3_relationship_f)
+
 inddata1 %>% filter(indexmom_indic==1) %>% count(h10_hbv_rdt_f, i3_hiv_pos_test_f)
 # did newly exposed women have new sexual partners? no
 inddata1 %>% filter(indexmom_indic==1 &serostatchange==1) %>% count(perprot_h10,i23_sex_hx_part_past3mo,i23a_sex_hx_past3mo_num,i24_sex_hx_part_past1yr,i24a_sex_hx_past1yr_num )
