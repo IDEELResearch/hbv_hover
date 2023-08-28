@@ -64,6 +64,13 @@ hover_edge <- hovernet %>% select(sourceid, pid, value, h10_hbv_rdt, hr3_relatio
 maleedge <- hovernet %>% select(sourceid, pid, value, h10_hbv_rdt, hr3_relationship,cpn_maternity) %>% filter(hr3_relationship == 2) %>% rename(pidman = pid, pidindexmo = sourceid, mat = cpn_maternity)  %>% rename(pid = pidindexmo, sourceid = pidman) %>% relocate(sourceid, pid)
 hover_edge <- rbind(hover_edge, maleedge)
 
+#if vertical is mother of index mother, switch direction of arrow
+switchgma <- hover_edge %>% filter(hr3_relationship == 6) %>% rename(sourceid_sw = pid, pid_sw = sourceid)  %>% rename(pid = pid_sw, sourceid = sourceid_sw) %>% relocate(sourceid, pid)
+view(switchgma)
+hover_edge <- hover_edge %>% filter(hr3_relationship != 6) 
+hover_edge <- rbind(hover_edge, switchgma)
+
+
 # Create a dataframe of node attributes (hovernet_attr) using pid as the node ID
 hovernet_attr <- hovernet %>%
   select(pid, hr4_sex, value,hr3_relationship, tab3hbv,i27a_rdt_result, totalpositive, cpn_maternity) %>%
@@ -317,6 +324,13 @@ matnodes$hr3_relationship <- 0 # give maternity edges a different value for rela
 matnodes$mat <- matnodes$pid # creating a column for maternity to subset plots
 hover_edge <- rbind(hover_edge, matnodes)
 table(matnodes$mat)
+
+#if vertical is mother of index mother, switch direction of arrow
+switchgma <- hover_edge %>% filter(hr3_relationship == 6) %>% rename(sourceid_sw = pid, pid_sw = sourceid)  %>% rename(pid = pid_sw, sourceid = sourceid_sw) %>% relocate(sourceid, pid)
+view(switchgma)
+hover_edge <- hover_edge %>% filter(hr3_relationship != 6) 
+hover_edge <- rbind(hover_edge, switchgma)
+
 
 ## 4. Attribute list--------------
 # Create a dataframe of node attributes (hovernet_attr) using pid as the node ID
@@ -708,6 +722,13 @@ matnodes$hr3_relationship <- 0 # give maternity edges a different value for rela
 matnodes$mat <- matnodes$pid # creating a column for maternity to subset plots
 hover_edge <- rbind(hover_edge, matnodes)
 table(matnodes$mat)
+
+#if vertical is mother of index mother, switch direction of arrow
+switchgma <- hover_edge %>% filter(hr3_relationship == 6) %>% rename(sourceid_sw = pid, pid_sw = sourceid)  %>% rename(pid = pid_sw, sourceid = sourceid_sw) %>% relocate(sourceid, pid)
+view(switchgma)
+hover_edge <- hover_edge %>% filter(hr3_relationship != 6) 
+hover_edge <- rbind(hover_edge, switchgma)
+
 # Create a dataframe of node attributes (hovernet_attr) using pid as the node ID
 
 hovernet_attr <- hovernet %>%
@@ -786,6 +807,7 @@ E(hvr_ed_gsimp)$width <- E(hvr_ed_gsimp)$value
 V(hvr_ed_gsimp)$label.cex <- 1 # was 0.5
 V(hvr_ed_gsimp)$label.family <- "Helvetica"
 V(hvr_ed_gsimp)$label <- V(hvr_ed_gsimp)$name
+V(hvr_ed_gsimp)$label <- NA
 
 ###8.4 Plot-----
 # Compute the layout with minimal overlap
@@ -803,11 +825,11 @@ plot(
   vertex.size = 4,
   vertex.color = V(hvr_ed_gsimp)$color,
   #vertex.label = V(hvr_ed_gsimp)$label, # was NA
-  vertex.label = ifelse(is.na(V(hvr_ed_gsimp)$sex), V(hvr_ed_gsimp)$name, NA),
-  vertex.label.dist = 1,
+ # vertex.label = ifelse(is.na(V(hvr_ed_gsimp)$sex), V(hvr_ed_gsimp)$name, NA),
+  #vertex.label.dist = 1,
   # vertex.label.cex = 0.6,
   edge.arrow.size = 0.1,
-  edge.width = (E(hvr_ed_gsimp)$width)*0.5,
+  edge.width = (E(hvr_ed_gsimp)$width),
   edge.color = E(hvr_ed_gsimp)$color,
   edge.lty = E(hvr_ed_gsimp)$lty,
   vertex.shape = V(hvr_ed_gsimp)$shape,
