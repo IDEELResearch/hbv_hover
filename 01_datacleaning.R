@@ -16,8 +16,7 @@ library(sf)
 library(tmap)    # for static and interactive maps
 library(leaflet) # for interactive maps
 library(tmaptools)
-library(OpenStreetMap)
-
+# previously used OpenStreetMap but java not working with M1 chip computer - still trying to resolve. downloaded homebrew per https://stackoverflow.com/questions/64788005/java-jdk-for-the-apple-silicon-chips/70456947#70456947 
 
 ## establish colors----------------------------------------------------------------
 drc_colors <- c("#007fff", 	"#ce102f", 	"#f7d618")
@@ -27,10 +26,6 @@ nounprojgraphcol <- c("#4D4D4D","#B2182B")
 # colors for responses https://www.color-hex.com/color-palette/1010756 
 
 #Load data----------------------------------------------------------------
-
-# if need to delete repeated columns
-# inddata1 <- inddata1 %>% select(-c()) 
-# inddata1 = subset(inddata1, select = -c(totalpositive.x,totalpositive.y) )
 
 # API route
 data0 <- redcap_read_oneshot(redcap_uri = "https://global.redcap.unc.edu/api/",
@@ -56,9 +51,6 @@ data1$maternity <- ifelse(data1$mat=="B","Binza",
                                         ifelse(data1$hrhhid=="RB-1047","Binza",
                                                ifelse(data1$hrhhid=="HR2086","Kingasani",
                                                       ifelse(data1$hrhhid=="HR2087","Kingasani",""))))))
-
-
-
 # select household entries
 hhdata1 <- data1[(is.na(data1$redcap_repeat_instrument)), ]
 
@@ -71,10 +63,10 @@ hhdata1 <- hhdata1 %>% relocate("maternity", .after = "h10_hbv_rdt")
 hhdata1$hxcoord <- as.numeric(hhdata1$hxcoord)
 hhdata1$hycoord <- as.numeric(hhdata1$hycoord)
 
-# correct HRB-1028 coordinates using coords from the correct neighborhood (interview took place at BINZA)
+#  HRB-1028 coordinates using coords from the correct neighborhood (interview took place at BINZA)
 hhdata1$hxcoord[hhdata1$hrhhid=="HRB-1028"] <- 4.405503
 hhdata1$hycoord[hhdata1$hrhhid=="HRB-1028"] <- 15.273940
-# correct HRB-1040 coordinates using coords from the correct neighborhood (interview took place at BINZA)
+#  HRB-1040 coordinates using coords from the correct neighborhood (interview took place at BINZA)
 hhdata1$hxcoord[hhdata1$hrhhid=="HRB-1040"] <- 4.409953
 hhdata1$hycoord[hhdata1$hrhhid=="HRB-1040"] <- 15.245214
 
@@ -108,7 +100,7 @@ table(clusters$hrhhid)
 
 #Prevalence in hh
 hhdata1$hhprev <- ifelse(hhdata1$totalpositive==0,0,hhdata1$totalpositive/hhdata1$n)
-table(hhdata1$hhprev, useNA = "always")
+
 # prev by hh exposure status
 hhdata1 %>% group_by(h10_hbv_rdt) %>% reframe(quantile = scales::percent(c(0.25, 0.5, 0.75)),
                                                 hhprev = quantile(hhprev, c(0.25, 0.5, 0.75)))
@@ -116,9 +108,7 @@ hhdata1 %>% group_by(h10_hbv_rdt) %>% reframe(quantile = scales::percent(c(0.25,
 summary(hhdata1$hhprev)
 hist(hhdata1$hhprev)
 
-
-
-#Recruitment maternity--------------------
+# Add recruitment maternity--------------------
 library(readxl)
 priorstudies <- read_excel("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/Patrick data updates/HOVER etudes precedentes.xlsx", sheet = "forimport")
 
@@ -155,10 +145,10 @@ hhdata1 <- hhdata1 %>%
   dplyr::mutate(h10_hbv_rdt_f=factor(
     hhdata1$h10_hbv_rdt, 
     levels = c(0, 1),
-    labels = c("HBV-", "HBV+")))
+    labels = c("HBsAg-unexposed", "HBsAg-exposed")))
 
 ## Roof ----------------------------------------
-#roof type - create indicator for modern or not, following Molly DF's DHS coding, 
+#roof type - create indicator for modern or not, following https://gh.bmj.com/content/5/6/e002316.long, see supplement
 # reflective of divide by expensive vs cheaper for wealth index
 # Modern roof: metal, zinc/cement, tiles/slate, or cement (options=7, 9, 10, 11, 12 )
 # 1, 01 = Chaume/palme/feuilles | 2, 02 = Mottes de terre | 3, 03 = Nattes | 4, 04 = Palmes/bambou | 5, 05 = Planches en bois | 6, 06 = Carton | 7, 07 = Tôle | 8, 08 = Bois | 9, 09 = Zinc/fibre de ciment | 10, 10 = Tuiles | 11, 11 = Béton (ciment) | 12, 12 = Shingles | 97, 97 = Autre | 98, 98 = Ne sait pas | 99, 99 = Refusé(e)
@@ -179,11 +169,11 @@ hhdata1 = hhdata1 %>%
     h1_roof_type___6 == 1  ~ 0, # cardboard/plywood
     h1_roof_type___8 == 1  ~ 0, # Wood
     # no 97, 98, 99, and other
-    TRUE ~ NA_real_
-  ) %>% as.numeric()
-  )
+    TRUE ~ NA_real_) %>% as.numeric())
+
 addmargins(table(hhdata1$modernroof,useNA = "always"))
-# select out missing obs to check with Patrick
+
+# select out missing obs to check
 # do these truly not have rooves?
 missingroof <- hhdata1 %>% 
   dplyr::select( "hrhhid","h10_hbv_rdt", "maternity" ,"hdov", starts_with("h1_roof")) %>% 
@@ -212,9 +202,7 @@ hhdata1 = hhdata1 %>%
     h1_walls_otherlist == "Tole"  ~ 0, # tol/tole = sheet metal
     h1_walls == 0 ~ 0, 
     # no 98, 99, and other
-    TRUE ~ NA_real_
-  ) %>% as.numeric()
-  )
+    TRUE ~ NA_real_) %>% as.numeric())
 addmargins(table(hhdata1$modernwalls,useNA = "always"))
 # no missing
 
@@ -232,9 +220,7 @@ hhdata1 = hhdata1 %>%
     h1_floor_type___8 == 1  ~ 1, # cement
     h1_floor_type___9 == 1  ~ 1, # carpet
     # no 97, 98, 99, and other
-    TRUE ~ NA_real_
-  ) %>% as.numeric()
-  )
+    TRUE ~ NA_real_) %>% as.numeric())
 addmargins(table(hhdata1$modernfloor,useNA = "always"))
 # no missing
 
@@ -253,9 +239,7 @@ hhdata1 = hhdata1 %>%
     h1_windows_type___5 == 1  ~ 0, # planks
     h1_windows_type___97 == 1 ~ 0, # all 'other' are wood or metal
     h1_windows_type___98 == 1 ~ 0, # don't know: count as don't know since screen/glass only one
-    TRUE ~ NA_real_ 
-  ) %>% as.numeric()
-  )
+    TRUE ~ NA_real_) %>% as.numeric())
 addmargins(table(hhdata1$modernwindow,useNA = "always"))
 table(hhdata1$h1_windows, hhdata1$modernwindow,useNA = "always")
 
@@ -268,9 +252,7 @@ addmargins(table(hhdata1$h2_walls_holes, hhdata1$modernwalls, useNA = "always"))
 hhdata1 = hhdata1 %>%
   mutate(modernhousing = case_when(
     modernroof == 1 & modernwalls == 1  & modernfloor == 1  & modernwindow == 1  & h2_walls_holes == 0 ~ 1,
-    TRUE ~ 0 
-  ) %>% as.numeric()
-  )
+    TRUE ~ 0) %>% as.numeric())
 addmargins(table(hhdata1$modernhousing, useNA = "always"))
 addmargins(table(hhdata1$modernhousing, hhdata1$modernfloor ,useNA = "always")) 
 
@@ -307,10 +289,8 @@ hhdata1 <- hhdata1 %>%
          h4_hh_member_wealth_comp = h4_hh_member_wealth___9,
          h4_hh_member_wealth_houserent = h4_hh_member_wealth___10)
 
- 
 table(hhdata1$h4_hh_member_wealth___98) # two reports don't know      
 table(hhdata1$h4_hh_member_wealth___99) # none refuse      
-
 
 ## cultivatable land--------------------------------------------------
 addmargins(table(hhdata1$h5_cultivable_land, useNA = "always")) # one refusal, one missing
@@ -384,9 +364,7 @@ hhdata1 = hhdata1 %>%
     h6_water_access_otherlist == "forage" ~ 1,
     h6_water_access_otherlist == "Forage" ~ 1,
     h6_water_access_otherlist == "Forrage" ~ 1,
-    TRUE ~ NA_real_ 
-  ) %>% as.numeric()
-  )
+    TRUE ~ NA_real_) %>% as.numeric())
 
 table(hhdata1$privatewater, useNA = "always")
 table(hhdata1$privatewater, hhdata1$h6_water_access___6)
@@ -404,9 +382,7 @@ hhdata1 = hhdata1 %>%
     h7_cooking_fuel___1 == 0 & h7_cooking_fuel___2 == 1 & h7_cooking_fuel___3 == 0 ~ 3, # gas only, none with this
     h7_cooking_fuel___1 == 0 & h7_cooking_fuel___2 == 0 & h7_cooking_fuel___3 == 1 ~ 3, # electric only
     h7_cooking_fuel___1 == 0 & h7_cooking_fuel___2 == 1 & h7_cooking_fuel___3 == 1 ~ 3, # electric or gas 
-    TRUE ~ NA_real_ 
-  ) %>% as.numeric()
-  )
+    TRUE ~ NA_real_) %>% as.numeric())
 #Summary of cooking categorizations
 # having electric with/without gas backup but no charcoal highest standard of living
 # using charcoal lower standard
@@ -450,8 +426,8 @@ summary(wealthpca_hoverhh) # look at the distributions of all possible variables
 # no one has a canoe
 # is radio necessary - remove?
 
-# drop variables
-wealthpca_hoverhh <- wealthpca_hoverhh %>% select(-c(h4_hh_member_wealth_animalcart,h4_hh_member_wealth_motorboat, h4_hh_member_wealth_canoe,h3_hh_wealth_radio))
+# drop these variables
+wealthpca_hoverhh <- wealthpca_hoverhh %>% dplyr::select(!c(h4_hh_member_wealth_animalcart,h4_hh_member_wealth_motorboat, h4_hh_member_wealth_canoe,h3_hh_wealth_radio))
 
 # complete case?
 
@@ -459,7 +435,7 @@ wealthpca_hoverhh_nomiss <- wealthpca_hoverhh[complete.cases(wealthpca_hoverhh),
 view(wealthpca_hoverhh_nomiss)
 # which IDs dropped
 notcompcase <- subset(wealthpca_hoverhh, !(wealthpca_hoverhh$hrhhid %in% wealthpca_hoverhh_nomiss$hrhhid))
-
+# none dropped 
 
 pca_hover <- prcomp(as.matrix(wealthpca_hoverhh_nomiss[, 3:25]), scale=TRUE)#change to 28
 summary(pca_hover) # first component explains 23% of variance
@@ -502,8 +478,7 @@ var_explained_df %>%
   theme_bw()+
   theme(plot.title = element_text(size = 20),
         axis.title = element_text(size = 15),
-        axis.text = element_text(size = 15)
-  )
+        axis.text = element_text(size = 15))
 
 quantile(pca_R_output$PC1, probs = c(0.25, 0.5,0.75, 1), na.rm = T)
 
@@ -512,12 +487,12 @@ quantile(pca_R_output$PC1, probs = c(0.25, 0.5,0.75, 1), na.rm = T)
 pca_R_output$wealth_R <- as.numeric(0)
 pca_R_output = pca_R_output %>%
   mutate(wealth_R = case_when(
-    PC1 <= -1.3014 ~ 0,
-    PC1 > -1.3014 & PC1 <= -0.3325 ~ 1,
-    PC1 > -0.3325 & PC1 <= 1.16834 ~ 2,
-    PC1 > 1.16834  ~ 3,
+    PC1 <= -1.3286 ~ 0,
+    PC1 > -1.3286 & PC1 <= -0.3221 ~ 1,
+    PC1 > -0.3221 & PC1 <= 1.1651 ~ 2,
+    PC1 > 1.1651  ~ 3,
     TRUE ~ wealth_R
-  ) %>% as.numeric())
+    ) %>% as.numeric())
 
 table(pca_R_output$wealth_R, useNA = "always")
 # rename PID variable so it matches enrollment and merge will work in next step
@@ -527,8 +502,6 @@ pca_R_output <- pca_R_output %>% rename(hrhhid = `wealthpca_hoverhh_nomiss$hrhhi
 hhdata1 <- inner_join(hhdata1, pca_R_output[, c("hrhhid", "wealth_R")], by = c("hrhhid"))
 # check new variable
 table(hhdata1$wealth_R, hhdata1$maternity, useNA = "always")
-## if reran wealth index after new obs and two vars added and need to drop them
-# hhdata2 <- hhdata2 %>% select(-c(wealth_R.x,wealth_R.y))
 
 #put wealth onto individual dataset
 inddata1 <- left_join(inddata1, hhdata1[,c("hrhhid","wealth_R")],  by = "hrhhid")
@@ -579,9 +552,7 @@ hhdata1 <- hhdata1 %>%
     labels = c("No", "Yes", "Don't know", "Refused")))
 
 hhdata1$h8a_razer_owned <- as.factor(as.numeric(hhdata1$h8a_razer_owned))
-
 table(hhdata1$h9_razor_f ,hhdata1$h8a_razer_owned) # what does 96 mean - probably don't know
-
 
 #Final hh spatial object with new variables---------
 hover_gps = st_as_sf(hhdata1[!is.na(hhdata1$hxcoord_edit) &!is.na(hhdata1$hycoord_edit),], coords = c("hycoord_edit", "hxcoord_edit"), crs = 4326)  
@@ -605,15 +576,32 @@ inddata1 <- inddata1 %>%
 inddata1$hr7_age_mois <- as.numeric(inddata1$hr7_age_mois)
 inddata1$age_combined <- round(ifelse(as.numeric(inddata1$hr7a_month_year==0), as.numeric(inddata1$hr7_age_year), as.numeric(inddata1$hr7_age_mois)/12),2)
 
+inddata1 %>% group_by(h10_hbv_rdt_f) %>% 
+  ggplot()+geom_histogram(aes(x=age_combined, fill=h10_hbv_rdt_f))
+
 # age group <15 vs > 15 (birth in 2007)
-# sens analysis with 2021 vs 2022 enrollments, potential birth at beginning vs end of year
+# https://www.gavi.org/sites/default/files/document/annual-progress-report-congo%2C-democratic-republic-of-the-2007pdf.pdf
+# TDP+hepB first introduced as tetravalent in 2007, limited distribution
+# TDP+hepB+Hib not really distributed until 2009, per 2009 Gavi progress report
+
+inddata1 %>% filter(age_combined < 17) %>% 
+  ggplot()+geom_histogram(aes(x=hdov))
+
+
+# re-coded agegrp15_2 which was based on 15yrs but not year of study enr
 inddata1 = inddata1 %>%
-  mutate(agegrp15_2 = case_when(
-    age_combined < 15 ~ 0,
-    age_combined >= 15 ~ 1,
-    TRUE ~ 0
-  ) %>% as.numeric()
-  )
+  mutate(age_cat = case_when(
+    year(hdov)=="2021" & age_combined <= 12 ~ 2, # born since penta introduced
+    year(hdov)=="2022" & age_combined <= 13 ~ 2, # born since penta introduced
+    
+    year(hdov)=="2021" & age_combined > 12 & age_combined <= 14 ~ 1, # between tetra/penta
+    year(hdov)=="2022" & age_combined > 13 & age_combined <= 15 ~ 1, # between tetra/penta
+    
+    year(hdov)=="2021" & age_combined > 14 ~ 0, # no vacc
+    year(hdov)=="2022" & age_combined > 15 ~ 0, # no vacc
+
+    TRUE ~ 0) %>% as.factor())
+table(inddata1$age_cat)
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(hr3_relationship_f=factor(
@@ -648,6 +636,7 @@ inddata1 <- inddata1 %>%
     inddata1$hr3relat_simp, 
     levels = c(1,2,3,4,5,6),
     labels = c("Index mother","Spouse","Son/daughter","Brother/sister","Nephew/niece","Other")))
+table(inddata1$hr3relat_simp_f)
 
 # direct offspring enrolled
 countsbyhh <- inddata1 %>% group_by(hrhhid) %>% summarise(numdiroff = sum(hr3_relationship==3), malepartner = sum(hr3_relationship==2))
@@ -699,6 +688,7 @@ inddata1$i6_time_lived_resid_months <- as.numeric(inddata1$i6_time_lived_resid_m
 
 inddata1$i6_mon_conv <- as.numeric(inddata1$i6_time_lived_resid_yrs)*12 + as.numeric(inddata1$i6_time_lived_resid_months)
 inddata1$i6_comb_yr <- (inddata1$i6_mon_conv)/12
+
 # 42 have 0 for both and 14 are NA
 ad_is <- inddata1 %>% filter(is.na(i6_comb_yr) | i6_comb_yr==0)
 # is this not their primary residence
@@ -755,7 +745,6 @@ inddata1 <- inddata1 %>%
     levels = c(0, 1, 2,3,4,99),
     labels = c("Below school age","No schooling", "Any primary", "Any secondary",
                "Any university", "Other")))
-#
 table(inddata1$educ_simp_f, inddata1$hr9_school_gr,useNA = "always")
 
 ##Occupation recode---------------------------------
@@ -802,7 +791,7 @@ inddata1 <- inddata1 %>%
     labels = c("No religion", "Traditional", "Catholic",
                "Evangelical", "Revivalist","Adventist","Protestant", "Muslim","Kimbanguism",
                "Salvation Army", "Other","Don't know","Refused")))
-table(inddata1$age_combined,inddata1$hr11_religion)
+table(inddata1$hr11_religion)
 
 # simple religion - any vs none
 inddata1 <- inddata1 %>% 
@@ -886,12 +875,12 @@ labels = c("No", "Yes", "Don't know", "Refused")))
 
 table(inddata1$i14_shared_razor, useNA = "always") # some missing
 #which ones missing
-inddata1 %>% filter(is.na(i14_shared_razor)) %>% summarise(hrhhid, age_combined,hr4_sex_f, hr3_relationship_f)
+inddata1 %>% filter(is.na(i14_shared_razor)) %>% reframe(hrhhid, age_combined,hr4_sex_f, hr3_relationship_f)
 # use household questions on razors and responses of other hh members to assign value for individual missing
-hhdata1 %>% filter(hrhhid == "HRB-1100") %>% summarise(h9_razor, h8a_razer_owned) # doesn't own razors - assign i14_shared_razor==0
+hhdata1 %>% filter(hrhhid == "HRB-1100") %>% reframe(h9_razor, h8a_razer_owned) # doesn't own razors - assign i14_shared_razor==0
 inddata1 %>% filter(hrhhid=="HRB-1100") %>% reframe(hrhhid, age_combined,hr4_sex_f, hr3_relationship_f,i14_shared_razor)
 
-hhdata1 %>% filter(hrhhid == "HRK-2026") %>% summarise(h9_razor, h8a_razer_owned) # doesn't own razors - assign i14_shared_razor==0
+hhdata1 %>% filter(hrhhid == "HRK-2026") %>% reframe(h9_razor, h8a_razer_owned) # doesn't own razors - assign i14_shared_razor==0
 inddata1 %>% filter(hrhhid=="HRK-2026") %>% reframe(hrhhid, age_combined,hr4_sex_f, hr3_relationship_f,i14_shared_razor)
 
 inddata1$i14_shared_razor <- ifelse(is.na(inddata1$i14_shared_razor),0,inddata1$i14_shared_razor) # can give all 0 if missing based above analysis above
@@ -945,7 +934,7 @@ inddata1 = inddata1 %>%
     i8a_transfusion_number == 3 ~ 3, #
     i8a_transfusion_number >= 4 ~ 9 # 4 or more or refused (1 refuse)
   ) %>% as.factor() ) # save as factor for analysis
-table(test$transfus_num, useNA = "always")
+table(inddata1$transfus_num, useNA = "always")
 
 inddata1 = inddata1 %>%
   mutate(transfus_num2 = case_when(
@@ -965,10 +954,9 @@ inddata1 = inddata1 %>%
 table(inddata1$trans_bin, inddata1$i8_transfusion_f, useNA = "always")
 
 # missing transfusion
-inddata1 %>% filter(is.na(i8_transfusion)) %>% summarise(pid, redcap_repeat_instance,hr3_relationship_f, i8_transfusion,i8a_transfusion_number)
-inddata1 %>% filter(i8_transfusion==99) %>% summarise(pid, hr3_relationship_f,age_combined, i8_transfusion,i8a_transfusion_number)
+inddata1 %>% filter(is.na(i8_transfusion)) %>% reframe(hrhhid, redcap_repeat_instance,hr3_relationship_f, i8_transfusion,i8a_transfusion_number)
+inddata1 %>% filter(i8_transfusion==99) %>% reframe(hrhhid, hr3_relationship_f,age_combined, i8_transfusion,i8a_transfusion_number)
 
-inddata1$redcap_repeat_instance
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i9_iv_drug_use_f=factor(
     inddata1$i9_iv_drug_use, 
@@ -1036,6 +1024,7 @@ inddata1 <- inddata1 %>%
     levels = c(0, 1, 99),
 #    labels = c("Non", "Oui", "Refusé")))
 labels = c("No", "Yes", "Refused")))
+addmargins(table(inddata1$i13_shared_toothbrush_f))
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i16_traditional_scarring_f=factor(
@@ -1050,6 +1039,7 @@ inddata1 <- inddata1 %>%
     levels = c(0, 1, 99),
     #    labels = c("Non", "Oui", "Refusé")))
     labels = c("No", "Yes", "Refused")))
+addmargins(table(inddata1$i17_tattoo_f, useNA = "always"))
 
 inddata1 = inddata1 %>%
   mutate(i17_tattoo_bin = case_when(
@@ -1065,6 +1055,7 @@ inddata1 <- inddata1 %>%
     levels = c(0, 1, 99),
 #    labels = c("Non", "Oui", "Refusé")))
 labels = c("No", "Yes", "Refused")))
+addmargins(table(inddata1$i25_sex_hx_receive_money_f, useNA = "always"))
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i26_sex_hx_given_money_f=factor(
@@ -1072,6 +1063,7 @@ inddata1 <- inddata1 %>%
     levels = c(0, 1, 99),
 #    labels = c("Non", "Oui", "Refusé")))
 labels = c("No", "Yes", "Refused")))
+addmargins(table(inddata1$i26_sex_hx_given_money_f, useNA = "always"))
 
 inddata1 = inddata1 %>%
   mutate(transactionalsex = case_when(
@@ -1084,7 +1076,7 @@ table(inddata1$transactionalsex, inddata1$i25_sex_hx_receive_money,useNA = "alwa
 
 #indic for indexmom/offspring----------------
 inddata1$indexmom_indic <- ifelse(inddata1$hr3_relationship==1,1,0)
-inddata1$directoff <- ifelse(inddata1$hr3_relationship==3,1,0) #for 03_models
+inddata1$directoff <- ifelse(inddata1$hr3_relationship==3,1,0) 
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(indexmom=factor(
@@ -1098,8 +1090,8 @@ inddata1 = inddata1 %>%
     hr3_relationship == 1 ~ 2, #hh member is an index mother
     hr3_relationship == 3 ~ 1, #hh member is direct offspring
     TRUE ~ 0 # hh mmeber is all other types of relationships
-  ) %>% as.numeric()
-  )
+  ) %>% as.numeric())
+addmargins(table(inddata1$hhmemcat, inddata1$indexmom))
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(hhmemcat_f=factor(
@@ -1149,10 +1141,10 @@ inddata1 <- inddata1 %>%
     labels = c("Unexposed (per prot)", "Exposed (per prot)")))
 #labels = c("Negative", "Positive")))
 
-serostatchange <- perprotexpsure %>% filter(h10_hbv_rdt != perprot_h10) %>% select("hrhhid", "h10_hbv_rdt","perprot_h10")
+serostatchange <- perprotexpsure %>% filter(h10_hbv_rdt != perprot_h10) %>% dplyr::select("hrhhid", "h10_hbv_rdt","perprot_h10")
 table(serostatchange$hrhhid)
 serostatchange$serostatchange <- 1 # any change
-serostatchange$serochangedir <- ifelse(serostatchange$h10_hbv_rdt==0,"incident","undetectable")
+serostatchange$serochangedir <- ifelse(serostatchange$h10_hbv_rdt==0,"incident","cleared")
 table(serostatchange$serochangedir)
 
 # add this identifier back onto main datasets for households with serostatus change serostatchange 
@@ -1170,16 +1162,18 @@ table(hhdata1$serochangedir)
 inddata1  <- inddata1 %>% 
   dplyr::mutate(hhmempos= case_when(
     indexmom_indic==0 & i27a_rdt_result==1 ~ 1, # ind is not an index mom and result is pos
-    TRUE ~ 0
-  ) %>% as.numeric()
-  )
+    TRUE ~ 0) %>% as.numeric())
 table(inddata1$hhmempos)
+
+# lives with another positive
+inddata1$anotherpos <- ifelse(inddata1$totalpositive - inddata1$i27a_rdt_result > 0 , 1,0)
+table(inddata1$anotherpos)
 
 #Sexual hx-------------
 inddata1 = inddata1 %>%
   mutate(debutsex_all = case_when(
     i22_sex_hx_age_1st < 18 ~ 1,
-    i22_sex_hx_age_1st >= 18 ~ 0,
+    i22_sex_hx_age_1st >= 18 ~ 0, # includes refused/dont' know
     TRUE ~ 0
   ) %>% as.factor())
 
@@ -1229,7 +1223,7 @@ inddata1$i23_sex_hx_part_past3mo <- as.numeric(inddata1$i23_sex_hx_part_past3mo)
 class(inddata1$i23_sex_hx_part_past3mo)
 table(inddata1$i23_sex_hx_part_past3mo,inddata1$hhmemcat_4_f, useNA = "always") # confirm what 95, 96 mean
 inddata1 %>% filter(i23_sex_hx_part_past3mo == 95 |i23_sex_hx_part_past3mo == 96  ) %>% reframe(hrhhid, hr3_relationship_fr, age_combined,paststudymutexcl,i22_sex_hx_age_1st,hrname_first, hrname_last, hrname_post)
-# same culprits of value or 95 or 96 for subsequent questions - check with Patrick but likely should combine don't know/refused
+# same individuals of value or 95 or 96 for subsequent questions - check with Patrick but likely should combine don't know/refused
 
 inddata1$i23_sex_hx_part_past3mo_f <- as.factor(inddata1$i23_sex_hx_part_past3mo)
 
@@ -1249,6 +1243,7 @@ inddata1 = inddata1 %>%
     TRUE ~ NA_real_
   ) %>% as.factor())
 table(inddata1$part3mo_cat, inddata1$hhmemcat_4_f,useNA = "always")
+# don't know and refused together
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(part3mo_cat=factor(
@@ -1271,7 +1266,20 @@ inddata1$i23a_sex_hx_past3mo_num <- as.numeric(inddata1$i23a_sex_hx_past3mo_num)
 table(inddata1$i23a_sex_hx_past3mo_num, useNA = "always") # figure out what 95 means
 inddata1 %>% filter(i23a_sex_hx_past3mo_num >= 95) %>% reframe(hrhhid, hr3_relationship_fr, age_combined,paststudymutexcl,hrname_first, hrname_last, hrname_post)
 
-inddata1$i23a_sex_hx_past3mo_num_f <- as.factor(inddata1$i23a_sex_hx_past3mo_num)
+# recode missing new partners in last 3mo
+inddata1 = inddata1 %>%
+  mutate(newsex3mo_recode = case_when(
+    i23a_sex_hx_past3mo_num == 95 ~ 99, # all dont' know and missing as single category
+    !is.na(i23a_sex_hx_past3mo_num) ~ i23a_sex_hx_past3mo_num, # if not missing, leave as is
+    is.na(i23a_sex_hx_past3mo_num) & i23_sex_hx_part_past3mo == 0 ~ 0, # if total in last 3mo is 0, recode new as 0
+    is.na(i23a_sex_hx_past3mo_num) & i23_sex_hx_part_past3mo == 1 ~ 0, # going to assume if only 1 in last 3 month, not new
+    is.na(i23a_sex_hx_past3mo_num) & i23_sex_hx_part_past3mo >= 95 ~ 99, # if total in last 3mo is refused or don't know, recode as don't know/missing
+    TRUE ~ NA_real_
+  ) %>% as.numeric())
+table(inddata1$newsex3mo_recode)
+
+inddata1$i23a_sex_hx_past3mo_num_f <- as.factor(inddata1$newsex3mo_recode)
+
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i23a_sex_hx_past3mo_num_f=factor(
     inddata1$i23a_sex_hx_past3mo_num_f, 
@@ -1283,23 +1291,21 @@ table(inddata1$i23a_sex_hx_past3mo_num)
 
 inddata1 = inddata1 %>%
   mutate(partnew3mo_cat = case_when(
-    i23a_sex_hx_past3mo_num > 0 & i23a_sex_hx_past3mo_num < 95 ~ 1, # 
-    i23a_sex_hx_past3mo_num >= 95  ~ 9, # 
-    i23a_sex_hx_past3mo_num <= 0 ~ 0,
+    newsex3mo_recode > 0 & newsex3mo_recode < 95 ~ 1, # 
+    newsex3mo_recode >= 95  ~ 9, # 
+    newsex3mo_recode <= 0 ~ 0,
     TRUE ~ NA_real_) %>% as.factor(),
     newpartner3mo_indic = case_when(
-      i23a_sex_hx_past3mo_num <= 0 ~ 0,
-      i23a_sex_hx_past3mo_num > 0 ~ 1, #at least one new, don't know, refused
+      newsex3mo_recode <= 0 ~ 0, # none new
+      newsex3mo_recode > 0 ~ 1, #at least one new, don't know, refused
       TRUE ~ NA_real_) %>% as.factor())
+
 table(inddata1$partnew3mo_cat, useNA = "always")
-table(inddata1$newpartner3mo_indic,inddata1$i23a_sex_hx_past3mo_num, useNA = "always")
-
-table(inddata1$partnew3mo_cat,inddata1$i23a_sex_hx_past3mo_num_f)
-
+table(inddata1$newsex3mo_recode, useNA = "always")
+table(inddata1$newpartner3mo_indic,inddata1$newsex3mo_recode, useNA = "always")
 
 #  partners in last year
 inddata1$i24_sex_hx_part_past1yr <- as.numeric(inddata1$i24_sex_hx_part_past1yr)
-
 inddata1$i24_sex_hx_part_past1yr_f <- as.factor(inddata1$i24_sex_hx_part_past1yr)
 
 inddata1 = inddata1 %>%
@@ -1333,22 +1339,35 @@ inddata1$i24a_sex_hx_past1yr_num <- as.numeric(inddata1$i24a_sex_hx_past1yr_num)
 inddata1$i24a_sex_hx_past1yr_num_f <- as.factor(inddata1$i24a_sex_hx_past1yr_num)
 table(inddata1$i24a_sex_hx_past1yr_num_f)
 
+# recode missing new partners in last 3mo
+inddata1 = inddata1 %>%
+  mutate(newsex12mo_recode = case_when(
+    i24a_sex_hx_past1yr_num >= 95 ~ 99, # all dont' know and missing as single category
+    !is.na(i24a_sex_hx_past1yr_num) ~ i24a_sex_hx_past1yr_num, # if not missing, leave as is
+    is.na(i24a_sex_hx_past1yr_num) & i24_sex_hx_part_past1yr == 0 ~ 0, # if total in last 3mo is 0, recode new as 0
+    is.na(i24a_sex_hx_past1yr_num) & i24_sex_hx_part_past1yr == 1 ~ 0, # going to assume if only 1 in last 3 month, not new
+    is.na(i24a_sex_hx_past1yr_num) & i24_sex_hx_part_past1yr > 95 ~ 99, # if total in last 3mo is refused or don't know, recode as don't know/missing
+   # i24a_sex_hx_past1yr_num ==98 ~ 99, # all dont' know and missing as single category
+    TRUE ~ NA_real_
+  ) %>% as.numeric())
+table(inddata1$newsex12mo_recode)
+
 inddata1 = inddata1 %>%
   mutate(partnew12mo_cat = case_when(
-    i24a_sex_hx_past1yr_num > 0 & i24a_sex_hx_past1yr_num < 99 ~ 1, # AT LEAST ONE/DONT KNOW
-    i24a_sex_hx_past1yr_num == 99  ~ 9, # refused
-    i24a_sex_hx_past1yr_num <= 0 ~ 0, # no new sexual partners
+    newsex12mo_recode > 0 & newsex12mo_recode <95  ~ 1, # AT LEAST ONE
+    newsex12mo_recode > 95  ~ 9, # refused
+    newsex12mo_recode <= 0 ~ 0, # no new sexual partners
     TRUE ~ NA_real_
   ) %>% as.factor())
+table(inddata1$partnew12mo_cat, inddata1$newsex12mo_recode)
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(partnew12mo_cat=factor(
     inddata1$partnew12mo_cat, 
     levels = c(0, 1, 9),
     # labels = c("Household member", "Index mother")))
-    labels = c("No new sexual partners","At least 1/ Don't know","Refused")))
+    labels = c("No new sexual partners","At least 1","Refused/Don't know")))
 table(inddata1$partnew12mo_cat)
-
 
 # marital status
 inddata1 = inddata1 %>%
@@ -1375,6 +1394,31 @@ hhdata1 <- left_join(hhdata1, moms[, c("hrhhid", "indexmotherage")], by = "hrhhi
 inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid", "indexmotherage")], by = "hrhhid")
 table(inddata1$indexmotherage)
 
+# diff between current age and age of sexual debut
+table(moms$age_combined, moms$i22_sex_hx_age_1st, useNA = "always")
+
+
+inddata1$agesincedebut = ifelse(inddata1$i22_sex_hx_age_1st < 95, inddata1$age_combined - inddata1$i22_sex_hx_age_1st, NA_real_)
+hist(inddata1$agesincedebut)
+# factor var for refused/answered/NA
+inddata1$agesincedebut_ans <- ifelse(inddata1$i22_sex_hx_age_1st > 95, "Refused/Don't know", ifelse(!(is.na(inddata1$agesincedebut)),"Answered",NA_real_))
+table(inddata1$agesincedebut_ans, useNA = "always")
+
+# rerun again after adding the new variable for age since sexual debut
+moms <- inddata1 %>% group_by(hrhhid) %>% filter(hr3_relationship == 1) # %>% rename(indexmotherage = age_combined)
+
+# distribution of age of sexual debut
+ggplot(moms)+
+  geom_histogram(aes(x=i22_sex_hx_age_1st, fill=h10_hbv_rdt_f))
+# stats on mothers since sexual debut
+moms %>% filter(!is.na(i22_sex_hx_age_1st) &i22_sex_hx_age_1st<95) %>%  group_by(h10_hbv_rdt_f) %>% summarise(mean(i22_sex_hx_age_1st), median(i22_sex_hx_age_1st))
+table(moms$agesincedebut_ans, moms$h10_hbv_rdt_f,useNA = "always")
+
+moms %>% filter(i23_sex_hx_part_past3mo <95) %>% 
+  ggplot()+
+  geom_histogram(aes(x=agesincedebut, fill=as.factor(h10_hbv_rdt_f)))+
+  facet_wrap(~i23_sex_hx_part_past3mo)
+
 # age difference variables----------
 ## child's age - diff with index mother's----
 inddata1 <- inddata1 %>%  
@@ -1393,17 +1437,53 @@ inddata1 <- inddata1 %>%
   ) %>% as.numeric())
 table(inddata1$agediff_grands) #n=3 with grandchildren, might as well verify all
 
-# save clean and remove those added during fogarty---------------------------
+# PID var------
 inddata1$pid <- paste0(inddata1$hrhhid,"-",inddata1$participant_code)
+
+# additional variables - should add these to the cleaned dataset that includes new enrollments
+
+#.................................
+# now look at households with at least one direct offspring in levels 0/1 vs hh with only group 2
+# only for direct offspring: hr3_relationship == 3
+diroff <- inddata1 %>% filter(hr3_relationship == 3) %>% select("hrhhid", "pid","h10_hbv_rdt","hr3_relationship", "i27a_rdt_result","i27a_rdt_result_f", "age_combined", "age_cat")
+table(diroff$i27a_rdt_result_f, useNA = "always")
+
+# count of HBV+ direct offspring in hh
+diroffhh <- diroff %>% group_by(hrhhid) %>% summarise(hbvposdiroff = sum(i27a_rdt_result))
+table(diroffhh$hbvposdiroff)
+
+# understand NAs of hbvposdiroff
+nas <- diroffhh %>% filter(is.na(hbvposdiroff))
+nasid <- inddata1 %>% filter((hrhhid %in% nas$hrhhid))
+table(nasid$hrhhid, nasid$i27_rdt_notdone_reason)
+# unable to get sample - set hbvposdiroff==0 in this case
+diroffhh$hbvposdiroff <- ifelse(is.na(diroffhh$hbvposdiroff),0,diroffhh$hbvposdiroff)
+
+# indicator for has direct offspring
+diroffhh$hasdiroff <- 1
+
+#hbvposdiroff (number of positive direct offspring in hh), hasdiroff (indicator var for if hh has direct offspring)
+#put these variables back onto hh and indd datasets
+inddata1 <- left_join(inddata1, diroffhh,  by = "hrhhid")
+hhdata1 <- left_join(hhdata1, diroffhh, by = "hrhhid")
+
+# for those without diroff, set value to 0 to both variables
+table(inddata1$hasdiroff, useNA = "always")
+hhdata1$hasdiroff <- ifelse(is.na(hhdata1$hasdiroff), 0,hhdata1$hasdiroff)
+inddata1$hasdiroff <- ifelse(is.na(inddata1$hasdiroff), 0,inddata1$hasdiroff)
+table(inddata1$hbvposdiroff, useNA = "always")
+hhdata1$hbvposdiroff <- ifelse(is.na(hhdata1$hbvposdiroff), 0,hhdata1$hbvposdiroff)
+inddata1$hbvposdiroff <- ifelse(is.na(inddata1$hbvposdiroff), 0,inddata1$hbvposdiroff)
+
+# save clean and remove those added during fogarty---------------------------
+
 # ind_clean is cleaned dataset including those added during fogarty visits (date of enrollment is only on household survey so all new ones have original household date )
 ind_clean <- inddata1
 
-ind1006$participant_code <- ifelse(ind1006$pid=="HRK2043-02" & ind1006$hrname_first=="Precieuse","03",ind1006$participant_code)
-ind1006$pid <- paste0(ind1006$hrhhid,"-",ind1006$participant_code)
-ind1006 %>% filter(hrhhid=="HRK2043") %>% select("pid")
+ind1006 <- readRDS("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/hoverdataanalysis/inddata1006.RDS")
 
 inddata1 <- subset(inddata1, (inddata1$pid %in% ind1006$pid2))
-fognewenroll <- subset(ind_clean, !(ind_clean$pid %in% test$pid))
+fognewenroll <- subset(ind_clean, !(ind_clean$pid %in% ind1006$pid))
 
 # summary of datasets:.......................
 # inddata1 - dataset to use for analysis because all code was written using this name
@@ -1412,9 +1492,18 @@ fognewenroll <- subset(ind_clean, !(ind_clean$pid %in% test$pid))
 # fognewenroll - new enrollments in fogarty (future analysis of fog data)
 #...........................................
 
-# additional variables - should add these to the cleaned dataset that includes new enrollments
+# Subgroups (moms, diroff,othermember)--------
+moms <- inddata1 %>% group_by(hrhhid) %>% filter(hr3_relationship == 1)
+directoff <- inddata1 %>% filter(hr3_relationship == 3)
+othermember <- inddata1 %>% filter(hhmemcat==0)
+men <- othermember %>% filter(hr3_relationship==2)
 
-# .....................................
+# IRB checks aug 2023-----
+table(inddata1$h10_hbv_rdt)
+inddata1 %>% filter(age_combined<18) %>% summarise(count = n())
+table(inddata1$i5_pregnancy_f, useNA = "always")
+
+# USING AGE_CAT INSTEAD OF BELOW----
 # indicator for cps vaccination based on age: cpshbvprox, cpshbvprox_rev 
 # we have an indicator for 14 years or younger, or >= 15 years: agegrp15_2
 # should distinguish between enrollments in 2021 vs 2022: for 2021 use 14 or younger, for 2022, use 15 or younger
@@ -1446,50 +1535,9 @@ inddata1 <- inddata1 %>%
 table(inddata1$cpshbvprox_rev, useNA = "always")
 table(inddata1$cpshbvprox, useNA = "always")
 
-#.....................................
-# lives with another positive
-inddata1$anotherpos <- ifelse(inddata1$totalpositive - inddata1$i27a_rdt_result > 0 , 1,0)
-table(inddata1$anotherpos)
-#.................................
-# now look at households with at least one direct offspring in levels 0/1 vs hh with only group 2
-# only for direct offspring: hr3_relationship == 3
-diroff <- inddata1 %>% filter(hr3_relationship == 3) %>% select("hrhhid", "pid","h10_hbv_rdt","hr3_relationship", "i27a_rdt_result","i27a_rdt_result_f", "age_combined","cpshbvprox")
-table(diroff$i27a_rdt_result_f, useNA = "always")
-
-# count of HBV+ direct offspring in hh
-diroffhh <- diroff %>% group_by(hrhhid) %>% summarise(hbvposdiroff = sum(i27a_rdt_result))
-
-# understand NAs of hbvposdiroff
-nas <- diroffhh %>% filter(is.na(hbvposdiroff))
-nasid <- inddata1 %>% filter((hrhhid %in% nas$hrhhid))
-table(nasid$hrhhid, nasid$i27_rdt_notdone_reason)
-# unable to get sample - set hbvposdiroff==0 in this case
-diroffhh$hbvposdiroff <- ifelse(is.na(diroffhh$hbvposdiroff),0,diroffhh$hbvposdiroff)
-
-# indicator for has direct offspring
-diroffhh$hasdiroff <- 1
-
-#hbvposdiroff, hasdiroff
-#put this variable back onto hh and indd datasets
-inddata1 <- left_join(inddata1, diroffhh,  by = "hrhhid")
-hhdata1 <- left_join(hhdata1, diroffhh, by = "hrhhid")
-# for those without diroff, set value to 0 to both variables
-table(inddata1$hasdiroff, useNA = "always")
-hhdata1$hasdiroff <- ifelse(is.na(hhdata1$hasdiroff), 0,hhdata1$hasdiroff)
-inddata1$hasdiroff <- ifelse(is.na(inddata1$hasdiroff), 0,inddata1$hasdiroff)
-table(inddata1$hbvposdiroff, useNA = "always")
-hhdata1$hbvposdiroff <- ifelse(is.na(hhdata1$hbvposdiroff), 0,hhdata1$hbvposdiroff)
-inddata1$hbvposdiroff <- ifelse(is.na(inddata1$hbvposdiroff), 0,inddata1$hbvposdiroff)
-
-# male partner is positive, var malepartner means a male partner was enrolled
-inddata1 %>% filter(malepartner==2) %>% reframe(pid, hr3_relationship)
-# this was before removing those newly enrolled
-# change in inddata1 to 1 for 2015
-inddata1$malepartner <- ifelse(inddata1$hrhhid=="HRK2015",1,inddata1$malepartner)
-table(inddata1$malepartner)
-
+# pos male partner - 2015 has two partners enrolled after fogarty
 men <- inddata1 %>% filter(hr3_relationship == 2) %>% select("hrhhid", "pid","hdov","h10_hbv_rdt","hr3_relationship_f", "i3_hiv_pos_test_f","acq_ind","avert_indic","astmh_indic","i27a_rdt_result","i27a_rdt_result_f", 
-                                                               "age_combined","cpshbvprox","serostatchange","serochangedir","i23_sex_hx_part_past3mo","i23a_sex_hx_past3mo_num","i24_sex_hx_part_past1yr","i24a_sex_hx_past1yr_num","malepartner")
+                                                             "age_combined","age_cat","serostatchange","serochangedir","i23_sex_hx_part_past3mo","i23a_sex_hx_past3mo_num","i24_sex_hx_part_past1yr","i24a_sex_hx_past1yr_num","malepartner")
 
 men <- men %>% mutate(malepartpos = case_when(
   i27a_rdt_result==1 ~ 1,
@@ -1498,20 +1546,7 @@ men <- men %>% mutate(malepartpos = case_when(
 table(men$malepartner, men$malepartpos)
 inddata1 <- left_join(inddata1, men[,c("hrhhid","malepartpos")],  by = "hrhhid")
 table(inddata1$hr3_relationship, inddata1$malepartpos, useNA = "always")
-
 inddata1$malepartpos <- ifelse(is.na(inddata1$malepartpos), 0,inddata1$malepartpos)
-
-# datasets of individuals for each subgroup - also in other parts
-moms <- inddata1 %>% group_by(hrhhid) %>% filter(hr3_relationship == 1)
-directoff <- inddata1 %>% filter(hr3_relationship == 3)
-othermember <- inddata1 %>% filter(hhmemcat==0)
-men <- othermember %>% filter(hr3_relationship==2)
-
-# IRB checks-----
-table(inddata1$h10_hbv_rdt)
-inddata1 %>% filter(age_combined<18) %>% summarise(count = n())
-table(inddata1$i5_pregnancy_f, useNA = "always")
-
 
 
 
