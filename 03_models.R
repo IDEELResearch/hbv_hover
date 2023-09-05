@@ -66,6 +66,13 @@ exp(fixef(comp2mm))
 exp(confint(comp2mm, method = c("boot"), boot.type=c("basic")))
 exp(confint(comp2mm, method = c("Wald")))
 
+# not accounting for clustering
+comp2 <- glm(i27a_rdt_result ~ directoff, family = binomial(link = "log"), data=hhmemb_exp)
+summary(comp2)
+# comparison of fixed and mixed
+lrtest(comp2, comp2mm)
+
+
 #....................................................................................................
 #Comparison 3: odds of infection in unexposed households comparing offspring vs non offspring--------------------
 hhmemb_unexp <- hhmemb_nomiss %>% filter(h10_hbv_rdt==0)
@@ -81,6 +88,11 @@ exp(fixef(comp3mm))
 exp(confint(comp3mm, method = c("boot"), boot.type=c("basic")))
 exp(confint(comp3mm, method = c("Wald")))
 
+# not accounting for clustering
+comp3 <- glm(i27a_rdt_result ~ directoff, family = binomial(link = "log"), data=hhmemb_unexp)
+summary(comp3)
+# comparison of fixed and mixed
+lrtest(comp3, comp3mm)
 #....................................................................................................
 #Comparison 4: odds of infection in exposed direct off vs unexposed direct off-----
 directoff <- hhmemb_nomiss %>% filter(directoff==1)
@@ -93,6 +105,12 @@ fixef(comp4mm)
 exp(fixef(comp4mm))
 exp(confint(comp4mm, method = c("boot"), boot.type=c("basic")))
 exp(confint(comp4mm, method = c("Wald")))
+
+# not accounting for clustering
+comp4 <- glm(i27a_rdt_result ~ h10_hbv_rdt, family = binomial(link = "log"), data=directoff)
+summary(comp4)
+# comparison of fixed and mixed
+lrtest(comp4, comp4mm)
 
 #....................................................................................................
 #Comparison 5: odds of infection in exposed other mem vs unexposed other mem------
@@ -107,6 +125,11 @@ exp(fixef(comp5mm))
 exp(confint(comp5mm, method = c("boot"), boot.type=c("basic")))
 exp(confint(comp5mm, method = c("Wald")))
 
+# not accounting for clustering
+comp5 <- glm(i27a_rdt_result ~ h10_hbv_rdt, family = binomial(link = "log"), data=othermemb)
+summary(comp5)
+# comparison of fixed and mixed
+lrtest(comp5, comp5mm)
 #..................................................................
 # male partners
 men <- hhmemb %>% filter(hr3_relationship==2)
@@ -128,7 +151,7 @@ exp(confint(comp_husb, method = c("Wald")))
 
 ##Kim's suggestion--interaction term--------
 # maybe best from SAS
-comp2_int <- glmer(i27a_rdt_result ~ h10_hbv_rdt +directoff+h10_hbv_rdt*directoff +(1 | hrhhid), family = binomial(link = "log"), data=hhmemb_nomiss)
+comp2_int <- glmer(i27a_rdt_result ~ h10_hbv_rdt +directoff+h10_hbv_rdt*directoff +(1 | hrhhid), family = binomial(link = "logit"), data=hhmemb_nomiss)
 summary(comp2_int)
 fixef(comp2_int)
 exp(fixef(comp2_int))
@@ -452,7 +475,254 @@ summary(oth_age)
 
 
 #"Risk factor" with exp/unexp separated------------------
+
+#Sept 2023 update-----
+##moms
+# positive at any point
+moms <- moms %>% mutate(anypos = case_when(
+  h10_hbv_rdt==1 | i27a_rdt_result==1 ~ 1,
+  h10_hbv_rdt==0 & i27a_rdt_result==0 ~ 0
+))
+table(moms$anypos)  
+# positive at both time points
+moms <- moms %>% mutate(onlypos = case_when(
+  h10_hbv_rdt==1 & i27a_rdt_result==1 ~ 1,
+  h10_hbv_rdt==0 | i27a_rdt_result==0 ~ 0
+))
+table(moms$onlypos)  
+
+
 # updated model
+allmivar <- c("age_combined","maritalrisk_f","wealth_R_lowestv","sharedhhobj",'i12_food_first_chew_f','trans_bin', "i10_street_salon_bin", "i11_manucure_f","i17_tattoo_bin", "i16_traditional_scarring_f","transactionalsex", "debutsex_cat", "partner3mo_bin","newpartner3mo_indic","partner12mo_bin","newpartner12mo_indic")
+# for subgroups
+risk_ind_mi <-  c("age_combined","maritalrisk_f") # "malepartpos", <- figure out to have single group of ind vars 
+# household
+risk_hh_all <-  c( "sharedhhobj",'i12_food_first_chew_f',"wealth_R_lowestv") 
+# community
+risk_comm_all <-  c("trans_bin","i10_street_salon_bin", "i11_manucure_f","i17_tattoo_bin", "i16_traditional_scarring_f","transactionalsex", "debutsex_cat", "partner3mo_bin","newpartner3mo_indic","partner12mo_bin","newpartner12mo_indic")
+
+# mothers need to have OR reported (case-control design); check prev ratio for other subgroups
+# recruitment test
+itt_model_moms <- function(var){ # glm function
+  m <- glm(as.formula(paste0('h10_hbv_rdt ~', var)), data=moms, family=binomial("logit"))
+  cbind(tidy(m, exponentiate = FALSE), confint(m, method = c("Wald"))) %>% filter(stringr::str_detect(term, var))}
+# enrollment test
+perprot_model_moms <- function(var){ # glm function
+  m <- glm(as.formula(paste0('i27a_rdt_result ~', var)), data=moms, family=binomial("logit"))
+  cbind(tidy(m, exponentiate = FALSE), confint(m, method = c("Wald"))) %>% filter(stringr::str_detect(term, var))}
+#pos at any point
+anypos_model_moms <- function(var){ # glm function
+  m <- glm(as.formula(paste0('anypos ~', var)), data=moms, family=binomial("logit"))
+  cbind(tidy(m, exponentiate = FALSE), confint(m, method = c("Wald"))) %>% filter(stringr::str_detect(term, var))}
+# pos at both points
+onlypos_model_moms <- function(var){ # glm function
+  m <- glm(as.formula(paste0('onlypos ~', var)), data=moms, family=binomial("logit"))
+  cbind(tidy(m, exponentiate = FALSE), confint(m, method = c("Wald"))) %>% filter(stringr::str_detect(term, var))}
+
+# run 3 models
+glm_mi_recr <- map_dfr(allmivar,itt_model_moms) 
+glm_mi_pp <- map_dfr(allmivar,perprot_model_moms) 
+glm_mi_anypos <- map_dfr(allmivar,anypos_model_moms) 
+glm_mi_onlypos <- map_dfr(allmivar,onlypos_model_moms) 
+
+glm_mi_recr$time <- "Enrollment"
+glm_mi_pp$time <- "Recruitment"
+glm_mi_anypos$time <- "Either positive"
+glm_mi_onlypos$time <- "Always positive"
+
+glm_mi_3 <- rbind(glm_mi_recr, glm_mi_pp, glm_mi_anypos,glm_mi_onlypos)
+view(glm_mi_3)
+
+glm_mi_3_rd <- glm_mi_3 %>% mutate_if(is.numeric, ~round(., 3))
+colnames(glm_mi_3_rd) <- c('term','logodds','std.error','statistic','p.value','LCI_95','UCI_95','time')
+rownames(glm_mi_3_rd) <- 1:nrow(glm_mi_3_rd)
+glm_mi_3_rd$group <- "Index mothers"
+
+glm_mi_3_rd <- glm_mi_3_rd %>% mutate(level = case_when(
+  str_detect(term, paste(risk_ind_mi, collapse="|")) ~ "Individual",
+  str_detect(term, paste(risk_hh_all, collapse="|")) ~ "Household",
+  str_detect(term, paste(risk_comm_all, collapse="|")) ~ "Community",
+))
+glm_mi_3_rd <- glm_mi_3_rd %>% relocate(group, level, time)
+view(glm_mi_3_rd)
+
+### forest plot with annotations----
+# rename variables for plot
+glm_mi_3_rd$term[glm_mi_3_rd$term == "wealth_R_lowestv"] <- "Upper wealth quartiles (Q4-Q2) vs lowest (Q1)"
+#glm_mi_3_rd$term[glm_mi_3_rd$term == "wealth_R2"] <- "Higher wealth (Q3) vs lowest (Q1)"
+#glm_mi_3_rd$term[glm_mi_3_rd$term == "wealth_R1"] <- "Lower wealth (Q2) vs lowest (Q1)"
+glm_mi_3_rd$term[glm_mi_3_rd$term == "maritalrisk_fNot married"] <- "Marriage: Never vs married"
+glm_mi_3_rd$term[glm_mi_3_rd$term == "maritalrisk_fDivorced/Widowed"] <- "Marriage: Divorced/widowed vs married"
+# glm_mi_3_rd$term[glm_mi_3_rd$term == "malepartpos"] <- "Male partner HBsAg pos vs neg"
+glm_mi_3_rd$term[glm_mi_3_rd$term == "age_combined"] <- "Age (1-year increase)"
+glm_mi_3_rd$term[glm_mi_3_rd$term == "sharedhhobj1"] <- "Shares razors/nail clippers/toothbrushes in household"
+#glm_mi_3_rd$term[glm_mi_3_rd$term == "i13_shared_toothbrush_fYes"] <- "Shares toothbrushes in house"
+#glm_mi_3_rd$term[glm_mi_3_rd$term == "i14_shared_razor_fYes"] <- "Shares razors in house vs not"
+#glm_mi_3_rd$term[glm_mi_3_rd$term == "i15_shared_nailclippers_fYes"] <- "Shares nail clippers in house vs not"
+glm_mi_3_rd$term[glm_mi_3_rd$term == "i12_food_first_chew_fYes"] <- "Premasticates food for someone else"
+#transfusions changed to binary: 1+ or refused vs none/missing
+#glm_mi_3_rd$term[glm_mi_3_rd$term == "i8_transfusion_fYes"] <- "Past transfusion vs never"
+#glm_mi_3_rd$term[glm_mi_3_rd$term == "transfus_num9"] <- "≥4 transfusions vs none"
+#glm_mi_3_rd$term[glm_mi_3_rd$term == "transfus_num3"] <- "3 transfusions vs none"
+glm_mi_3_rd$term[glm_mi_3_rd$term == "i10_street_salon_fYes"] <- "Uses street salons vs not" #i10_street_salon_bin
+glm_mi_3_rd$term[glm_mi_3_rd$term == "i10_street_salon_bin1"] <- "Uses street salons vs not" #i10_street_salon_bin
+glm_mi_3_rd$term[glm_mi_3_rd$term == "i11_manucure_fYes"] <- "Manicures outside home vs not"
+
+glm_mi_3_rd$term[glm_mi_3_rd$term == "i17_tattoo_bin1"] <- "Tattoos: Yes vs none" # i17_tattoo_bin change
+#glm_mi_3_rd$term[glm_mi_3_rd$term == "i17_tattoo_fRefused"] <- "Tattoos: refused vs none" # i17_tattoo_bin change
+glm_mi_3_rd$term[glm_mi_3_rd$term == "i16_traditional_scarring_fYes/Refused"] <- "Traditional scarring: Yes/Refused vs none"
+glm_mi_3_rd$term[glm_mi_3_rd$term == "trans_bin1"] <- "1+ past transfusion vs none"
+glm_mi_3_rd$term[glm_mi_3_rd$term == "transactionalsex1"] <- "Has engaged in transactional sex or refused to answer vs no"
+glm_mi_3_rd$term[glm_mi_3_rd$term == "debutsex_cat<18"] <- "Age of sexual debut: <18 yrs vs ≥18 yrs"
+glm_mi_3_rd$term[glm_mi_3_rd$term == "debutsex_catRefused/don't know"] <- "Age of sexual debut: Refused/don't know vs ≥18 yrs"
+glm_mi_3_rd$term[glm_mi_3_rd$term == "partner3mo_bin1"] <- "Sexual partners in last 3 months: ≥2 or refused vs ≤1"
+glm_mi_3_rd$term[glm_mi_3_rd$term == "partner12mo_bin1"] <- "Sexual partners in last 12 months: ≥2 or refused vs ≤1"
+glm_mi_3_rd$term[glm_mi_3_rd$term == "newpartner3mo_indic1"] <- "New sexual partners in last 3 months: ≥1 or refuse vs none new"
+glm_mi_3_rd$term[glm_mi_3_rd$term == "newpartner12mo_indic1"] <- "New sexual partners in last 12 months: ≥1 or refuse vs none new"
+#p <- 
+
+glm_mi_3_rd <- glm_mi_3_rd %>% mutate(relsize = case_when(
+  time == "Recruitment" ~ 1.5,
+  TRUE ~ 1))
+table(glm_mi_3_rd$relsize)
+
+glm_mi_3_rd <- glm_mi_3_rd %>% group_by(time) %>%  mutate(desorder=1:18)
+
+glm_mi_3_rd %>% 
+  ## these mutate steps were to change order - redone with desorder step directly before
+  #mutate(term = (fct_reorder(fct_rev(term), (glm_mi_3_rd$level)))) %>%
+  #mutate(desiredorder = fct_relevel(term, levels = c()))
+    #ggplot(aes(x=(fct_rev(term)), y=logodds, color = time)) + #group = interaction(level); alpha = level
+  ggplot() +
+  geom_hline(yintercept=0, linetype='dashed') + # use 0 if logodds, 1 if odds
+  geom_pointrange(aes(x=fct_rev(fct_reorder(term, desorder)), y=logodds, ymin=LCI_95, ymax=UCI_95, color=time, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  #geom_point( aes(x=term, y=logodds, group=group, color=time),shape=15, size=7, position=position_dodge2(width = 1.0) ,alpha=0.9) + # this was place on incorrect line if multiple groups
+  scale_size(range = c(30,45))+
+  scale_color_manual(values=c("#9DC6E9","#5B85C4", "#28499E","#16246D" ))+  #deeppink3, "#E7B800" "#16246D", "#28499E", "#4676C5",  "#020E54","#C0D9F5"
+  coord_flip() + 
+  labs(x="", y="Log(OR) of HBsAg+") + 
+  theme(axis.text.y = ggtext::element_markdown(color = "black", size = 20),
+        axis.ticks.y = element_blank(),
+        axis.text.x = element_text(size = 20),
+        axis.title.x = element_text(size = 20),
+        legend.text=element_text(size=20),
+        legend.title = element_text(size=20),
+        legend.position = c(.95, .95),
+        legend.justification = c("right", "top"),
+        panel.grid.minor=element_blank(),
+        panel.background = element_blank(),
+        strip.text = element_text(size = 20))+
+  guides(size = "none",color = guide_legend(override.aes = list(size = 1), reverse = T, title = "Test timepoint"))
+
+ggsave('./plots/fig_mi_3grp_95.png', width=25, height=12)
+
+# plot version to add logodds to (no axis labels, etc.)
+plot <- 
+  glm_mi_3_rd %>% 
+  #mutate(term = (fct_reorder(fct_rev(term), (glm_mi_3_rd$level)))) %>%
+  #mutate(desiredorder = fct_relevel(term, levels = c()))
+  #ggplot(aes(x=(fct_rev(term)), y=logodds, color = time)) + #group = interaction(level); alpha = level
+  ggplot() +
+  geom_hline(yintercept=0, linetype='dashed') + # use 0 if logodds, 1 if odds
+  geom_pointrange(aes(x=fct_rev(fct_reorder(term, desorder)), y=logodds, ymin=LCI_95, ymax=UCI_95, color=time, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  #geom_point( aes(x=term, y=logodds, group=group, color=time),shape=15, size=7, position=position_dodge2(width = 1.0) ,alpha=0.9) + 
+  scale_size(range = c(30,45))+
+  scale_color_manual(values=c("#9DC6E9","#5B85C4", "#28499E","#16246D" ))+  #deeppink3, "#E7B800" "#16246D", "#28499E", "#4676C5",  "#020E54","#C0D9F5"
+  coord_flip()+ 
+  labs(x="", y="Log(OR) of HBsAg+") + 
+  theme(
+    axis.title.y=element_blank(),
+    axis.text.y=element_blank(),# for labeled forest plot 
+    axis.ticks.y=element_blank(), # for labeled forest plot 
+    ###
+    axis.text.x = element_text(size = 20),
+    axis.title.x = element_text(size = 20),
+    legend.text=element_text(size=20),
+    legend.title = element_text(size=20),
+    legend.position = c(.95, .95),
+    legend.justification = c("right", "top"),
+    panel.grid.minor=element_blank(),
+    panel.background = element_blank(),
+    strip.text = element_text(size = 20))+
+  guides(size = "none",color = guide_legend(override.aes = list(size = 1), reverse = T, title = "Test timepoint"))
+
+# add point est and CIs to figure - use cowplot to combine two parts
+res_plot <- glm_mi_3_rd |>
+  # round estimates and 95% CIs to 2 decimal places for journal specifications
+  mutate(across(c("logodds", "LCI_95", "UCI_95"), ~ str_pad(round(.x, 2), width = 4, pad = "0", side = "right")),
+  # add an "-" between logodds estimate confidence intervals
+  estimate_lab = paste0(logodds, " (", LCI_95, ", ", UCI_95, ")")) |>
+  filter(time == "Recruitment") |>
+  select(term, level, time, estimate_lab,desorder) 
+  # add a row of data that are actually column names which will be shown on the plot in the next step
+#add extra decimal for those that are in the thousandths place
+res_plot$estimate_lab <- ifelse(res_plot$estimate_lab=="0.05 (0000, 0.10)", "0.05 (0.004, 0.10)",res_plot$estimate_lab)
+res_plot$estimate_lab <- ifelse(res_plot$estimate_lab=="0.04 (-100, 1.08)", "0.04 (-1.00, 1.08)",res_plot$estimate_lab)
+
+estimate_lab <- "Log odds (95% CI), Recruitment"
+time <- ""
+term <- ""
+level <- ""
+desorder <- 0
+titles <- data.frame(estimate_lab, time, term, level,desorder)
+view(titles)
+
+res_plot <-rbind(res_plot, titles)
+view(res_plot)
+
+res_plot <- res_plot %>% reorder(desorder)
+p_left <- 
+res_plot  |>
+  #mutate(term = fct_rev(fct_reorder(term, desorder))) %>%
+  ggplot(aes(y = fct_rev(fct_reorder(term, desorder))))+
+  geom_text(aes(x = 0, label = term), hjust = 0, size = 5, fontface = "bold")+
+  geom_text(aes(x = 1, label = estimate_lab), hjust = 0 , size = 5,
+    fontface = ifelse(res_plot$estimate_lab == "Log odds (95% CI), Recruitment", "bold", "plain")
+    )+
+  theme_void() +
+  #xlim(0,2)+
+  coord_cartesian(xlim = c(0, 1.5))
+
+#p_left
+#library(cowplot)
+#library(patchwork)
+layout <- c(
+  area(t = 0, l = 0, b = 30, r = 5), # left plot, starts at the top of the page (0) and goes 30 units down and 3 units to the right
+  area(t = 3, l = 6, b = 30, r = 12) # middle plot starts a little lower (t=1) because there's no title. starts 1 unit right of the left plot (l=4, whereas left plot is r=3), goes to the bottom of the page (30 units), and 6 units further over from the left plot (r=9 whereas left plot is r=3)
+)
+p_left + plot + plot_layout(design=layout)
+ggsave('./plots/fig_mi_4grp_95_numb.png', width=25, height=12)
+
+## now do this for exposed direct offspring (probably not needed for other subgroups bc of low counts)
+
+# random explore for moms
+agemom <- glm(h10_hbv_rdt ~ debutsex_cat, data=moms, family=binomial("logit"))
+summary(agemom)
+confint(agemom, level = 0.95)
+confint(agemom, level = 0.99)
+# diff between current age and age of sexual debut
+table(moms$debutsex_cat, moms$h10_hbv_rdt_f, useNA = "always")
+table(moms$debutsex_cat, moms$maternity, useNA = "always")
+table(moms$i25_sex_hx_receive_money, moms$maternity, useNA = "always")
+
+## Mantel-Haenszel OR for mothers explore-----------
+install.packages("epiDisplay")
+library(epiDisplay)
+
+mht1 <- with(moms, table(moms$h10_hbv_rdt_f, moms$debutsex_cat))
+dim(mht1)
+mhor(mhtable=mht1, design = "case-control") 
+
+mantelhaen.test(mht1)
+install.packages("samplesizeCMH")
+library(samplesizeCMH)
+
+partial_tables <- margin.table(moms, c(2,4,1))
+marginal_table <- margin.table(moms, c("h10_hbv_rdt","wealth_R_lowestv"))
+
+odds.ratio(marginal_table)
+apply(partial_tables, 3, odds.ratio)
+mantelhaen.test(partial_tables)
 
 # make separate exposed/unexposed datasets
 table(inddata1$h10_hbv_rdt, inddata1$directoff)
@@ -460,10 +730,11 @@ directoffexp <-directoff %>% filter(h10_hbv_rdt == 1)
 nrow(directoffexp)
 directoffunexp <-directoff %>% filter(h10_hbv_rdt == 0)
 nrow(directoffunexp)
+
 library(lme4) 
 library(tidyr)
 
-## Direct offspring exposed---------
+#Direct offspring exposed---------
 alldovar <- c("age_combined","hr4_sex_f","cpshbvprox_rev", "wealth_R_lowestv","sharedhhobj",'i12_food_first_chew_f','trans_bin', "i10_street_salon_bin", "i11_manucure_f","i17_tattoo_bin", "i16_traditional_scarring_f","transactionalsex", "debutsex_indic", "partner3mo_bin","newpartner3mo_indic")
 
 itt_model_doexp <- function(var){
@@ -519,15 +790,25 @@ addmargins(table(directoffexp$newpartner3mo_indic,directoffexp$i27a_rdt_result_f
 addmargins(table(directoffexp$i27a_rdt_result_f,directoffexp$hr11_religion_f, useNA = "always" )) # 1= shares razors, toothbrushes, or nail clippers vs 0=doesn't share
 
 ### linear model
-m_glm <- glm(i27a_rdt_result ~ hr4_sex_f, data=directoffexp, family=binomial("logit"))
+m_glm <- glm(i27a_rdt_result ~ hr4_sex_f, data=directoffexp, family=binomial("log"))
 summary(m_glm)
+confint(m_glm)
 exp(m_glm$coefficients)
 exp(confint(m_glm))
 exp(confint(m_glm, method = c("Wald"), level = 0.99))
 
-m_glm <- glmer(i27a_rdt_result ~ (1 | hrhhid) + age_combined, data=directoffexp, family=binomial("logit"))
+m_glm <- glmer(i27a_rdt_result ~ (1 | hrhhid) + hr4_sex_f, data=directoffexp, family=binomial("log"))
 summary(m_glm)
 fixef(m_glm)
+exp(fixef(m_glm))
+exp(confint(m_glm, method = c("Wald"), level = 0.95))
+exp(confint(m_glm, method = c("Wald"), level = 0.99))
+
+directoffexp$wealth_R_lowestv
+m_glm <- glmer(i27a_rdt_result ~ (1 | hrhhid) + wealth_R_lowestv, data=directoffexp, family=binomial("log"))
+summary(m_glm)
+fixef(m_glm)
+confint((m_glm))
 exp(fixef(m_glm))
 exp(confint(m_glm, method = c("Wald"), level = 0.95))
 exp(confint(m_glm, method = c("Wald"), level = 0.99))
