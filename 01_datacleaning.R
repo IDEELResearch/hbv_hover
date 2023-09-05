@@ -1026,12 +1026,15 @@ inddata1 <- inddata1 %>%
 labels = c("No", "Yes", "Refused")))
 addmargins(table(inddata1$i13_shared_toothbrush_f))
 
+# traditional scarring - only one refused (an index mother), combine with yes
+
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i16_traditional_scarring_f=factor(
     inddata1$i16_traditional_scarring, 
     levels = c(0, 1, 99),
 #    labels = c("Non", "Oui", "Refusé")))
-labels = c("No", "Yes", "Refused")))
+labels = c("No", "Yes/Refused", "Yes/Refused"))) # give yes and refused same coding
+table(inddata1$i16_traditional_scarring_f)
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i17_tattoo_f=factor(
@@ -1360,6 +1363,13 @@ inddata1 = inddata1 %>%
     TRUE ~ NA_real_
   ) %>% as.factor())
 table(inddata1$partnew12mo_cat, inddata1$newsex12mo_recode)
+
+inddata1 = inddata1 %>%
+  mutate(newpartner12mo_indic = case_when(
+  newsex12mo_recode <= 0 ~ 0, # none new
+  newsex12mo_recode > 0 ~ 1, #at least one new, don't know, refused
+  TRUE ~ NA_real_) %>% as.factor())
+table(inddata1$newpartner12mo_indic, inddata1$newsex12mo_recode, useNA = "always")
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(partnew12mo_cat=factor(
