@@ -3,10 +3,18 @@ library(lme4)
 library(lmtest)
 library(geepack)
 library(tidyverse)
+library(broom)
+library(broom.mixed)
+library(cowplot)
+library(patchwork)
 
 #Comparison 1: odds of infection of household members in exposed vs unexposed--------------- 
 # using index mother's CPN/recruitment screening result, not result at enrollment
 hhmemb <- inddata1 %>% filter(indexmom=="Household member")
+exposed <- inddata1 %>% filter(h10_hbv_rdt==1) # includes index moms
+# how to get prevalence accounting for household clustering? univariate?
+m <- glmer(i27a_rdt_result ~  (1 | hrhhid), data=hhmemb, family=binomial("identity")) #???
+summary(m)
 #exclude those with missing results
 hhmemb_nomiss <- hhmemb %>% filter(i27a_rdt_result==0 | i27a_rdt_result==1)
 
@@ -34,8 +42,7 @@ exp(fixef(comp1mm))
 exp(confint((comp1mm)))
 # lmerTest::con
 lrtest(comp1, comp1mm)
-library(broom)
-library(broom.mixed)
+
 tidy(comp1mm, effects="fixed", conf.int=T, confint.method = "boot")
 
 # checking the values of various CI approaches
@@ -246,7 +253,6 @@ itt_model_oth <- function(var){ # glmer function
 
 # view results
 # index mothers
-library(broom)
 glm_mi <- map_dfr(allmivar,itt_model_moms) 
 glm_test99 <- map_dfr(allmivar,itt_model_moms99) 
 
@@ -474,30 +480,15 @@ summary(oth_age)
 (confint(oth_age,parm="beta_",method="Wald"))
 
 
-#"Risk factor" with exp/unexp separated------------------
-
-#Sept 2023 update-----
+#Sept 2023 update-----------------------------------
 ##moms
-# positive at any point
-moms <- moms %>% mutate(anypos = case_when(
-  h10_hbv_rdt==1 | i27a_rdt_result==1 ~ 1,
-  h10_hbv_rdt==0 & i27a_rdt_result==0 ~ 0
-))
-table(moms$anypos)  
-# positive at both time points
-moms <- moms %>% mutate(onlypos = case_when(
-  h10_hbv_rdt==1 & i27a_rdt_result==1 ~ 1,
-  h10_hbv_rdt==0 | i27a_rdt_result==0 ~ 0
-))
-table(moms$onlypos)  
-
 
 # updated model
-allmivar <- c("age_combined","maritalrisk_f","wealth_R_lowestv","sharedhhobj",'i12_food_first_chew_f','trans_bin', "i10_street_salon_bin", "i11_manucure_f","i17_tattoo_bin", "i16_traditional_scarring_f","transactionalsex", "debutsex_cat", "partner3mo_bin","newpartner3mo_indic","partner12mo_bin","newpartner12mo_indic")
+allmivar <- c("age_combined","maritalrisk_f","wealth_R_lowestv","i13_shared_toothbrush_f","i14_shared_razor_f", "i15_shared_nailclippers_f",'i12_food_first_chew_f','trans_bin', "i10_street_salon_bin", "i11_manucure_f","i17_tattoo_bin", "i16_traditional_scarring_f","transactionalsex", "debutsex_cat", "partner3mo_bin","newpartner3mo_indic","partner12mo_bin","newpartner12mo_indic") #"sharedhhobj removed
 # for subgroups
 risk_ind_mi <-  c("age_combined","maritalrisk_f") # "malepartpos", <- figure out to have single group of ind vars 
 # household
-risk_hh_all <-  c( "sharedhhobj",'i12_food_first_chew_f',"wealth_R_lowestv") 
+risk_hh_all <-  c("i13_shared_toothbrush_f","i14_shared_razor_f", "i15_shared_nailclippers_f",'i12_food_first_chew_f',"wealth_R_lowestv") #  "sharedhhobj" removed
 # community
 risk_comm_all <-  c("trans_bin","i10_street_salon_bin", "i11_manucure_f","i17_tattoo_bin", "i16_traditional_scarring_f","transactionalsex", "debutsex_cat", "partner3mo_bin","newpartner3mo_indic","partner12mo_bin","newpartner12mo_indic")
 
@@ -519,78 +510,83 @@ onlypos_model_moms <- function(var){ # glm function
   m <- glm(as.formula(paste0('onlypos ~', var)), data=moms, family=binomial("logit"))
   cbind(tidy(m, exponentiate = FALSE), confint(m, method = c("Wald"))) %>% filter(stringr::str_detect(term, var))}
 
-# run 3 models
+# run 4 models
 glm_mi_recr <- map_dfr(allmivar,itt_model_moms) 
 glm_mi_pp <- map_dfr(allmivar,perprot_model_moms) 
 glm_mi_anypos <- map_dfr(allmivar,anypos_model_moms) 
 glm_mi_onlypos <- map_dfr(allmivar,onlypos_model_moms) 
 
-glm_mi_recr$time <- "Enrollment"
-glm_mi_pp$time <- "Recruitment"
+glm_mi_recr$time <- "Recruitment"
+glm_mi_pp$time <- "Enrollment"
 glm_mi_anypos$time <- "Either positive"
 glm_mi_onlypos$time <- "Always positive"
 
-glm_mi_3 <- rbind(glm_mi_recr, glm_mi_pp, glm_mi_anypos,glm_mi_onlypos)
-view(glm_mi_3)
+# for reporting in text
+glm_mi_recr_res <- glm_mi_recr %>% 
+  mutate(est_exp = exp(estimate), lowerci_exp = exp(`2.5 %`), upperci_exp = exp(`97.5 %`), clr = upperci_exp/lowerci_exp )
+view(glm_mi_recr_res)
 
-glm_mi_3_rd <- glm_mi_3 %>% mutate_if(is.numeric, ~round(., 3))
-colnames(glm_mi_3_rd) <- c('term','logodds','std.error','statistic','p.value','LCI_95','UCI_95','time')
-rownames(glm_mi_3_rd) <- 1:nrow(glm_mi_3_rd)
-glm_mi_3_rd$group <- "Index mothers"
+glm_mi_4 <- rbind(glm_mi_recr, glm_mi_pp, glm_mi_anypos,glm_mi_onlypos)
+view(glm_mi_recr)
 
-glm_mi_3_rd <- glm_mi_3_rd %>% mutate(level = case_when(
+glm_mi_4_rd <- glm_mi_4 %>% mutate_if(is.numeric, ~round(., 3))
+colnames(glm_mi_4_rd) <- c('term','logodds','std.error','statistic','p.value','LCI_95','UCI_95','time')
+rownames(glm_mi_4_rd) <- 1:nrow(glm_mi_4_rd)
+glm_mi_4_rd$group <- "Index mothers"
+
+glm_mi_4_rd <- glm_mi_4_rd %>% mutate(level = case_when(
   str_detect(term, paste(risk_ind_mi, collapse="|")) ~ "Individual",
   str_detect(term, paste(risk_hh_all, collapse="|")) ~ "Household",
   str_detect(term, paste(risk_comm_all, collapse="|")) ~ "Community",
 ))
-glm_mi_3_rd <- glm_mi_3_rd %>% relocate(group, level, time)
-view(glm_mi_3_rd)
+glm_mi_4_rd <- glm_mi_4_rd %>% relocate(group, level, time)
+view(glm_mi_4_rd)
 
 ### forest plot with annotations----
 # rename variables for plot
-glm_mi_3_rd$term[glm_mi_3_rd$term == "wealth_R_lowestv"] <- "Upper wealth quartiles (Q4-Q2) vs lowest (Q1)"
-#glm_mi_3_rd$term[glm_mi_3_rd$term == "wealth_R2"] <- "Higher wealth (Q3) vs lowest (Q1)"
-#glm_mi_3_rd$term[glm_mi_3_rd$term == "wealth_R1"] <- "Lower wealth (Q2) vs lowest (Q1)"
-glm_mi_3_rd$term[glm_mi_3_rd$term == "maritalrisk_fNot married"] <- "Marriage: Never vs married"
-glm_mi_3_rd$term[glm_mi_3_rd$term == "maritalrisk_fDivorced/Widowed"] <- "Marriage: Divorced/widowed vs married"
-# glm_mi_3_rd$term[glm_mi_3_rd$term == "malepartpos"] <- "Male partner HBsAg pos vs neg"
-glm_mi_3_rd$term[glm_mi_3_rd$term == "age_combined"] <- "Age (1-year increase)"
-glm_mi_3_rd$term[glm_mi_3_rd$term == "sharedhhobj1"] <- "Shares razors/nail clippers/toothbrushes in household"
-#glm_mi_3_rd$term[glm_mi_3_rd$term == "i13_shared_toothbrush_fYes"] <- "Shares toothbrushes in house"
-#glm_mi_3_rd$term[glm_mi_3_rd$term == "i14_shared_razor_fYes"] <- "Shares razors in house vs not"
-#glm_mi_3_rd$term[glm_mi_3_rd$term == "i15_shared_nailclippers_fYes"] <- "Shares nail clippers in house vs not"
-glm_mi_3_rd$term[glm_mi_3_rd$term == "i12_food_first_chew_fYes"] <- "Premasticates food for someone else"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "wealth_R_lowestv"] <- "Upper wealth quartiles (Q4-Q2) vs lowest (Q1)"
+#glm_mi_4_rd$term[glm_mi_4_rd$term == "wealth_R2"] <- "Higher wealth (Q3) vs lowest (Q1)"
+#glm_mi_4_rd$term[glm_mi_4_rd$term == "wealth_R1"] <- "Lower wealth (Q2) vs lowest (Q1)"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "maritalrisk_fNot married"] <- "Marriage: Never vs married"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "maritalrisk_fDivorced/Widowed"] <- "Marriage: Divorced/widowed vs married"
+# glm_mi_4_rd$term[glm_mi_4_rd$term == "malepartpos"] <- "Male partner HBsAg pos vs neg"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "age_combined"] <- "Age (1-year increase)"
+#glm_mi_4_rd$term[glm_mi_4_rd$term == "sharedhhobj1"] <- "Shares razors/nail clippers/toothbrushes in household"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "i13_shared_toothbrush_fYes"] <- "Shares toothbrushes in household vs not"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "i14_shared_razor_fYes/Refused"] <- "Shares razors in household vs not"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "i15_shared_nailclippers_fYes"] <- "Shares nail clippers in household vs not"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "i12_food_first_chew_fYes"] <- "Premasticates food for someone else"
 #transfusions changed to binary: 1+ or refused vs none/missing
-#glm_mi_3_rd$term[glm_mi_3_rd$term == "i8_transfusion_fYes"] <- "Past transfusion vs never"
-#glm_mi_3_rd$term[glm_mi_3_rd$term == "transfus_num9"] <- "≥4 transfusions vs none"
-#glm_mi_3_rd$term[glm_mi_3_rd$term == "transfus_num3"] <- "3 transfusions vs none"
-glm_mi_3_rd$term[glm_mi_3_rd$term == "i10_street_salon_fYes"] <- "Uses street salons vs not" #i10_street_salon_bin
-glm_mi_3_rd$term[glm_mi_3_rd$term == "i10_street_salon_bin1"] <- "Uses street salons vs not" #i10_street_salon_bin
-glm_mi_3_rd$term[glm_mi_3_rd$term == "i11_manucure_fYes"] <- "Manicures outside home vs not"
+#glm_mi_4_rd$term[glm_mi_4_rd$term == "i8_transfusion_fYes"] <- "Past transfusion vs never"
+#glm_mi_4_rd$term[glm_mi_4_rd$term == "transfus_num9"] <- "≥4 transfusions vs none"
+#glm_mi_4_rd$term[glm_mi_4_rd$term == "transfus_num3"] <- "3 transfusions vs none"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "i10_street_salon_fYes"] <- "Uses street salons vs not" #i10_street_salon_bin
+glm_mi_4_rd$term[glm_mi_4_rd$term == "i10_street_salon_bin1"] <- "Uses street salons vs not" #i10_street_salon_bin
+glm_mi_4_rd$term[glm_mi_4_rd$term == "i11_manucure_fYes"] <- "Manicures outside home vs not"
 
-glm_mi_3_rd$term[glm_mi_3_rd$term == "i17_tattoo_bin1"] <- "Tattoos: Yes vs none" # i17_tattoo_bin change
-#glm_mi_3_rd$term[glm_mi_3_rd$term == "i17_tattoo_fRefused"] <- "Tattoos: refused vs none" # i17_tattoo_bin change
-glm_mi_3_rd$term[glm_mi_3_rd$term == "i16_traditional_scarring_fYes/Refused"] <- "Traditional scarring: Yes/Refused vs none"
-glm_mi_3_rd$term[glm_mi_3_rd$term == "trans_bin1"] <- "1+ past transfusion vs none"
-glm_mi_3_rd$term[glm_mi_3_rd$term == "transactionalsex1"] <- "Has engaged in transactional sex or refused to answer vs no"
-glm_mi_3_rd$term[glm_mi_3_rd$term == "debutsex_cat<18"] <- "Age of sexual debut: <18 yrs vs ≥18 yrs"
-glm_mi_3_rd$term[glm_mi_3_rd$term == "debutsex_catRefused/don't know"] <- "Age of sexual debut: Refused/don't know vs ≥18 yrs"
-glm_mi_3_rd$term[glm_mi_3_rd$term == "partner3mo_bin1"] <- "Sexual partners in last 3 months: ≥2 or refused vs ≤1"
-glm_mi_3_rd$term[glm_mi_3_rd$term == "partner12mo_bin1"] <- "Sexual partners in last 12 months: ≥2 or refused vs ≤1"
-glm_mi_3_rd$term[glm_mi_3_rd$term == "newpartner3mo_indic1"] <- "New sexual partners in last 3 months: ≥1 or refuse vs none new"
-glm_mi_3_rd$term[glm_mi_3_rd$term == "newpartner12mo_indic1"] <- "New sexual partners in last 12 months: ≥1 or refuse vs none new"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "i17_tattoo_bin1"] <- "Tattoos: Yes vs none" # i17_tattoo_bin change
+#glm_mi_4_rd$term[glm_mi_4_rd$term == "i17_tattoo_fRefused"] <- "Tattoos: refused vs none" # i17_tattoo_bin change
+glm_mi_4_rd$term[glm_mi_4_rd$term == "i16_traditional_scarring_fYes/Refused"] <- "Traditional scarring: Yes/Refused vs none"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "trans_bin1"] <- "1+ past transfusion vs none"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "transactionalsex1"] <- "Has engaged in transactional sex or refused to answer vs no"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "debutsex_cat<18"] <- "Age of sexual debut: <18 yrs vs ≥18 yrs"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "debutsex_catRefused/don't know"] <- "Age of sexual debut: Refused/don't know vs ≥18 yrs"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "partner3mo_bin1"] <- "Sexual partners in last 3 months: ≥2 or refused vs ≤1"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "partner12mo_bin1"] <- "Sexual partners in last 12 months: ≥2 or refused vs ≤1"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "newpartner3mo_indic1"] <- "New sexual partners in last 3 months: ≥1 or refuse vs none new"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "newpartner12mo_indic1"] <- "New sexual partners in last 12 months: ≥1 or refuse vs none new"
 #p <- 
 
-glm_mi_3_rd <- glm_mi_3_rd %>% mutate(relsize = case_when(
+glm_mi_4_rd <- glm_mi_4_rd %>% mutate(relsize = case_when(
   time == "Recruitment" ~ 1.5,
   TRUE ~ 1))
-table(glm_mi_3_rd$relsize)
+table(glm_mi_4_rd$relsize)
 
-glm_mi_3_rd <- glm_mi_3_rd %>% group_by(time) %>%  mutate(desorder=1:18)
+glm_mi_4_rd <- glm_mi_4_rd %>% group_by(time) %>%  mutate(desorder=1:(nrow(glm_mi_4_rd)/4))
 
-glm_mi_3_rd %>% 
+glm_mi_4_rd %>% 
   ## these mutate steps were to change order - redone with desorder step directly before
-  #mutate(term = (fct_reorder(fct_rev(term), (glm_mi_3_rd$level)))) %>%
+  #mutate(term = (fct_reorder(fct_rev(term), (glm_mi_4_rd$level)))) %>%
   #mutate(desiredorder = fct_relevel(term, levels = c()))
     #ggplot(aes(x=(fct_rev(term)), y=logodds, color = time)) + #group = interaction(level); alpha = level
   ggplot() +
@@ -614,12 +610,12 @@ glm_mi_3_rd %>%
         strip.text = element_text(size = 20))+
   guides(size = "none",color = guide_legend(override.aes = list(size = 1), reverse = T, title = "Test timepoint"))
 
-ggsave('./plots/fig_mi_3grp_95.png', width=25, height=12)
+ggsave('./plots/fig_mi_4grp_95.png', width=25, height=12)
 
 # plot version to add logodds to (no axis labels, etc.)
 plot <- 
-  glm_mi_3_rd %>% 
-  #mutate(term = (fct_reorder(fct_rev(term), (glm_mi_3_rd$level)))) %>%
+  glm_mi_4_rd %>% 
+  #mutate(term = (fct_reorder(fct_rev(term), (glm_mi_4_rd$level)))) %>%
   #mutate(desiredorder = fct_relevel(term, levels = c()))
   #ggplot(aes(x=(fct_rev(term)), y=logodds, color = time)) + #group = interaction(level); alpha = level
   ggplot() +
@@ -647,7 +643,7 @@ plot <-
   guides(size = "none",color = guide_legend(override.aes = list(size = 1), reverse = T, title = "Test timepoint"))
 
 # add point est and CIs to figure - use cowplot to combine two parts
-res_plot <- glm_mi_3_rd |>
+res_plot <- glm_mi_4_rd |>
   # round estimates and 95% CIs to 2 decimal places for journal specifications
   mutate(across(c("logodds", "LCI_95", "UCI_95"), ~ str_pad(round(.x, 2), width = 4, pad = "0", side = "right")),
   # add an "-" between logodds estimate confidence intervals
@@ -656,8 +652,9 @@ res_plot <- glm_mi_3_rd |>
   select(term, level, time, estimate_lab,desorder) 
   # add a row of data that are actually column names which will be shown on the plot in the next step
 #add extra decimal for those that are in the thousandths place
-res_plot$estimate_lab <- ifelse(res_plot$estimate_lab=="0.05 (0000, 0.10)", "0.05 (0.004, 0.10)",res_plot$estimate_lab)
-res_plot$estimate_lab <- ifelse(res_plot$estimate_lab=="0.04 (-100, 1.08)", "0.04 (-1.00, 1.08)",res_plot$estimate_lab)
+res_plot$estimate_lab <- ifelse(res_plot$estimate_lab=="0000 (-1.04, 1.04)", "0.00 (-1.04, 1.04)",res_plot$estimate_lab)
+res_plot$estimate_lab <- ifelse(res_plot$estimate_lab=="0000 (-0.63, 0.63)", "0.00 (-0.63, 0.63)",res_plot$estimate_lab)
+res_plot$estimate_lab <- ifelse(res_plot$estimate_lab=="0000 (-0.94, 0.94)", "0.00 (-0.94, 0.94)",res_plot$estimate_lab)
 
 estimate_lab <- "Log odds (95% CI), Recruitment"
 time <- ""
@@ -669,9 +666,8 @@ view(titles)
 
 res_plot <-rbind(res_plot, titles)
 view(res_plot)
-
-res_plot <- res_plot %>% reorder(desorder)
-p_left <- 
+ 
+p_left <-
 res_plot  |>
   #mutate(term = fct_rev(fct_reorder(term, desorder))) %>%
   ggplot(aes(y = fct_rev(fct_reorder(term, desorder))))+
@@ -683,9 +679,6 @@ res_plot  |>
   #xlim(0,2)+
   coord_cartesian(xlim = c(0, 1.5))
 
-#p_left
-#library(cowplot)
-#library(patchwork)
 layout <- c(
   area(t = 0, l = 0, b = 30, r = 5), # left plot, starts at the top of the page (0) and goes 30 units down and 3 units to the right
   area(t = 3, l = 6, b = 30, r = 12) # middle plot starts a little lower (t=1) because there's no title. starts 1 unit right of the left plot (l=4, whereas left plot is r=3), goes to the bottom of the page (30 units), and 6 units further over from the left plot (r=9 whereas left plot is r=3)
@@ -693,9 +686,37 @@ layout <- c(
 p_left + plot + plot_layout(design=layout)
 ggsave('./plots/fig_mi_4grp_95_numb.png', width=25, height=12)
 
+# Main text figure with number labels
+# plot version to add logodds to (no axis labels, etc.)
+view(glm_mi_4_rd)
+plot_r <- 
+  glm_mi_4_rd %>% filter(time=="Recruitment") %>% 
+  ggplot() +
+  geom_hline(yintercept=0, linetype='dashed') + # use 0 if logodds, 1 if odds
+  geom_pointrange(aes(x=fct_rev(fct_reorder(term, desorder)), y=logodds, ymin=LCI_95, ymax=UCI_95, color=time, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  #geom_point( aes(x=term, y=logodds, group=group, color=time),shape=15, size=7, position=position_dodge2(width = 1.0) ,alpha=0.9) + 
+  scale_size(range = c(30,45))+
+  scale_color_manual(values=c("#16246D" ))+  #deeppink3, "#E7B800" "#16246D", "#28499E", "#4676C5",  "#020E54","#C0D9F5"
+  coord_flip()+ 
+  labs(x="", y="Log(OR) of HBsAg+") + 
+  theme(
+    axis.title.y=element_blank(),
+    axis.text.y=element_blank(),# for labeled forest plot 
+    axis.ticks.y=element_blank(), # for labeled forest plot 
+    ###
+    axis.text.x = element_text(size = 20),
+    axis.title.x = element_text(size = 20),
+    legend.position = "none",
+    panel.grid.minor=element_blank(),
+    panel.background = element_blank(),
+    strip.text = element_text(size = 20))
+p_left + plot_r + plot_layout(design=layout)
+ggsave('./plots/fig_mi_rec_95_numb.png', width=25, height=12)
+
+
 ## now do this for exposed direct offspring (probably not needed for other subgroups bc of low counts)
 
-# random explore for moms
+# random explore for moms------------------------------------------------------------
 agemom <- glm(h10_hbv_rdt ~ debutsex_cat, data=moms, family=binomial("logit"))
 summary(agemom)
 confint(agemom, level = 0.95)
@@ -705,7 +726,7 @@ table(moms$debutsex_cat, moms$h10_hbv_rdt_f, useNA = "always")
 table(moms$debutsex_cat, moms$maternity, useNA = "always")
 table(moms$i25_sex_hx_receive_money, moms$maternity, useNA = "always")
 
-## Mantel-Haenszel OR for mothers explore-----------
+## Mantel-Haenszel OR for mothers explore-----------------------------------------------------------------------
 install.packages("epiDisplay")
 library(epiDisplay)
 
@@ -724,21 +745,127 @@ odds.ratio(marginal_table)
 apply(partial_tables, 3, odds.ratio)
 mantelhaen.test(partial_tables)
 
+#Exp Direct offspring---------
+table(directoff$age_cat, directoff$h10_hbv_rdt_f, useNA = "always") 
+# collapse version of age category var that corresponds with vaccination 
+directoff <- directoff %>% mutate(age_cat_cons = case_when(
+  age_cat =="2" ~ 1, # if person was likely not vaccinated or possibly not, group together
+  age_cat =="1" ~ 1, # if person was likely not vaccinated or possibly not, group together
+  age_cat == "0" ~ 0)
+  %>% as.factor(),
+age_cat_highrisk = case_when(
+  age_cat == "2" ~ 1,
+  age_cat == "1" ~ 0,
+  age_cat == "0" ~ 0) %>% as.factor()) 
+class(directoff$age_cat_cons)
+class(directoff$age_cat_highrisk)
+table(directoff$age_cat_highrisk, directoff$age_cat)
 # make separate exposed/unexposed datasets
-table(inddata1$h10_hbv_rdt, inddata1$directoff)
-directoffexp <-directoff %>% filter(h10_hbv_rdt == 1)
-nrow(directoffexp)
-directoffunexp <-directoff %>% filter(h10_hbv_rdt == 0)
-nrow(directoffunexp)
+# primary def of exposed, plus 3 sensitivity analyses
+# remove the 3 offspring on which test was not done
+doexp_recr <-directoff %>% filter(h10_hbv_rdt == 1 & !is.na(i27a_rdt_result))
+doexp_enr <-directoff %>% filter(perprot_h10 == 1 & !is.na(i27a_rdt_result)) 
+doexp_any <-directoff %>% filter(anypos == 1 & !is.na(i27a_rdt_result))
+doexp_only <-directoff %>% filter(onlypos == 1 & !is.na(i27a_rdt_result))
 
-library(lme4) 
-library(tidyr)
+# all DO vars
+alldovar <- c("age_combined","hr4_sex_f","age_cat", "wealth_R_lowestv","i13_shared_toothbrush_f","i14_shared_razor_f", "i15_shared_nailclippers_f",'i12_food_first_chew_f','trans_bin', "i10_street_salon_bin", "i11_manucure_f","i17_tattoo_bin", "i16_traditional_scarring_f","transactionalsex", "debutsex_cat", "partner3mo_bin","newpartner3mo_indic","partner12mo_bin","newpartner12mo_indic")
+# individual
+risk_ind_do <-  c("age_combined","hr4_sex_f","age_cat_cons") #"maritalrisk_f","malepartpos",
+# household
+risk_hh_all <-  c("i13_shared_toothbrush_f","i14_shared_razor_f", "i15_shared_nailclippers_f",'i12_food_first_chew_f',"wealth_R_lowestv") #  "sharedhhobj" removed
+# community
+risk_comm_all <-  c("trans_bin","i10_street_salon_bin", "i11_manucure_f","i17_tattoo_bin", "i16_traditional_scarring_f","transactionalsex", "debutsex_cat", "partner3mo_bin","newpartner3mo_indic","partner12mo_bin","newpartner12mo_indic")
 
-#Direct offspring exposed---------
-alldovar <- c("age_combined","hr4_sex_f","cpshbvprox_rev", "wealth_R_lowestv","sharedhhobj",'i12_food_first_chew_f','trans_bin', "i10_street_salon_bin", "i11_manucure_f","i17_tattoo_bin", "i16_traditional_scarring_f","transactionalsex", "debutsex_indic", "partner3mo_bin","newpartner3mo_indic")
+library(crosstable)
+library(flextable)
+o <- crosstable(doexp_recr, alldovar, by=i27a_rdt_result_f, total="both") %>%
+  as_flextable(keep_id=TRUE)
+# figure out how to export
+save_as_docx(
+  "exp DO freq tab" = o, 
+  path = "./plots/expdofreq.docx")
 
-itt_model_doexp <- function(var){
-  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=directoffexp, family=binomial("logit"))
+# Questions for Jess/methods people - better to present prevalence ratios not accounting for clustering (glm()) or odds ratios from glmer()?
+
+# vars that don't converge with glmer log model
+m <- glmer(i27a_rdt_result ~  (1 | hrhhid) + age_cat_cons, data=doexp_recr, family=binomial("log"), nAGQ = 0) # doesn't converge
+m <- glm(i27a_rdt_result ~ age_cat_cons, data=doexp_recr, family=binomial("log")) # PR model not accounting for clustering
+m <- glmer(i27a_rdt_result ~  (1 | hrhhid) + age_cat_cons, data=doexp_recr, family=binomial("logit"), nAGQ = 0) # OR model accounting for hh clustering
+summary(m)
+confint(m, method = c("Wald"))
+
+doexp_recr_nomis <- doexp_recr %>% filter(!is.na(debutsex_indic))
+
+# ran below for the following variables: debutsex_indic (not debutsex_cat), partner3mo_bin, newpartner3mo_indic, partner12mo_bin
+m <- glmer(i27a_rdt_result ~  (1 | hrhhid) + newpartner12mo_indic, data=doexp_recr_nomis, family=binomial("log"), nAGQ = 0) # doesn't converge
+summary(m)
+confint(m, method = c("Wald"))
+# logit glmer
+m <- glmer(i27a_rdt_result ~  (1 | hrhhid) + newpartner12mo_indic, data=doexp_recr_nomis, family=binomial("logit"), nAGQ = 0) # doesn't converge
+summary(m)
+confint(m, method = c("Wald"))
+# log glm
+m <- glm(i27a_rdt_result ~ newpartner12mo_indic, data=doexp_recr_nomis, family=binomial("log")) # PR model not accounting for clustering
+summary(m)
+confint(m, method = c("Wald"))
+
+# response from Jess was try modified Poisson or COPY method (copies dataset and switches outcome in one observation in each iteration)
+library(clubSandwich)
+library(sandwich)
+library("lmtest")
+install.packages("robustlmm", dependencies = TRUE)
+library(robustlmm)
+
+# robust SE/cov deep dive
+# for robust SE : The basic so-called "robust" standard errors are available in function sandwich(). To apply these to the usual marginal Wald tests you can use the coeftest() function from the lmtest package:
+# source: https://stats.stackexchange.com/questions/520662/how-to-add-robust-error-variances-in-glm-poisson-model-in-r
+
+m <- glmer(i27a_rdt_result ~  (1 | hrhhid) + age_cat_cons, data=doexp_recr, family=poisson("log"))
+# m <- glm(i27a_rdt_result ~   age_cat_cons, data=doexp_recr, family=poisson("log"))
+summary(m)
+
+coeftest(m, vcov = sandwich)
+vcov(m)
+
+# https://cran.r-project.org/web/packages/clubSandwich/clubSandwich.pdf
+V_CR2 <- vcovCR(m, cluster = doexp_recr$hrhhid, type = "CR2") # this function does not like what i am putting for clusters
+clubSandwich::conf_int(m,  vcov = rse)
+# rlmer() not solving either
+rse <- bread(m, full = TRUE, ranpar = "var") # how to integrate
+# try confint.merMod
+confint.merMod(m, method = "Wald")
+# and compare 
+confint(m, method = "Wald")
+# seems very close in range, report output from confint.merMod()
+# these estimates from poisson also are similar range of glm log and glmer logit model so seem appropriate
+
+# now for age
+m <- glmer(i27a_rdt_result ~  (1 | hrhhid) + age_combined, data=doexp_any, family=poisson("log"))
+summary(m)
+# 
+
+# vars that converge
+alldovar <- c("hr4_sex_f", "wealth_R_lowestv","i14_shared_razor_f", "i15_shared_nailclippers_f",'trans_bin', "i10_street_salon_bin", "i11_manucure_f",  "partner3mo_bin")
+# don't report bc too low counts "i13_shared_toothbrush_f",'i12_food_first_chew_f',"i17_tattoo_bin","i16_traditional_scarring_f","transactionalsex", 
+
+# consider glmer() logit or glm log: "age_combined","age_cat", use subset of those who answer: "debutsex_cat","newpartner3mo_indic","partner12mo_bin","newpartner12mo_indic"
+
+recr_doexp <- function(var){
+  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_recr, family=binomial("log"), nAGQ = 0)
+  est <- tidy(m) %>% filter(stringr::str_detect(term, var))
+  cis95 <- as.data.frame(confint(m, method = c("Wald")))
+  cis95 <- tibble::rownames_to_column(cis95, "term") %>% setNames(c("term", "LCI_95", "UCI_95"))
+  cis95 <- cis95 %>%  filter(stringr::str_detect(term, var))
+  cis99 <- as.data.frame(confint(m, method = c("Wald"), level = 0.99))
+  cis99 <- tibble::rownames_to_column(cis99, "term") %>% setNames(c("term", "LCI_99", "UCI_99"))
+  cis99 <- cis99 %>%  filter(stringr::str_detect(term, var))
+  m <- cbind(est,cis95,cis99)
+  m <- m[,-8]
+  m <- m %>% select(-c('effect','group'))}
+# modified poisson for age_cat_cons, age_combined
+recr_doexp_modpois <- function(var){
+  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_recr, family=poisson("log"))
   est <- tidy(m) %>% filter(stringr::str_detect(term, var))
   cis95 <- as.data.frame(confint(m, method = c("Wald")))
   cis95 <- tibble::rownames_to_column(cis95, "term") %>% setNames(c("term", "LCI_95", "UCI_95"))
@@ -750,11 +877,315 @@ itt_model_doexp <- function(var){
   m <- m[,-8]
   m <- m %>% select(-c('effect','group'))}
 
-glmer_doexp <- map_dfr(alldovar,itt_model_doexp) 
+enr_doexp <- function(var){
+  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_enr, family=binomial("log"), nAGQ = 0)
+  est <- tidy(m) %>% filter(stringr::str_detect(term, var))
+  cis95 <- as.data.frame(confint(m, method = c("Wald")))
+  cis95 <- tibble::rownames_to_column(cis95, "term") %>% setNames(c("term", "LCI_95", "UCI_95"))
+  cis95 <- cis95 %>%  filter(stringr::str_detect(term, var))
+  cis99 <- as.data.frame(confint(m, method = c("Wald"), level = 0.99))
+  cis99 <- tibble::rownames_to_column(cis99, "term") %>% setNames(c("term", "LCI_99", "UCI_99"))
+  cis99 <- cis99 %>%  filter(stringr::str_detect(term, var))
+  m <- cbind(est,cis95,cis99)
+  m <- m[,-8]
+  m <- m %>% select(-c('effect','group'))}
+# modified poisson for age_cat_cons, age_combined
+enr_doexp_modpois <- function(var){
+  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_enr, family=poisson("log"))
+  est <- tidy(m) %>% filter(stringr::str_detect(term, var))
+  cis95 <- as.data.frame(confint(m, method = c("Wald")))
+  cis95 <- tibble::rownames_to_column(cis95, "term") %>% setNames(c("term", "LCI_95", "UCI_95"))
+  cis95 <- cis95 %>%  filter(stringr::str_detect(term, var))
+  cis99 <- as.data.frame(confint(m, method = c("Wald"), level = 0.99))
+  cis99 <- tibble::rownames_to_column(cis99, "term") %>% setNames(c("term", "LCI_99", "UCI_99"))
+  cis99 <- cis99 %>%  filter(stringr::str_detect(term, var))
+  m <- cbind(est,cis95,cis99)
+  m <- m[,-8]
+  m <- m %>% select(-c('effect','group'))}
 
-view(glmer_doexp)
+any_doexp <- function(var){
+  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_any, family=binomial("log"), nAGQ = 0)
+  est <- tidy(m) %>% filter(stringr::str_detect(term, var))
+  cis95 <- as.data.frame(confint(m, method = c("Wald")))
+  cis95 <- tibble::rownames_to_column(cis95, "term") %>% setNames(c("term", "LCI_95", "UCI_95"))
+  cis95 <- cis95 %>%  filter(stringr::str_detect(term, var))
+  cis99 <- as.data.frame(confint(m, method = c("Wald"), level = 0.99))
+  cis99 <- tibble::rownames_to_column(cis99, "term") %>% setNames(c("term", "LCI_99", "UCI_99"))
+  cis99 <- cis99 %>%  filter(stringr::str_detect(term, var))
+  m <- cbind(est,cis95,cis99)
+  m <- m[,-8]
+  m <- m %>% select(-c('effect','group'))}
+# modified poisson for age_cat_cons, age_combined
+any_doexp_modpois <- function(var){
+  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_any, family=poisson("log"))
+  est <- tidy(m) %>% filter(stringr::str_detect(term, var))
+  cis95 <- as.data.frame(confint(m, method = c("Wald")))
+  cis95 <- tibble::rownames_to_column(cis95, "term") %>% setNames(c("term", "LCI_95", "UCI_95"))
+  cis95 <- cis95 %>%  filter(stringr::str_detect(term, var))
+  cis99 <- as.data.frame(confint(m, method = c("Wald"), level = 0.99))
+  cis99 <- tibble::rownames_to_column(cis99, "term") %>% setNames(c("term", "LCI_99", "UCI_99"))
+  cis99 <- cis99 %>%  filter(stringr::str_detect(term, var))
+  m <- cbind(est,cis95,cis99)
+  m <- m[,-8]
+  m <- m %>% select(-c('effect','group'))}
 
-glmer_doexp_rd <- mutate(glmer_doexp, across(where(is.numeric), round, 3)) # better way to print/view results and restrict decimals without going into sci not
+only_doexp <- function(var){
+  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_only, family=binomial("log"), nAGQ = 0)
+  est <- tidy(m) %>% filter(stringr::str_detect(term, var))
+  cis95 <- as.data.frame(confint(m, method = c("Wald")))
+  cis95 <- tibble::rownames_to_column(cis95, "term") %>% setNames(c("term", "LCI_95", "UCI_95"))
+  cis95 <- cis95 %>%  filter(stringr::str_detect(term, var))
+  cis99 <- as.data.frame(confint(m, method = c("Wald"), level = 0.99))
+  cis99 <- tibble::rownames_to_column(cis99, "term") %>% setNames(c("term", "LCI_99", "UCI_99"))
+  cis99 <- cis99 %>%  filter(stringr::str_detect(term, var))
+  m <- cbind(est,cis95,cis99)
+  m <- m[,-8]
+  m <- m %>% select(-c('effect','group'))}
+# modified poisson for age_cat_cons, age_combined
+only_doexp_modpois <- function(var){
+  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_only, family=poisson("log"))
+  est <- tidy(m) %>% filter(stringr::str_detect(term, var))
+  cis95 <- as.data.frame(confint(m, method = c("Wald")))
+  cis95 <- tibble::rownames_to_column(cis95, "term") %>% setNames(c("term", "LCI_95", "UCI_95"))
+  cis95 <- cis95 %>%  filter(stringr::str_detect(term, var))
+  cis99 <- as.data.frame(confint(m, method = c("Wald"), level = 0.99))
+  cis99 <- tibble::rownames_to_column(cis99, "term") %>% setNames(c("term", "LCI_99", "UCI_99"))
+  cis99 <- cis99 %>%  filter(stringr::str_detect(term, var))
+  m <- cbind(est,cis95,cis99)
+  m <- m[,-8]
+  m <- m %>% select(-c('effect','group'))}
+
+# check convergence for each variable, for all 4 models
+alldovar <- c("hr4_sex_f", "wealth_R_lowestv", "i14_shared_razor_f", "i15_shared_nailclippers_f", 'trans_bin', "i10_street_salon_bin", "i11_manucure_f",  "partner3mo_bin")
+# datasets: doexp_recr, doexp_enr, doexp_any, doexp_only
+
+m <- glmer(i27a_rdt_result ~  (1 | hrhhid) + i11_manucure_f, data=doexp_only, family=binomial("log"), nAGQ = 0) # 
+summary(m)
+m <- glmer(i27a_rdt_result ~  (1 | hrhhid) + i11_manucure_f, data=doexp_only, family=binomial("log")) # 
+summary(m)
+
+# conclusions:  c("hr4_sex_f", "wealth_R_lowestv", "i14_shared_razor_f", "i15_shared_nailclippers_f", 'trans_bin') converge for all 4 
+# "i10_street_salon_bin", "i11_manucure_f",  "partner3mo_bin" do not converge with a subset of models - run individually and append
+
+do_conv_4 <- c("hr4_sex_f", "wealth_R_lowestv", "i14_shared_razor_f", "i15_shared_nailclippers_f", 'trans_bin')
+do_sub_recr <- c("i10_street_salon_bin", "i11_manucure_f","partner3mo_bin")
+do_sub_onlypos <- c("i10_street_salon_bin", "i11_manucure_f") # run together for recruitment df, then run individually : i10_street_salon_bin, i11_manucure_f for glmer_doexp_only; partner3mo_bin for glmer_doexp_any
+do_sub_anypos <-  "partner3mo_bin"  #partner3mo_bin for glmer_doexp_any
+# for those that don't converge, consider showing glm PR or glmer OR
+do_modpoiss <- c("age_cat_cons", "age_combined")
+
+glmer_doexp_recr <- map_dfr(do_conv_4, recr_doexp) 
+glmer_doexp_recr_2 <- map_dfr(do_sub_recr, recr_doexp) 
+glmer_doexp_recr_3 <- map_dfr(do_modpoiss, recr_doexp_modpois) 
+glmer_doexp_enr <- map_dfr(do_conv_4, enr_doexp) 
+glmer_doexp_enr_3 <- map_dfr(do_modpoiss, enr_doexp_modpois) 
+glmer_doexp_any <- map_dfr(do_conv_4, any_doexp) 
+glmer_doexp_any_2 <- map_dfr(do_sub_anypos, any_doexp) 
+glmer_doexp_any_3 <- map_dfr(do_modpoiss, any_doexp_modpois) 
+glmer_doexp_only <- map_dfr(do_conv_4, only_doexp) 
+glmer_doexp_only_2 <- map_dfr(do_sub_onlypos, only_doexp) 
+glmer_doexp_only_3 <- map_dfr(do_modpoiss, only_doexp_modpois) 
+
+glmer_doexp_recr$time <- "Recruitment"
+glmer_doexp_recr_2$time <- "Recruitment"
+glmer_doexp_recr_3$time <- "Recruitment"
+glmer_doexp_enr$time <- "Enrollment"
+glmer_doexp_enr_3$time <- "Enrollment"
+glmer_doexp_any$time <- "Either positive"
+glmer_doexp_any_2$time <- "Either positive"
+glmer_doexp_any_3$time <- "Either positive"
+glmer_doexp_only$time <- "Always positive"
+glmer_doexp_only_2$time <- "Always positive"
+glmer_doexp_only_3$time <- "Always positive"
+addmargins(table(directoff$i27a_rdt_result, directoff$h10_hbv_rdt, useNA = "always"))
+# for reporting in text
+glmer_doexp_allrec <- rbind(glmer_doexp_recr_3,glmer_doexp_recr, glmer_doexp_recr_2)
+view(glmer_doexp_allrec)
+
+glmer_doexp_allrec <- glmer_doexp_allrec %>% 
+  mutate(est_exp = exp(estimate), lowerci_exp = exp(LCI_95), upperci_exp = exp(UCI_95), clr = upperci_exp/lowerci_exp )
+view(glmer_doexp_allrec)
+
+glmer_doexp_4 <- rbind(glmer_doexp_recr_3, glmer_doexp_recr, glmer_doexp_recr_2, glmer_doexp_enr_3, glmer_doexp_enr, glmer_doexp_any_3, glmer_doexp_any, glmer_doexp_any_2, glmer_doexp_only_3, glmer_doexp_only, glmer_doexp_only_2)
+view(glmer_doexp_4)
+
+glmer_doexp_4_rd <- glmer_doexp_4 %>% mutate_if(is.numeric, ~round(., 3))
+glmer_doexp_4_rd <- glmer_doexp_4_rd %>% select(-c(term.1)) # drop the term.1 - should do above
+
+colnames(glmer_doexp_4_rd) <- c('term','logpr','std.error','statistic','p.value','LCI_95','UCI_95','LCI_99','UCI_99','time')
+rownames(glmer_doexp_4_rd) <- 1:nrow(glmer_doexp_4_rd)
+glmer_doexp_4_rd$group <- "Exposed direct offspring"
+view(glmer_doexp_4_rd)
+
+glmer_doexp_4_rd <- glmer_doexp_4_rd %>% mutate(level = case_when(
+  str_detect(term, paste(risk_ind_do, collapse="|")) ~ "Individual",
+  str_detect(term, paste(risk_hh_all, collapse="|")) ~ "Household",
+  str_detect(term, paste(risk_comm_all, collapse="|")) ~ "Community",
+))
+glmer_doexp_4_rd <- glmer_doexp_4_rd %>% relocate(group, level, time)
+
+### forest plot with annotations----
+# rename variables for plot
+
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "age_cat_cons1"] <- "Born before HBV vaccination vs born since*"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "age_combined"] <- "1-year increase in age*"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "hr4_sex_fFemale"] <- "Female vs male"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "wealth_R_lowestv"] <- "Upper wealth quartiles (Q4-Q2) vs lowest (Q1)"
+#glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "wealth_R2"] <- "Higher wealth (Q3) vs lowest (Q1)"
+#glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "wealth_R1"] <- "Lower wealth (Q2) vs lowest (Q1)"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "maritalrisk_fNot married"] <- "Marriage: Never vs married"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "maritalrisk_fDivorced/Widowed"] <- "Marriage: Divorced/widowed vs married"
+# glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "malepartpos"] <- "Male partner HBsAg pos vs neg"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "age_combined"] <- "Age (1-year increase)"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "i13_shared_toothbrush_fYes"] <- "Shares toothbrushes in household vs not"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "i14_shared_razor_fYes/Refused"] <- "Shares razors in household vs not"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "i15_shared_nailclippers_fYes"] <- "Shares nail clippers in household vs not"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "i12_food_first_chew_fYes"] <- "Premasticates food for someone else"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "i10_street_salon_fYes"] <- "Uses street salons vs not" #i10_street_salon_bin
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "i10_street_salon_bin1"] <- "Uses street salons vs not" #i10_street_salon_bin
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "i11_manucure_fYes"] <- "Manicures outside home vs not"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "i17_tattoo_bin1"] <- "Tattoos: Yes vs none" # i17_tattoo_bin change
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "i16_traditional_scarring_fYes/Refused"] <- "Traditional scarring: Yes/Refused vs none"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "trans_bin1"] <- "1+ past transfusion vs none"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "transactionalsex1"] <- "Has engaged in transactional sex or refused to answer vs no"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "debutsex_cat<18"] <- "Age of sexual debut: <18 yrs vs ≥18 yrs"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "debutsex_catRefused/don't know"] <- "Age of sexual debut: Refused/don't know vs ≥18 yrs"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "partner3mo_bin1"] <- "Sexual partners in last 3 months: ≥2 or refused vs ≤1"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "partner12mo_bin1"] <- "Sexual partners in last 12 months: ≥2 or refused vs ≤1"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "newpartner3mo_indic1"] <- "New sexual partners in last 3 months: ≥1 or refuse vs none new"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "newpartner12mo_indic1"] <- "New sexual partners in last 12 months: ≥1 or refuse vs none new"
+
+glmer_doexp_4_rd <- glmer_doexp_4_rd %>% mutate(relsize = case_when(
+  time == "Recruitment" ~ 1.5,
+  TRUE ~ 1))
+table(glmer_doexp_4_rd$relsize)
+
+glmer_doexp_4_rd <- glmer_doexp_4_rd %>% group_by(time) %>%  mutate(desorder=row_number())
+view(glmer_doexp_4_rd)
+glmer_doexp_4_rd %>% 
+  ## these mutate steps were to change order - redone with desorder step directly before
+  #mutate(term = (fct_reorder(fct_rev(term), (glm_mi_4_rd$level)))) %>%
+  #mutate(desiredorder = fct_relevel(term, levels = c()))
+  #ggplot(aes(x=(fct_rev(term)), y=logodds, color = time)) + #group = interaction(level); alpha = level
+  ggplot() +
+  geom_hline(yintercept=0, linetype='dashed') + # use 0 if logodds, 1 if odds
+  geom_pointrange(aes(x=fct_rev(fct_reorder(term, desorder)), y=logpr, ymin=LCI_95, ymax=UCI_95, color=time, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  #geom_point( aes(x=term, y=logodds, group=group, color=time),shape=15, size=7, position=position_dodge2(width = 1.0) ,alpha=0.9) + # this was place on incorrect line if multiple groups
+  scale_size(range = c(30,45))+
+  scale_color_manual(values=c("#CAE0AB","#A6CB72", "#88B253","#618A3D" ))+ 
+  coord_flip() + 
+  labs(x="", y="Log(PR) of HBsAg+") + 
+  theme(axis.text.y = ggtext::element_markdown(color = "black", size = 20),
+        axis.ticks.y = element_blank(),
+        axis.text.x = element_text(size = 20),
+        axis.title.x = element_text(size = 20),
+        legend.text=element_text(size=20),
+        legend.title = element_text(size=20),
+        legend.position = c(.95, .85),
+        legend.justification = c("right", "top"),
+        panel.grid.minor=element_blank(),
+        panel.background = element_blank(),
+        strip.text = element_text(size = 20))+
+  guides(size = "none",color = guide_legend(override.aes = list(size = 1), reverse = T, title = "Test timepoint"))
+
+ggsave('./plots/fig_expdo_4grp_95.png', width=25, height=9)
+
+# add point est and CIs to figure - use cowplot to combine two parts
+plot <- 
+  glmer_doexp_4_rd %>% 
+  ggplot() +
+  geom_hline(yintercept=0, linetype='dashed') + # use 0 if logodds, 1 if odds
+  geom_pointrange(aes(x=fct_rev(fct_reorder(term, desorder)), y=logpr, ymin=LCI_95, ymax=UCI_95, color=time, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  scale_size(range = c(30,45))+
+  scale_color_manual(values=c("#CAE0AB","#A6CB72", "#88B253","#618A3D" ))+ 
+  coord_flip()+ 
+  labs(x="", y="Log(PR) of HBsAg+") + 
+  theme(
+    axis.title.y=element_blank(),
+    axis.text.y=element_blank(),# for labeled forest plot 
+    axis.ticks.y=element_blank(), # for labeled forest plot 
+    ###
+    axis.text.x = element_text(size = 20),
+    axis.title.x = element_text(size = 20),
+    legend.text=element_text(size=20),
+    legend.title = element_text(size=20),
+    legend.position = c(.95, .85),
+    legend.justification = c("right", "top"),
+    panel.grid.minor=element_blank(),
+    panel.background = element_blank(),
+    strip.text = element_text(size = 20))+
+  guides(size = "none",color = guide_legend(override.aes = list(size = 1), reverse = T, title = "Test timepoint"))
+
+res_plot_do <- glmer_doexp_4_rd |>
+  # round estimates and 95% CIs to 2 decimal places for journal specifications
+  mutate(across(c("logpr", "LCI_95", "UCI_95"), ~ str_pad(round(.x, 2), width = 4, pad = "0", side = "right")),
+         # add an "-" between logodds estimate confidence intervals
+         estimate_lab = paste0(logpr, " (", LCI_95, ", ", UCI_95, ")")) |>
+  filter(time == "Recruitment") |>
+  select(term, level, time, estimate_lab, desorder) 
+view(res_plot_do)
+# add a row of data that are actually column names which will be shown on the plot in the next step
+#add extra decimal for those that are in the thousandths place
+
+estimate_lab <- "LogPR (95% CI), Recruitment"
+time <- ""
+term <- ""
+level <- ""
+desorder <- 0
+titles_do <- data.frame(estimate_lab, time, term, level,desorder)
+view(titles_do)
+
+res_plot_do <-rbind(res_plot_do, titles_do)
+view(res_plot_do)
+
+p_left <-
+  res_plot_do  |>
+  #mutate(term = fct_rev(fct_reorder(term, desorder))) %>%
+  ggplot(aes(y = fct_rev(fct_reorder(term, desorder))))+
+  geom_text(aes(x = 0, label = term), hjust = 0, size = 5, fontface = "bold")+
+  geom_text(aes(x = 1, label = estimate_lab), hjust = 0 , size = 5,
+            fontface = ifelse(res_plot_do$estimate_lab == "LogPR (95% CI), Recruitment", "bold", "plain")
+  )+
+  theme_void() +
+  #xlim(0,2)+
+  coord_cartesian(xlim = c(0, 1.5))
+
+layout <- c(
+  area(t = 0, l = 0, b = 30, r = 5), # left plot, starts at the top of the page (0) and goes 30 units down and 3 units to the right
+  area(t = 3, l = 6, b = 30, r = 12) # middle plot starts a little lower (t=1) because there's no title. starts 1 unit right of the left plot (l=4, whereas left plot is r=3), goes to the bottom of the page (30 units), and 6 units further over from the left plot (r=9 whereas left plot is r=3)
+)
+p_left + plot + plot_layout(design=layout)
+ggsave('./plots/fig_expdo_4grp_95_numb.png', width=25, height=9)
+
+# plot for main text with just recruitment definition with numbers
+plot_do <- 
+  glmer_doexp_4_rd %>% filter(time=="Recruitment") %>% 
+  ggplot() +
+  geom_hline(yintercept=0, linetype='dashed') + # use 0 if logodds, 1 if odds
+  geom_pointrange(aes(x=fct_rev(fct_reorder(term, desorder)), y=logpr, ymin=LCI_95, ymax=UCI_95, color=time, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  scale_size(range = c(30,45))+
+  scale_color_manual(values=c("#618A3D" ))+ 
+  coord_flip()+ 
+  labs(x="", y="Log(PR) of HBsAg+") + 
+  theme(
+    axis.title.y=element_blank(),
+    axis.text.y=element_blank(),# for labeled forest plot 
+    axis.ticks.y=element_blank(), # for labeled forest plot 
+    ###
+    axis.text.x = element_text(size = 20),
+    axis.title.x = element_text(size = 20),
+    legend.position = "none",
+    panel.grid.minor=element_blank(),
+    panel.background = element_blank(),
+    strip.text = element_text(size = 20))
+
+p_left + plot_do + plot_layout(design=layout)
+ggsave('./plots/fig_expdo_rec_95_numb.png', width=25, height=6)
+
+
+# previous version july 2023----------
+glmer_doexp_recr_rd <- mutate(glmer_doexp_recr, across(where(is.numeric), round, 3)) # better way to print/view results and restrict decimals without going into sci not
+view(glmer_doexp_recr_rd)
 #colnames(glmer_do) <- c('term','logodds','std.error','statistic','p.value','LCI','UCI')
 # glmer_do_ind <- glmer_do_ind %>% select(-c("effect", "glmrgroup"))
 # rownames(glmer_do_ind) <- 1:nrow(glmer_do_ind)
@@ -829,9 +1260,23 @@ fisher.test(directoffexp$i27a_rdt_result,directoffexp$debutsex_indic)
 fisher.test(directoffexp$i27a_rdt_result,directoffexp$partner3mo_bin)
 fisher.test(directoffexp$i27a_rdt_result,directoffexp$newpartner3mo_indic)
 
-## Direct offspring unexposed---------
-# repeat the above
-# add counts
+#Unexp Direct offspring---------------------------------------------------------------
+dounexp_recr <-directoff %>% filter(h10_hbv_rdt == 0)
+dounexp_recr <- dounexp_recr %>% filter(!(is.na(i27a_rdt_result)))
+
+alldovar <- c("age_combined","hr4_sex_f","age_cat", "wealth_R_lowestv","i13_shared_toothbrush_f","i14_shared_razor_f", "i15_shared_nailclippers_f",'i12_food_first_chew_f','trans_bin', "i10_street_salon_bin", "i11_manucure_f","i17_tattoo_bin", "i16_traditional_scarring_f","transactionalsex", "debutsex_cat", "partner3mo_bin","newpartner3mo_indic","partner12mo_bin","newpartner12mo_indic")
+
+library(crosstable)
+library(flextable)
+ou <- crosstable(dounexp_recr, alldovar, by=i27a_rdt_result_f, total="both") %>%
+  as_flextable(keep_id=TRUE)
+ou
+# figure out how to export
+save_as_docx(
+  "Unexp DO freq tab" = o, 
+  path = "./plots/unexpdofreq.docx")
+
+
 directoffunexp <- directoffunexp %>% filter(!(is.na(i27a_rdt_result)))
 table(directoffunexp$i27a_rdt_result,useNA = "always" )
 table(directoffunexp$i27a_rdt_result,directoffunexp$age_combined, useNA = "always" )
@@ -873,11 +1318,10 @@ fisher.test(directoffunexp$i27a_rdt_result,directoffunexp$partner3mo_bin)
 fisher.test(directoffunexp$i27a_rdt_result,directoffunexp$newpartner3mo_indic)
 
 ## Other hh mem exposed---------
-othermember
+allothvar <- c("age_combined","maritalrisk_f","hr4_sex_f","age_cat","i13_shared_toothbrush_f","i14_shared_razor_f", "i15_shared_nailclippers_f",'i12_food_first_chew_f','trans_bin', "i10_street_salon_bin", "i11_manucure_f","i17_tattoo_bin", "i16_traditional_scarring_f","transactionalsex", "debutsex_indic", "partner3mo_bin", "newpartner3mo_indic","partner12mo_bin","newpartner12mo_indic")
 
 table(othermember$h10_hbv_rdt, othermember$i27a_rdt_result_f)
-othmemexp <-othermember %>% filter(h10_hbv_rdt == 1)
-nrow(othmemexp)
+othmemexp_recr <-othermember %>% filter(h10_hbv_rdt == 1)
 
 table(othmemexp$i27a_rdt_result,useNA = "always" )
 table(othmemexp$i27a_rdt_result,othmemexp$age_combined, useNA = "always" )
