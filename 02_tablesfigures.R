@@ -431,7 +431,8 @@ cases_at + cases_pp + plot_layout(nrow=1, ncol = 2) + plot_annotation(tag_levels
 ggsave('./plots/relationsAB.png', width=15, height=9)
 
 ## Household member broad categories
-obs <- ggplot(inddata1, aes(x=h10_hbv_rdt_f, fill=hhmemcat_f))+
+obs <- 
+  ggplot(inddata1, aes(x=h10_hbv_rdt_f, fill=hhmemcat_f))+
   geom_bar(position = "dodge")+
   # labs(x="Index mother HBV status", fill="", y="Individuals enrolled")+
   labs(x="Index mother status", fill="", y="Participants enrolled")+
@@ -535,7 +536,41 @@ tab3_dooth <- CreateTableOne(vars = tab3_do_oth_cat, factorVars = tab3_do_oth_ca
 tab3_dooth_p <- print(tab3_dooth ,quote = FALSE, noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE, formatOptions = list(big.mark = ","))
 write.csv(tab3_dooth_p, file = "tab3_dooth_p.csv")
 
+## Figure for Table 3 counts------------------------
 
+# List of categorical variables of interest
+summvar<- c("hr4_sex_f","age_cat", "wealth_R_lowestv","i13_shared_toothbrush_f","i14_shared_razor_f", "i15_shared_nailclippers_f",'i12_food_first_chew_f','trans_bin', "i10_street_salon_bin", "i11_manucure_f","i17_tattoo_bin", "i16_traditional_scarring_f","transactionalsex", "debutsex_cat", "partner3mo_bin","newpartner3mo_indic","partner12mo_bin","newpartner12mo_indic")
+
+class(dounexp_recr)
+lapply(dounexp_recr,class)
+for (col in summvar) {
+  if (col %in% names(dounexp_recr) && is.numeric(dounexp_recr[[col]])) {
+    dounexp_recr[[col]] <- as.factor(dounexp_recr[[col]])
+  }
+}
+create_cross_tabulations <- function(df, var) {
+  ct <- df %>%
+    group_by_at(vars(var)) %>%
+    count(i27a_rdt_result) %>%
+    mutate(attribute = var) %>% 
+    rename(varlevel = var)
+  return(ct)
+}
+
+unexpdocounts <- map_dfr(summvar, ~create_cross_tabulations(dounexp_recr, .x))
+view(unexpdocounts)
+
+unexpdocounts %>% filter(!is.na(varlevel)) %>% 
+  ggplot(aes(x = interaction(attribute,varlevel), y = n, fill=as.factor(i27a_rdt_result))) +
+  geom_bar(stat = "identity",position = "stack") +
+  labs(
+    x = "Value",
+    y = "Count",
+    title = "Cross-Tabulation Counts by Value"
+  ) +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  scale_fill_manual(values = c( "steelblue",  "darkred"))
 
 
 
