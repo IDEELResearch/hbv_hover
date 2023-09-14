@@ -7,9 +7,6 @@ library(broom.mixed)
 library(cowplot)
 library(patchwork)
 
-
-
-
 # Factors assoc with HbsAg+ anlaysis -------------------
 # Figure 3, supp figs XX
 # run for: moms; directoff; othermemb or othermember
