@@ -479,7 +479,7 @@ var_explained_df %>%
   theme(plot.title = element_text(size = 20),
         axis.title = element_text(size = 15),
         axis.text = element_text(size = 15))
-
+view(var_explained_df)
 quantile(pca_R_output$PC1, probs = c(0.25, 0.5,0.75, 1), na.rm = T)
 
 # Wealth variable used in Table 1
@@ -591,17 +591,17 @@ inddata1 %>% filter(age_combined < 17) %>%
 # re-coded agegrp15_2 which was based on 15yrs but not year of study enr
 inddata1 = inddata1 %>%
   mutate(age_cat = case_when(
-    year(hdov)=="2021" & age_combined <= 12 ~ 2, # born since penta introduced
-    year(hdov)=="2022" & age_combined <= 13 ~ 2, # born since penta introduced
+    year(hdov)=="2021" & age_combined <= 12 ~ 0, # born since penta introduced - ref group
+    year(hdov)=="2022" & age_combined <= 13 ~ 0, # born since penta introduced - ref group
     
     year(hdov)=="2021" & age_combined > 12 & age_combined <= 14 ~ 1, # between tetra/penta
     year(hdov)=="2022" & age_combined > 13 & age_combined <= 15 ~ 1, # between tetra/penta
     
-    year(hdov)=="2021" & age_combined > 14 ~ 0, # no vacc
-    year(hdov)=="2022" & age_combined > 15 ~ 0, # no vacc
+    year(hdov)=="2021" & age_combined > 14 ~ 2, # no vacc
+    year(hdov)=="2022" & age_combined > 15 ~ 2, # no vacc
 
     TRUE ~ 0) %>% as.factor())
-table(inddata1$age_cat)
+table(inddata1$age_cat, useNA = "always")
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(hr3_relationship_f=factor(
@@ -890,7 +890,8 @@ inddata1 <- inddata1 %>%
     inddata1$i14_shared_razor, 
     levels = c(0, 1, 99),
     #    labels = c("Non", "Oui", "Refusé")))
-    labels = c("No", "Yes", "Refused")))
+    labels = c("No", "Yes/Refused", "Yes/Refused"))) # four were refused - combine with yes
+table(inddata1$i14_shared_razor_f, useNA = "always") # 
 
 table(inddata1$i15_shared_nailclippers, useNA = "always") # some missing
 #which ones missing
@@ -1123,17 +1124,27 @@ table(inddata1$hhmemcat_f, useNA = "always")
 table(inddata1$hhmemcat_4_f, useNA = "always")
 
 #Perprotocol analysis (index mother's status at enrollment not ANC screening)----------
-perprotexpsure <- inddata1 %>% filter(indexmom_indic==1) %>% 
-  mutate(perprot_h10 = case_when(
+sensdefs <- inddata1 %>% filter(indexmom_indic==1) %>% 
+  mutate(perprot_h10 = case_when( # using enrollment test results
   i27a_rdt_result == 1 ~ 1,
   i27a_rdt_result == 0 ~ 0,
   is.na(i27a_rdt_result) ~ 9
-))
-table(perprotexpsure$perprot_h10)
+  ),
+  anypos = case_when( # pos at either timepoint
+    h10_hbv_rdt==1 | i27a_rdt_result==1 ~ 1,
+    h10_hbv_rdt==0 & i27a_rdt_result==0 ~ 0
+  ),
+  onlypos = case_when( # pos at both timepoints (better reflection of chronic infxn)
+    h10_hbv_rdt==1 & i27a_rdt_result==1 ~ 1,
+    h10_hbv_rdt==0 | i27a_rdt_result==0 ~ 0
+  ))
 
-inddata1 <- full_join(inddata1, perprotexpsure[, c("hrhhid", "perprot_h10")], by = c("hrhhid"))
+table(sensdefs$perprot_h10)
+table(sensdefs$anypos)
+table(sensdefs$onlypos)
 
-table(perprotexpsure$perprot_h10, perprotexpsure$h10_hbv_rdt, useNA = "always")
+inddata1 <- full_join(inddata1, sensdefs[, c("hrhhid", "perprot_h10","anypos","onlypos")], by = c("hrhhid"))
+
 # cross tab of different exposure categorizations
 table(inddata1$perprot_h10, inddata1$h10_hbv_rdt, useNA = "always")
 
@@ -1144,7 +1155,7 @@ inddata1 <- inddata1 %>%
     labels = c("Unexposed (per prot)", "Exposed (per prot)")))
 #labels = c("Negative", "Positive")))
 
-serostatchange <- perprotexpsure %>% filter(h10_hbv_rdt != perprot_h10) %>% dplyr::select("hrhhid", "h10_hbv_rdt","perprot_h10")
+serostatchange <- sensdefs %>% filter(h10_hbv_rdt != perprot_h10) %>% dplyr::select("hrhhid", "h10_hbv_rdt","perprot_h10")
 table(serostatchange$hrhhid)
 serostatchange$serostatchange <- 1 # any change
 serostatchange$serochangedir <- ifelse(serostatchange$h10_hbv_rdt==0,"incident","cleared")
