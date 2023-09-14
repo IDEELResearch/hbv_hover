@@ -12,6 +12,14 @@ ind1006 <- ind1006 %>% mutate(pid2 = case_when(
 ))
 ind1006$pid_orig <- ind1006$pid
 ind1006$pid <-  ind1006$pid2
+
+ind1006$participant_code <- ifelse(ind1006$pid=="HRK2043-02" & ind1006$hrname_first=="Precieuse","03",ind1006$participant_code)
+ind1006$pid <- paste0(ind1006$hrhhid,"-",ind1006$participant_code)
+ind1006 %>% filter(hrhhid=="HRK2043") %>% select("pid")
+
+# remove names before saving
+ind1006 <- ind1006 %>% dplyr::select(!c("hrname_first","hrname_last","hrname_post"))
+
 saveRDS(ind1006, file = "/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/hoverdataanalysis/inddata1006.RDS")
 # these PIDs were entered incorrectly and needed to be manually changed in the previously downloaded dataset
 
@@ -358,5 +366,142 @@ exp( -0.8154 )
 m_0 <- glmer(i27a_rdt_result ~  (1 | hrhhid) + sharedhhobj, data=directoffunexp, family=binomial("logit"))
 summary(m_0)
 exp( 0.4702)
+
+# Sept 1 cleaning other code files------
+hhdata1 %>% #group_by(h10_hbv_rdt) %>% 
+  ggplot()+
+  geom_histogram(aes(x=n, fill=fct_rev(as.factor(totalpositive))))+ #hhprev
+  scale_fill_brewer(palette = "RdPu", direction = -1) +
+  facet_wrap(~ as.factor(h10_hbv_rdt))+
+  theme(panel.background = element_blank())
+
+
+inddata1 %>% filter(age_combined < 17) %>% 
+  ggplot()+geom_histogram(aes(x=age_combined, fill=age_cat))
+
+
+# sexual partners
+
+inddata1 %>% filter(!is.na(i23_sex_hx_part_past3mo)) %>% 
+  ggplot()+geom_bar(aes(x=as.factor(i23_sex_hx_part_past3mo),fill=i27a_rdt_result_f ))+
+  scale_fill_manual(values = nounprojgraphcol)+ 
+  facet_wrap(~fct_rev(hhmemcat_4_f))+
+  ggtitle("Total sexual partners, last 3 months")+
+  theme(panel.background = element_blank())
+
+inddata1 %>% filter(!is.na(i23a_sex_hx_past3mo_num)) %>% 
+  ggplot()+geom_bar(aes(x=as.factor(i23a_sex_hx_past3mo_num),fill=i27a_rdt_result_f ))+
+  scale_fill_manual(values = nounprojgraphcol)+ 
+  facet_wrap(~fct_rev(hhmemcat_4_f))+
+  ggtitle("Total sexual partners, last 3 months")+
+  theme(panel.background = element_blank())
+
+inddata1 %>% filter(!is.na(i24_sex_hx_part_past1yr)) %>% 
+  ggplot()+geom_bar(aes(x=as.factor(i24_sex_hx_part_past1yr),fill=i27a_rdt_result_f ))+
+  scale_fill_manual(values = nounprojgraphcol)+ 
+  facet_wrap(~fct_rev(hhmemcat_4_f))+
+  ggtitle("Total sexual partners, last 12 months")+
+  theme(panel.background = element_blank())
+
+inddata1 %>% filter(!is.na(i24a_sex_hx_past1yr_num)) %>% 
+  ggplot()+geom_bar(aes(x=as.factor(i24a_sex_hx_past1yr_num),fill=i27a_rdt_result_f ))+
+  scale_fill_manual(values = nounprojgraphcol)+ 
+  facet_wrap(~fct_rev(hhmemcat_4_f))+
+  ggtitle("New sexual partners, last 12 months")+
+  theme(panel.background = element_blank())
+
+# focus on moms-----
+moms %>%
+  dplyr::group_by(i23_sex_hx_part_past3mo) %>%
+  dplyr::summarise(count_pos = sum(i27a_rdt_result, na.rm=TRUE), n=n(), prop_pos = 100*(count_pos/n)) 
+
+# % of new partners who are new
+moms %>%
+  dplyr::group_by(i23_sex_hx_part_past3mo) %>%
+  dplyr::summarise(count_pos = sum(i27a_rdt_result, na.rm=TRUE), n=n(), prop_pos = 100*(count_pos/n)) 
+
+newsex12mo_recode
+newsex3mo_recode
+
+table(moms$partner3mo_bin, moms$serochangedir)
+moms = moms %>%
+  mutate(partn_3mo_dkref = case_when(
+    i23_sex_hx_part_past3mo > 1 & i23_sex_hx_part_past3mo < 98 ~ 1, #more than 1 sexual partner or don't know
+    i23_sex_hx_part_past3mo >= 98  ~ 2, # refused = own category
+    i23_sex_hx_part_past3mo == 1 ~ 0, # make one or 0 sexual partners the reference group - no separate
+    i23_sex_hx_part_past3mo == 0 ~ 0, # make one or 0 sexual partners the reference group - no separate
+    TRUE ~ NA_real_
+  ) %>% as.factor())
+table(moms$partn_3mo_dkref, moms$h10_hbv_rdt_f,useNA = "always")
+addmargins(table(moms$partner3mo_bin, moms$h10_hbv_rdt_f,useNA = "always"))
+
+# sexual partners in last 3 mo
+addmargins(table(moms$partner3mo_bin, moms$h10_hbv_rdt_f,useNA = "always"))
+# new sexual partners in last 3mo
+addmargins(table(moms$newpartner3mo_indic, moms$h10_hbv_rdt_f,useNA = "always"))
+addmargins(table(moms$newpartner3mo_indic, moms$h10_hbv_rdt_f,useNA = "always"))
+
+whymiss <- moms %>% filter(is.na(newpartner3mo_indic))
+whymiss %>% group_by(h10_hbv_rdt_f) %>% reframe(maternity,serochangedir,i23_sex_hx_part_past3mo,i23a_sex_hx_past3mo_num,i24_sex_hx_part_past1yr,i24a_sex_hx_past1yr_num) %>% print(n=Inf)
+
+inddata1 %>% filter(is.na(newpartner3mo_indic) & age_combined >=15) %>% 
+ group_by(h10_hbv_rdt_f) %>% reframe(maternity,serochangedir,i23_sex_hx_part_past3mo,i23a_sex_hx_past3mo_num,i24_sex_hx_part_past1yr,i24a_sex_hx_past1yr_num) %>% print(n=Inf)
+
+
+moms %>% filter(is.na(i24a_sex_hx_past1yr_num) & age_combined >=15) %>% 
+  group_by(h10_hbv_rdt_f) %>% reframe(maternity,serochangedir,i23_sex_hx_part_past3mo,i23a_sex_hx_past3mo_num,i24_sex_hx_part_past1yr,i24a_sex_hx_past1yr_num) %>% print(n=Inf)
+
+
+
+moms %>%  
+  ggplot()+geom_bar(aes(x=as.factor(i23_sex_hx_part_past3mo),fill=as.factor(newsex3mo_recode )))+ #i27a_rdt_result_f
+  facet_wrap(~fct_rev(h10_hbv_rdt_f))+
+  ggtitle("Total sexual partners in last 3 months, colored by how many are new")+
+  theme(panel.background = element_blank())+
+  xlab("Number of sexual partners")+
+  ylab("Count (index mothers)")
+
+moms %>%  
+  ggplot()+geom_bar(aes(x=as.factor(i24_sex_hx_part_past1yr),fill=as.factor(newsex12mo_recode )))+ #i27a_rdt_result_f
+  facet_wrap(~fct_rev(h10_hbv_rdt_f))+
+  ggtitle("Total sexual partners in last 12 months, colored by how many are new")+
+  theme(panel.background = element_blank())+
+  xlab("Number of sexual partners")+
+  ylab("Count (index mothers)")
+
+
+# four variables
+moms %>%  
+  ggplot()+geom_bar(aes(x=as.factor(i23_sex_hx_part_past3mo),fill=as.factor(h10_hbv_rdt_f )))+ #i27a_rdt_result_f
+  scale_fill_manual(values = nounprojgraphcol)+ 
+  facet_wrap(~fct_rev(h10_hbv_rdt_f))+
+  ggtitle("Total sexual partners, last 3 months")+
+  theme(panel.background = element_blank())
+
+moms %>% filter(!is.na(i23a_sex_hx_past3mo_num)) %>% 
+  ggplot()+geom_bar(aes(x=as.factor(i23a_sex_hx_past3mo_num),fill=i27a_rdt_result_f ))+
+  scale_fill_manual(values = nounprojgraphcol)+ 
+  facet_wrap(~fct_rev(hhmemcat_4_f))+
+  ggtitle("Total sexual partners, last 3 months")+
+  theme(panel.background = element_blank())
+
+moms %>% filter(!is.na(i24_sex_hx_part_past1yr)) %>% 
+  ggplot()+geom_bar(aes(x=as.factor(i24_sex_hx_part_past1yr),fill=i27a_rdt_result_f ))+
+  scale_fill_manual(values = nounprojgraphcol)+ 
+  facet_wrap(~fct_rev(hhmemcat_4_f))+
+  ggtitle("Total sexual partners, last 12 months")+
+  theme(panel.background = element_blank())
+table(moms$i24_sex_hx_part_past1yr, moms$serochangedir, useNA = "always")
+
+moms %>% filter(!is.na(i24a_sex_hx_past1yr_num)) %>% 
+  ggplot()+geom_bar(aes(x=as.factor(i24a_sex_hx_past1yr_num),fill=i27a_rdt_result_f ))+
+  scale_fill_manual(values = nounprojgraphcol)+ 
+  facet_wrap(~fct_rev(hhmemcat_4_f))+
+  ggtitle("New sexual partners, last 12 months")+
+  theme(panel.background = element_blank())
+table(moms$i24a_sex_hx_past1yr_num, moms$serochangedir, useNA = "always")
+
+
+
 
 
