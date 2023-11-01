@@ -502,6 +502,23 @@ moms %>% filter(!is.na(i24a_sex_hx_past1yr_num)) %>%
 table(moms$i24a_sex_hx_past1yr_num, moms$serochangedir, useNA = "always")
 
 
+# Table 1 checks Oct 2023---------------------------------------------------------------------------
+addmargins(table(inddata1$hr4_sex_f, inddata1$h10_hbv_rdt_f,  inddata1$hhmemcat_f))
+addmargins(table(inddata1$hr3relat_simp_f, inddata1$h10_hbv_rdt_f,  inddata1$hhmemcat_f))
+addmargins(table(inddata1$maritalrisk_f, inddata1$h10_hbv_rdt_f,  inddata1$hhmemcat_f))
+addmargins(table(inddata1$educ_simp_f, inddata1$h10_hbv_rdt_f,  inddata1$hhmemcat_f))
+addmargins(table(inddata1$hr10_occupation_gr_f, inddata1$h10_hbv_rdt_f,  inddata1$hhmemcat_f))
+addmargins(table(inddata1$hr5_primary_residence_f, inddata1$h10_hbv_rdt_f,  inddata1$hhmemcat_f))
+addmargins(table(inddata1$hr6_last_night_residence_f, inddata1$h10_hbv_rdt_f,  inddata1$hhmemcat_f))
+addmargins(table(inddata1$i1_hbv_positive_f, inddata1$h10_hbv_rdt_f,  inddata1$hhmemcat_f))
+addmargins(table(inddata1$i3_hiv_pos_test_f, inddata1$h10_hbv_rdt_f,  inddata1$hhmemcat_f))
+addmargins(table(inddata1$hivhaart, inddata1$h10_hbv_rdt_f,  inddata1$hhmemcat_f))
+addmargins(table(inddata1$i1_hbv_positive_f, inddata1$h10_hbv_rdt_f,  inddata1$hhmemcat_f))
 
+# fig 2c
+inddata1 %>% filter(hbvposdiroff > 0) %>% group_by(h10_hbv_rdt_f) %>% reframe(hrhhid, hhmemcat_f, i27a_rdt_result_f) %>% print(n=Inf)
+inddata1 %>% filter(hhmempos > 0) %>% group_by(h10_hbv_rdt_f) %>% reframe(hrhhid, hhmemcat_f, i27a_rdt_result_f) %>% print(n=Inf)
+# 
+inddata1 %>% filter(serochangedir=="cleared") %>% reframe(hrhhid, hhmemcat_f, i27a_rdt_result_f)
 
-
+table(inddata1$serochangedir)
