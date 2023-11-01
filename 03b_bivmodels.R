@@ -372,8 +372,12 @@ view(glm_mi_recr_res)
 glm_mi_4 <- rbind(glm_mi_recr, glm_mi_pp, glm_mi_anypos,glm_mi_onlypos)
 view(glm_mi_recr)
 
-glm_mi_4_rd <- glm_mi_4 %>% mutate_if(is.numeric, ~round(., 3))
-colnames(glm_mi_4_rd) <- c('term','logodds','std.error','statistic','p.value','LCI_95','UCI_95','time')
+glm_mi_4$or <- exp(glm_mi_4$estimate)
+glm_mi_4$lowerci <- exp(glm_mi_4$`2.5 %`)
+glm_mi_4$upperci <- exp(glm_mi_4$`97.5 %`)
+
+glm_mi_4_rd <- glm_mi_4 %>% mutate_if(is.numeric, ~round(., 2))
+colnames(glm_mi_4_rd) <- c('term','logodds','std.error','statistic','p.value','LCI_95','UCI_95','time','or','lowerci','upperci')
 rownames(glm_mi_4_rd) <- 1:nrow(glm_mi_4_rd)
 glm_mi_4_rd$group <- "Index mothers"
 
@@ -426,6 +430,8 @@ glm_mi_4_rd <- glm_mi_4_rd %>% mutate(relsize = case_when(
 table(glm_mi_4_rd$relsize)
 
 glm_mi_4_rd <- glm_mi_4_rd %>% group_by(time) %>%  mutate(desorder=1:(nrow(glm_mi_4_rd)/4))
+
+write.csv(glm_mi_4, file = "glm_mi_4.csv" )
 
 glm_mi_4_rd %>% 
   ## these mutate steps were to change order - redone with desorder step directly before
@@ -488,18 +494,19 @@ plot <-
 # add point est and CIs to figure - use cowplot to combine two parts
 res_plot <- glm_mi_4_rd |>
   # round estimates and 95% CIs to 2 decimal places for journal specifications
-  mutate(across(c("logodds", "LCI_95", "UCI_95"), ~ str_pad(round(.x, 2), width = 4, pad = "0", side = "right")),
+  mutate(across(c("or", "lowerci", "upperci"), ~ str_pad(round(.x, 2), width = 4, pad = "0", side = "right")),
          # add an "-" between logodds estimate confidence intervals
-         estimate_lab = paste0(logodds, " (", LCI_95, ", ", UCI_95, ")")) |>
+         estimate_lab = paste0(or, " (", lowerci, ", ", upperci, ")")) |>
   filter(time == "Recruitment") |>
   select(term, level, time, estimate_lab,desorder) 
+view(res_plot)
 # add a row of data that are actually column names which will be shown on the plot in the next step
 #add extra decimal for those that are in the thousandths place
-res_plot$estimate_lab <- ifelse(res_plot$estimate_lab=="0000 (-1.04, 1.04)", "0.00 (-1.04, 1.04)",res_plot$estimate_lab)
-res_plot$estimate_lab <- ifelse(res_plot$estimate_lab=="0000 (-0.63, 0.63)", "0.00 (-0.63, 0.63)",res_plot$estimate_lab)
-res_plot$estimate_lab <- ifelse(res_plot$estimate_lab=="0000 (-0.94, 0.94)", "0.00 (-0.94, 0.94)",res_plot$estimate_lab)
+res_plot$estimate_lab <- ifelse(res_plot$estimate_lab=="1000 (0.39, 2.55)", "1.00 (0.39, 2.55)",res_plot$estimate_lab)
+res_plot$estimate_lab <- ifelse(res_plot$estimate_lab=="1000 (0.35, 2.83)", "1.00 (0.35, 2.83)",res_plot$estimate_lab)
+res_plot$estimate_lab <- ifelse(res_plot$estimate_lab=="1000 (0.53, 1.89)", "1.00 (0.53, 1.89)",res_plot$estimate_lab)
 
-estimate_lab <- "Log odds (95% CI), Recruitment"
+estimate_lab <- "OR (95% CI), Recruitment"
 time <- ""
 term <- ""
 level <- ""
@@ -516,7 +523,7 @@ p_left <-
   ggplot(aes(y = fct_rev(fct_reorder(term, desorder))))+
   geom_text(aes(x = 0, label = term), hjust = 0, size = 5, fontface = "bold")+
   geom_text(aes(x = 1, label = estimate_lab), hjust = 0 , size = 5,
-            fontface = ifelse(res_plot$estimate_lab == "Log odds (95% CI), Recruitment", "bold", "plain")
+            fontface = ifelse(res_plot$estimate_lab == "OR (95% CI), Recruitment", "bold", "plain")
   )+
   theme_void() +
   #xlim(0,2)+
@@ -683,10 +690,16 @@ confint(m, method = "Wald")
 # seems very close in range, report output from confint.merMod()
 # these estimates from poisson also are similar range of glm log and glmer logit model so seem appropriate
 
-# now for age
-m <- glmer(i27a_rdt_result ~  (1 | hrhhid) + age_combined, data=doexp_any, family=poisson("log"))
+# now for age, age_cat_cons
+m <- glmer(i27a_rdt_result ~  (1 | hrhhid) + age_cat_cons, data=doexp_any, family=poisson("log"))
 summary(m)
-# 
+confint(m, method = "Wald")
+
+m <- glmer(i27a_rdt_result ~  (1 | hrhhid) + age_cat_cons, data=doexp_any, family=binomial("logit"))
+summary(m)
+confint(m, method = "Wald")
+
+
 
 # vars that converge
 alldovar <- c("hr4_sex_f", "wealth_R_lowestv","i14_shared_razor_f", "i15_shared_nailclippers_f",'trans_bin', "i10_street_salon_bin", "i11_manucure_f",  "partner3mo_bin")
@@ -706,9 +719,10 @@ recr_doexp <- function(var){
   m <- cbind(est,cis95,cis99)
   m <- m[,-8]
   m <- m %>% select(-c('effect','group'))}
-# modified poisson for age_cat_cons, age_combined
-recr_doexp_modpois <- function(var){
-  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_recr, family=poisson("log"))
+# modified poisson for age_cat_cons, age_combined - family=poisson("log"))
+# logit for OR to PR approx
+recr_doexp_logit <- function(var){
+  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_recr, family=binomial("logit"))
   est <- tidy(m) %>% filter(stringr::str_detect(term, var))
   cis95 <- as.data.frame(confint(m, method = c("Wald")))
   cis95 <- tibble::rownames_to_column(cis95, "term") %>% setNames(c("term", "LCI_95", "UCI_95"))
@@ -732,9 +746,9 @@ enr_doexp <- function(var){
   m <- cbind(est,cis95,cis99)
   m <- m[,-8]
   m <- m %>% select(-c('effect','group'))}
-# modified poisson for age_cat_cons, age_combined
-enr_doexp_modpois <- function(var){
-  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_enr, family=poisson("log"))
+# logit approximation for age_cat_cons, age_combined
+enr_doexp_logit <- function(var){
+  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_enr, family=binomial("logit"))
   est <- tidy(m) %>% filter(stringr::str_detect(term, var))
   cis95 <- as.data.frame(confint(m, method = c("Wald")))
   cis95 <- tibble::rownames_to_column(cis95, "term") %>% setNames(c("term", "LCI_95", "UCI_95"))
@@ -758,9 +772,9 @@ any_doexp <- function(var){
   m <- cbind(est,cis95,cis99)
   m <- m[,-8]
   m <- m %>% select(-c('effect','group'))}
-# modified poisson for age_cat_cons, age_combined
-any_doexp_modpois <- function(var){
-  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_any, family=poisson("log"))
+# logit approx for age_cat_cons, age_combined
+any_doexp_logit <- function(var){
+  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_any, family=binomial("logit"))
   est <- tidy(m) %>% filter(stringr::str_detect(term, var))
   cis95 <- as.data.frame(confint(m, method = c("Wald")))
   cis95 <- tibble::rownames_to_column(cis95, "term") %>% setNames(c("term", "LCI_95", "UCI_95"))
@@ -784,9 +798,9 @@ only_doexp <- function(var){
   m <- cbind(est,cis95,cis99)
   m <- m[,-8]
   m <- m %>% select(-c('effect','group'))}
-# modified poisson for age_cat_cons, age_combined
-only_doexp_modpois <- function(var){
-  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_only, family=poisson("log"))
+# logit approx for age_cat_cons, age_combined
+only_doexp_logit <- function(var){
+  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_only, family=binomial("logit"))
   est <- tidy(m) %>% filter(stringr::str_detect(term, var))
   cis95 <- as.data.frame(confint(m, method = c("Wald")))
   cis95 <- tibble::rownames_to_column(cis95, "term") %>% setNames(c("term", "LCI_95", "UCI_95"))
@@ -816,18 +830,19 @@ do_sub_onlypos <- c("i10_street_salon_bin", "i11_manucure_f") # run together for
 do_sub_anypos <-  "partner3mo_bin"  #partner3mo_bin for glmer_doexp_any
 # for those that don't converge, consider showing glm PR or glmer OR
 do_modpoiss <- c("age_cat_cons", "age_combined")
+do_logit <- c("age_cat_cons", "age_combined")
 
 glmer_doexp_recr <- map_dfr(do_conv_4, recr_doexp) 
 glmer_doexp_recr_2 <- map_dfr(do_sub_recr, recr_doexp) 
-glmer_doexp_recr_3 <- map_dfr(do_modpoiss, recr_doexp_modpois) 
+glmer_doexp_recr_3 <- map_dfr(do_logit, recr_doexp_logit) 
 glmer_doexp_enr <- map_dfr(do_conv_4, enr_doexp) 
-glmer_doexp_enr_3 <- map_dfr(do_modpoiss, enr_doexp_modpois) 
+glmer_doexp_enr_3 <- map_dfr(do_logit, enr_doexp_logit) 
 glmer_doexp_any <- map_dfr(do_conv_4, any_doexp) 
 glmer_doexp_any_2 <- map_dfr(do_sub_anypos, any_doexp) 
-glmer_doexp_any_3 <- map_dfr(do_modpoiss, any_doexp_modpois) 
+glmer_doexp_any_3 <- map_dfr(do_logit, any_doexp_logit) 
 glmer_doexp_only <- map_dfr(do_conv_4, only_doexp) 
 glmer_doexp_only_2 <- map_dfr(do_sub_onlypos, only_doexp) 
-glmer_doexp_only_3 <- map_dfr(do_modpoiss, only_doexp_modpois) 
+glmer_doexp_only_3 <- map_dfr(do_logit, only_doexp_logit) 
 
 glmer_doexp_recr$time <- "Recruitment"
 glmer_doexp_recr_2$time <- "Recruitment"
@@ -852,10 +867,15 @@ view(glmer_doexp_allrec)
 glmer_doexp_4 <- rbind(glmer_doexp_recr_3, glmer_doexp_recr, glmer_doexp_recr_2, glmer_doexp_enr_3, glmer_doexp_enr, glmer_doexp_any_3, glmer_doexp_any, glmer_doexp_any_2, glmer_doexp_only_3, glmer_doexp_only, glmer_doexp_only_2)
 view(glmer_doexp_4)
 
-glmer_doexp_4_rd <- glmer_doexp_4 %>% mutate_if(is.numeric, ~round(., 3))
+#exponentiate for writing out
+glmer_doexp_4$pr <- exp(glmer_doexp_4$estimate)
+glmer_doexp_4$lowerci <- exp(glmer_doexp_4$LCI_95)
+glmer_doexp_4$upperci <- exp(glmer_doexp_4$UCI_95)
+
+glmer_doexp_4_rd <- glmer_doexp_4 %>% mutate_if(is.numeric, ~round(., 2))
 glmer_doexp_4_rd <- glmer_doexp_4_rd %>% select(-c(term.1)) # drop the term.1 - should do above
 
-colnames(glmer_doexp_4_rd) <- c('term','logpr','std.error','statistic','p.value','LCI_95','UCI_95','LCI_99','UCI_99','time')
+colnames(glmer_doexp_4_rd) <- c('term','logpr','std.error','statistic','p.value','LCI_95','UCI_95','LCI_99','UCI_99','time','pr','lowerci','upperci')
 rownames(glmer_doexp_4_rd) <- 1:nrow(glmer_doexp_4_rd)
 glmer_doexp_4_rd$group <- "Exposed direct offspring"
 view(glmer_doexp_4_rd)
@@ -905,6 +925,7 @@ table(glmer_doexp_4_rd$relsize)
 
 glmer_doexp_4_rd <- glmer_doexp_4_rd %>% group_by(time) %>%  mutate(desorder=row_number())
 view(glmer_doexp_4_rd)
+
 glmer_doexp_4_rd %>% 
   ## these mutate steps were to change order - redone with desorder step directly before
   #mutate(term = (fct_reorder(fct_rev(term), (glm_mi_4_rd$level)))) %>%
@@ -961,16 +982,16 @@ plot <-
 
 res_plot_do <- glmer_doexp_4_rd |>
   # round estimates and 95% CIs to 2 decimal places for journal specifications
-  mutate(across(c("logpr", "LCI_95", "UCI_95"), ~ str_pad(round(.x, 2), width = 4, pad = "0", side = "right")),
+  mutate(across(c("pr", "lowerci", "upperci"), ~ str_pad(round(.x, 2), width = 4, pad = "0", side = "right")),
          # add an "-" between logodds estimate confidence intervals
-         estimate_lab = paste0(logpr, " (", LCI_95, ", ", UCI_95, ")")) |>
+         estimate_lab = paste0(pr, " (", lowerci, ", ", upperci, ")")) |>
   filter(time == "Recruitment") |>
   select(term, level, time, estimate_lab, desorder) 
 view(res_plot_do)
 # add a row of data that are actually column names which will be shown on the plot in the next step
 #add extra decimal for those that are in the thousandths place
 
-estimate_lab <- "LogPR (95% CI), Recruitment"
+estimate_lab <- "PR (95% CI), Recruitment"
 time <- ""
 term <- ""
 level <- ""
@@ -987,7 +1008,7 @@ p_left <-
   ggplot(aes(y = fct_rev(fct_reorder(term, desorder))))+
   geom_text(aes(x = 0, label = term), hjust = 0, size = 5, fontface = "bold")+
   geom_text(aes(x = 1, label = estimate_lab), hjust = 0 , size = 5,
-            fontface = ifelse(res_plot_do$estimate_lab == "LogPR (95% CI), Recruitment", "bold", "plain")
+            fontface = ifelse(res_plot_do$estimate_lab == "PR (95% CI), Recruitment", "bold", "plain")
   )+
   theme_void() +
   #xlim(0,2)+
@@ -1009,6 +1030,7 @@ plot_do <-
   scale_size(range = c(30,45))+
   scale_color_manual(values=c("#618A3D" ))+ 
   coord_flip()+ 
+  scale_y_continuous(breaks = c(-2, 0, 2, 4))+
   labs(x="", y="Log(PR) of HBsAg+") + 
   theme(
     axis.title.y=element_blank(),
