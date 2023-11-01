@@ -24,7 +24,10 @@ addmargins(table(hhmemb_nomiss$i27a_rdt_result_f, hhmemb_nomiss$h10_hbv_rdt_f))
 comp1 <- glm(i27a_rdt_result ~ h10_hbv_rdt, family = binomial(link = "log"), data=hhmemb_nomiss)
 summary(comp1)
 exp(comp1$coefficients)
-exp(confint(comp1))
+exp(confint(comp1, method = c("Wald")))
+exp(confint(comp1, method = c("boot"), boot.type=c("basic")))
+exp(confint(comp1, method = c("boot"), boot.type=c("perc")))
+
 
 # account for clustering
 ###GEE using geeglm() does not work 
@@ -66,6 +69,15 @@ hhmemb_nomiss %>% group_by(h10_hbv_rdt,directoff, i27a_rdt_result)%>%  count()
 hhmemb_exp <- hhmemb %>% filter(h10_hbv_rdt==1)
 addmargins(table(hhmemb_exp$i27a_rdt_result_f, hhmemb_exp$hhmemcat_f))
 
+# unadjusted (no hh clustering)
+comp2 <- glm(i27a_rdt_result ~ directoff, family = binomial(link = "log"), data=hhmemb_exp)
+summary(comp2)
+exp(comp2$coefficients)
+exp(confint(comp2, method = c("Wald")))
+# comparison of fixed and mixed
+lrtest(comp2, comp2mm)
+
+
 ### glmer----
 comp2mm <- glmer(i27a_rdt_result ~ directoff + (1 | hrhhid), family = binomial(link = "log"), data=hhmemb_exp, nAGQ = 0)
 summary(comp2mm)
@@ -73,12 +85,6 @@ fixef(comp2mm)
 exp(fixef(comp2mm))
 exp(confint(comp2mm, method = c("boot"), boot.type=c("basic")))
 exp(confint(comp2mm, method = c("Wald")))
-
-# not accounting for clustering
-comp2 <- glm(i27a_rdt_result ~ directoff, family = binomial(link = "log"), data=hhmemb_exp)
-summary(comp2)
-# comparison of fixed and mixed
-lrtest(comp2, comp2mm)
 
 
 #....................................................................................................
@@ -88,6 +94,12 @@ hhmemb_unexp <- hhmemb_nomiss %>% filter(h10_hbv_rdt==0)
 addmargins(table(hhmemb_unexp$directoff, hhmemb_unexp$i27a_rdt_result_f))
 inddata1 %>% group_by(h10_hbv_rdt, perprot_h10,i27a_rdt_result_f, directoff ) %>% count()
 
+# not accounting for clustering
+comp3 <- glm(i27a_rdt_result ~ directoff, family = binomial(link = "log"), data=hhmemb_unexp)
+summary(comp3)
+exp(comp3$coefficients)
+exp(confint(comp3, method = c("Wald")))
+
 ###glmer-----
 comp3mm <- glmer(i27a_rdt_result ~ directoff + (1 | hrhhid), family = binomial(link = "log"), data=hhmemb_unexp, nAGQ = 0)
 summary(comp3mm)
@@ -96,15 +108,19 @@ exp(fixef(comp3mm))
 exp(confint(comp3mm, method = c("boot"), boot.type=c("basic")))
 exp(confint(comp3mm, method = c("Wald")))
 
-# not accounting for clustering
-comp3 <- glm(i27a_rdt_result ~ directoff, family = binomial(link = "log"), data=hhmemb_unexp)
-summary(comp3)
+
 # comparison of fixed and mixed
 lrtest(comp3, comp3mm)
 #....................................................................................................
 #Comparison 4: odds of infection in exposed direct off vs unexposed direct off-----
 directoff <- hhmemb_nomiss %>% filter(directoff==1)
 addmargins(table(directoff$i27a_rdt_result_f, directoff$h10_hbv_rdt_f))
+
+# unadjusted
+comp4 <- glm(i27a_rdt_result ~ h10_hbv_rdt, family = binomial(link = "log"), data=directoff)
+summary(comp4)
+exp(comp4$coefficients)
+exp(confint(comp4, method = c("Wald")))
 
 ###glmer-----
 comp4mm <- glmer(i27a_rdt_result ~ h10_hbv_rdt + (1 | hrhhid), family = binomial(link = "log"), data=directoff, nAGQ = 0)
@@ -114,17 +130,22 @@ exp(fixef(comp4mm))
 exp(confint(comp4mm, method = c("boot"), boot.type=c("basic")))
 exp(confint(comp4mm, method = c("Wald")))
 
-# not accounting for clustering
-comp4 <- glm(i27a_rdt_result ~ h10_hbv_rdt, family = binomial(link = "log"), data=directoff)
-summary(comp4)
+
 # comparison of fixed and mixed
 lrtest(comp4, comp4mm)
 
 #....................................................................................................
 #Comparison 5: odds of infection in exposed other mem vs unexposed other mem------
 othermemb <- hhmemb_nomiss %>% filter(directoff==0)
-addmargins(table(othermemb$i27a_rdt_result_f, othermemb$h10_hbv_rdt_f))
+addmargins(table(othermemb$h10_hbv_rdt_f, othermemb$i27a_rdt_result_f ))
 nrow(othermemb)
+
+# not accounting for clustering
+comp5 <- glm(i27a_rdt_result ~ h10_hbv_rdt, family = binomial(link = "log"), data=othermemb)
+summary(comp5)
+exp(comp5$coefficients)
+exp(confint(comp5, method = c("Wald")))
+
 ###glmer-----
 comp5mm <- glmer(i27a_rdt_result ~ h10_hbv_rdt + (1 | hrhhid), family = binomial(link = "log"), data=othermemb, nAGQ = 0)
 summary(comp5mm)
@@ -133,9 +154,6 @@ exp(fixef(comp5mm))
 exp(confint(comp5mm, method = c("boot"), boot.type=c("basic")))
 exp(confint(comp5mm, method = c("Wald")))
 
-# not accounting for clustering
-comp5 <- glm(i27a_rdt_result ~ h10_hbv_rdt, family = binomial(link = "log"), data=othermemb)
-summary(comp5)
 # comparison of fixed and mixed
 lrtest(comp5, comp5mm)
 #..................................................................
@@ -185,10 +203,11 @@ comp1 <- function(var){
   m <- m[,-8]
   m <- m %>% select(-c('effect','group'))}
 
-comp1 <- map_dfr(exp_def, comp1) 
-view(comp1)
-comp1$comp <- "Comparison 1"
-comp1$sens <- c("Recruitment", "Enrollment", "Either positive", "Always positive")
+comp1_run <- map_dfr(exp_def, comp1) 
+view(comp1_run)
+comp1_run$comp <- "Comparison 1"
+comp1_run$sens <- c("Recruitment", "Enrollment", "Either positive", "Always positive")
+comp1_run$kimorder <- 1
 
 comp4 <- function(var){
   m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=directoff, family=binomial("log"), nAGQ = 0)
@@ -216,6 +235,7 @@ comp4_test4 <- map_dfr(exp_def, comp4_pos)
 view(comp4_test4) # poisson doesn't change estimate too much
 comp4_test4$comp <- "Comparison 4"
 comp4_test4$sens <- c("Recruitment", "Enrollment", "Either positive", "Always positive")
+comp4_test4$kimorder <- 2
 
 comp5 <- function(var){
   m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=othermemb, family=binomial("log"), nAGQ = 0)
@@ -229,6 +249,7 @@ comp5 <- function(var){
 comp5 <- map_dfr(exp_def, comp5) 
 comp5$comp <- "Comparison 5"
 comp5$sens <- c("Recruitment", "Enrollment", "Either positive", "Always positive")
+comp5$kimorder <- 3
 
 # datasets for comp 2
 hhmemb_exp <- hhmemb_nomiss %>% filter(h10_hbv_rdt==1) # recruitment
@@ -255,7 +276,7 @@ view(comp2_out)
 exp_dfs_names <- c("Recruitment", "Enrollment", "Either positive", "Always positive")
 comp2_out$sens <- exp_dfs_names
 comp2_out$comp <- "Comparison 2"
-
+comp2_out$kimorder <- 4
 # comp 3
 
 # datasets for comp 3
@@ -270,8 +291,9 @@ comp3_out <- map_dfr(unexp_dfs, comp23)
 view(comp3_out)
 comp3_out$comp <- "Comparison 3"
 comp3_out$sens <- c("Recruitment", "Enrollment", "Either positive", "Always positive")
+comp3_out$kimorder <- 5
 
-all_comps <- rbind(comp1, comp2_out, comp3_out, comp4_test4, comp5)
+all_comps <- rbind(comp1_run, comp4_test4, comp5, comp2_out, comp3_out)
 view(all_comps)
 
 all_comps <- all_comps %>% 
@@ -284,13 +306,20 @@ all_comps <- all_comps %>% mutate(relsize = case_when(
 table(all_comps$relsize)
 view(all_comps)
 
-all_comps <- all_comps %>% mutate(desorder = substr(comp, nchar(comp)-1+1, nchar(comp)) %>% as.numeric())
+all_comps <- all_comps %>% mutate(desorder = substr(comp, nchar(comp)-1+1, nchar(comp)) %>% as.numeric()) # desorder = original order
   #colnames(glmer_doexp_4_rd) <- c('term','logpr','std.error','statistic','p.value','LCI_95','UCI_95','LCI_99','UCI_99','time')
-  
+all_comps <-   all_comps %>% mutate(labl = case_when(
+  comp == "Comparison 1" ~ "All household members: exposed vs unexposed",
+  comp == "Comparison 4" ~ "Direct offspring: exposed vs unexposed",
+  comp == "Comparison 5" ~ "Other: exposed vs unexposed",
+  comp == "Comparison 2" ~ "Exposed: direct offspring vs other",
+  comp == "Comparison 3" ~ "Unexposed: direct offspring vs other"
+))
+
 all_comps %>% filter(abs(estimate) < 10) %>% 
   ggplot() +
   geom_hline(yintercept=0, linetype='dashed') + # use 0 if logodds, 1 if odds
-  geom_pointrange(aes(x=fct_rev(fct_reorder(comp, desorder)), y=estimate, ymin=LCI_95, ymax=UCI_95, color=sens, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  geom_pointrange(aes(x=fct_rev(fct_reorder(labl, kimorder)), y=estimate, ymin=LCI_95, ymax=UCI_95, color=sens, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
   #geom_point( aes(x=term, y=logodds, group=group, color=time),shape=15, size=7, position=position_dodge2(width = 1.0) ,alpha=0.9) + # this was place on incorrect line if multiple groups
   scale_size(range = c(30,45))+
   #scale_color_brewer(palette = "Reds")+
@@ -315,7 +344,7 @@ p_prev <-
   all_comps %>% filter(abs(estimate) < 10) %>% 
   ggplot() +
   geom_hline(yintercept=0, linetype='dashed') + # use 0 if logodds, 1 if odds
-  geom_pointrange(aes(x=fct_rev(fct_reorder(comp, desorder)), y=estimate, ymin=LCI_95, ymax=UCI_95, color=sens, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  geom_pointrange(aes(x=fct_rev(fct_reorder(labl, kimorder)), y=estimate, ymin=LCI_95, ymax=UCI_95, color=sens, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
   #geom_point( aes(x=term, y=logodds, group=group, color=time),shape=15, size=7, position=position_dodge2(width = 1.0) ,alpha=0.9) + # this was place on incorrect line if multiple groups
   scale_size(range = c(30,45))+
   #scale_color_brewer(palette = "Reds")+
@@ -339,20 +368,20 @@ p_prev <-
 
 res_plot_prev <- all_comps |>
   # round estimates and 95% CIs to 2 decimal places for journal specifications
-  mutate(across(c("estimate", "LCI_95", "UCI_95"), ~ str_pad(round(.x, 2), width = 4, pad = "0", side = "right")),
+  mutate(across(c("est_exp", "lowerci_exp", "upperci_exp"), ~ str_pad(round(.x, 2), width = 4, pad = "0", side = "right")),
          # add an "-" between logodds estimate confidence intervals
-         estimate_lab = paste0(estimate, " (", LCI_95, ", ", UCI_95, ")")) |>
+         estimate_lab = paste0(est_exp, " (", lowerci_exp, ", ", upperci_exp, ")")) |>
   filter(sens == "Recruitment") |>
-  select(comp, sens, estimate_lab, desorder) 
+  select(labl, sens, estimate_lab, kimorder) 
 view(res_plot_prev)
 # add a row of data that are actually column names which will be shown on the plot in the next step
 #add extra decimal for those that are in the thousandths place
 
-estimate_lab <- "LogPR (95% CI)\nRecruitment"
+estimate_lab <- "PR (95% CI)\nRecruitment"
 sens <- ""
-comp <- ""
-desorder <- 0
-titles_prev <- data.frame(estimate_lab, sens, comp,desorder)
+labl <- ""
+kimorder <- 0
+titles_prev <- data.frame(estimate_lab, sens, labl,kimorder)
 view(titles_prev)
 
 res_plot_prev <-rbind(res_plot_prev, titles_prev)
@@ -361,10 +390,10 @@ res_plot_prev$estimate_lab <- ifelse(res_plot_prev$estimate_lab=="-0.1 (-1.35, 1
 
 p_left_prev <-
   res_plot_prev  |>
-  ggplot(aes(y = fct_rev(fct_reorder(comp, desorder))))+
-  geom_text(aes(x = 0, label = comp), hjust = 0, size = 10, fontface = "bold")+
+  ggplot(aes(y = fct_rev(fct_reorder(labl, kimorder))))+
+  geom_text(aes(x = 0, label = labl), hjust = 0, size = 10, fontface = "bold")+
   geom_text(aes(x = 1, label = estimate_lab), hjust = 0 , size = 10,
-            fontface = ifelse(res_plot_prev$estimate_lab == "LogPR (95% CI)\nRecruitment", "bold", "plain")
+            fontface = ifelse(res_plot_prev$estimate_lab == "PR (95% CI)\nRecruitment", "bold", "plain")
   )+
   theme_void() +
   coord_cartesian(xlim = c(0, 1.5))
@@ -374,5 +403,5 @@ layout <- c(
   area(t = 5, l = 6, b = 30, r = 12) # middle plot starts a little lower (t=1) because there's no title. starts 1 unit right of the left plot (l=4, whereas left plot is r=3), goes to the bottom of the page (30 units), and 6 units further over from the left plot (r=9 whereas left plot is r=3)
 )
 p_left_prev + p_prev + plot_layout(design=layout)
-ggsave('./plots/prev_sens_label.png', width=25, height=9)
+ggsave('./plots/prev_sens_label.png', width=38, height=9)
 
