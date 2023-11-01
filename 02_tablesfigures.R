@@ -625,3 +625,13 @@ table(counts_sibnieceneph$both)
 atleast1 <- counts_sibnieceneph %>% filter(both==1)
 investigate_vert <-  inddata1 %>% filter(hrhhid %in% atleast1$hrhhid) %>% select(c("hrhhid","hr3_relationship","hr3_relationship_f", "hr4_sex_f","age_combined","hrname_last","hrname_post","hrname_first"))
 
+# misc results
+inddata1 %>% filter(hhmemcat_f=="Direct offspring" & i27a_rdt_result==1) %>% group_by(h10_hbv_rdt_f) %>% summarise(min(age_combined), median(age_combined), max(age_combined))
+
+inddata1 %>% filter(hhmemcat_f=="Other household member" & i27a_rdt_result==1) %>% group_by(h10_hbv_rdt_f) %>% summarise(hr3_relationship_f, hrhhid)
+
+
+
+
+
+
