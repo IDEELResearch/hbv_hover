@@ -603,6 +603,17 @@ inddata1 = inddata1 %>%
     TRUE ~ 0) %>% as.factor())
 table(inddata1$age_cat, useNA = "always")
 
+inddata1 <- inddata1 %>% mutate(age_cat_cons = case_when(
+  age_cat =="2" ~ 1, # if person was likely not vaccinated or possibly not, group together
+  age_cat =="1" ~ 1, # if person was likely not vaccinated or possibly not, group together
+  age_cat == "0" ~ 0)
+  %>% as.factor(),
+  age_cat_highrisk = case_when(
+    age_cat == "2" ~ 1,
+    age_cat == "1" ~ 0,
+    age_cat == "0" ~ 0) %>% as.factor()) 
+addmargins(table(inddata1$age_cat_cons, inddata1$h10_hbv_rdt_f, inddata1$hhmemcat_f))
+
 inddata1 <- inddata1 %>% 
   dplyr::mutate(hr3_relationship_f=factor(
     inddata1$hr3_relationship, 
@@ -1096,6 +1107,7 @@ inddata1 = inddata1 %>%
     TRUE ~ 0 # hh mmeber is all other types of relationships
   ) %>% as.numeric())
 addmargins(table(inddata1$hhmemcat, inddata1$indexmom))
+
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(hhmemcat_f=factor(
