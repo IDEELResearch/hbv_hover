@@ -25,16 +25,28 @@ fogsero$fog_log_vl_num <- ifelse(fogsero$vl_log_iuml=="Not detected",0,fogsero$f
 print(fogsero$fog_log_vl_num)
 class(fogsero$fog_log_vl_num)
 
+# save sAg NEXT S/CO numerically
+print(fogsero$hbsag_next_sco)
+
+fogsero$hbsag_next_num <- as.numeric(gsub("\\,", "", fogsero$hbsag_next_sco))
+class(fogsero$hbsag_next_num)
+
+# new eAg var with labels
+fogsero$hbeag_label <- ifelse(fogsero$hbeag_interpret=="Reactive", "HBeAg+ve","HBeAg-ve")
+table(fogsero$hbeag_label)
+
+# most recent RDT
+fogsero <- fogsero %>% mutate(lastrdt = case_when(
+  rdt2 == "positive" ~ "RDT+",
+  rdt2 == "negative" ~ "RDT-",
+  rdt2 == "Not retested" & rdt1 == "negative" ~ "RDT-",
+  rdt2 == "Not retested" & rdt1 == "positive" ~ "RDT+",
+))
 
 # Antibody results-----------------------
 # plan: group kids by birth month/year, count # sAb reactive, grayzone, total
-# subset kids
-fogsero_kids <- fogsero %>% filter(dob >= "2007-02-28")
-table(fogsero_kids$hbsab_interpret)
-table(fogsero_kids$hbcab_interpret)
-table(fogsero_kids$hbsab_interpret, fogsero_kids$hbcab_interpret)
 
-fogsero_kids <- fogsero_kids %>% 
+fogsero <- fogsero %>% 
   mutate(immstat = case_when(
     hbsab_interpret == "Reactive" & hbcab_interpret == "Nonreactive" ~ "Immunized",
     hbsab_interpret == "Reactive" & hbcab_interpret == "Reactive" ~ "Recovered",
@@ -49,6 +61,12 @@ fogsero_kids <- fogsero_kids %>%
       hbsab_interpret == "Grayzone" & hbcab_interpret == "Nonreactive" ~ "Immunized (HBsAb+/HBcAb-)",
       hbsab_interpret == "Nonreactive" & hbcab_interpret == "Reactive" ~ "Recovered, waned sAb (HBsAb-/HBcAb+)",
       hbsab_interpret == "Nonreactive" & hbcab_interpret == "Nonreactive" ~ "Unprotected (HBsAb-/HBcAb-)"))
+
+# subset kids
+fogsero_kids <- fogsero %>% filter(dob >= "2007-02-28")
+table(fogsero_kids$hbsab_interpret)
+table(fogsero_kids$hbcab_interpret)
+table(fogsero_kids$hbsab_interpret, fogsero_kids$hbcab_interpret)
 
 fogsero_kids <- fogsero_kids %>% 
   mutate(diroff = case_when(
@@ -139,14 +157,122 @@ df2 %>% filter(!is.na(Value)) %>%
   theme(panel.background = element_blank())
 ggsave("~/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/Fogarty work/Data and analysis/mother_vl_time.png", width = 12, height = 6)
 
+#VL by age----------------
+table(fogsero$sex)
+# color by sex
+fogsero %>% #filter(fog_log_vl_num > 0) %>% 
+  ggplot() +
+  geom_point(aes(x=age_yrs, y=fog_log_vl_num, color=sex), size = 4) +
+  scale_color_manual(values = c("#65427D","#59C1AA"), name = "HBeAg status")+ #"#59C1AA" "#D23071" "#60BFC1", "#EBBA43", "#CF6D49"
+  scale_y_continuous(breaks=seq(0,8, by = 1))+
+  geom_hline(yintercept = 3.3)+
+  ylab("Log HBV viral load (IU/mL")+
+  xlab("Participant age (years)")+
+  ggtitle("HBV Viral load by age, by sex")+
+  theme_bw()+
+  theme(legend.position = c(0.85, 0.8),
+        legend.background = element_rect(colour = 'black', fill = 'white', linetype='solid'))+
+  geom_text(x=70, y=3.7, label="Treatment threshold \n (2000 IU/mL)")
+ggsave("./plots/fogarty/vlsexall.png", width = 12, height = 6)
+
+# remove index mothers
+table(fogsero$rel_to_indexmoth)
+
+fogsero %>% filter(rel_to_indexmoth != "Index mother") %>% 
+  ggplot() +
+  geom_point(aes(x=age_yrs, y=fog_log_vl_num, color=sex), size = 4) +
+  scale_color_manual(values = c("#65427D","#59C1AA"), name = "HBeAg status")+ #"#59C1AA" "#D23071" "#60BFC1", "#EBBA43", "#CF6D49"
+  scale_y_continuous(breaks=seq(0,8, by = 1))+
+  geom_hline(yintercept = 3.3)+
+  ylab("Log HBV viral load (IU/mL")+
+  xlab("Participant age (years)")+
+  ggtitle("HBV Viral load of household members by age and sex")+
+  theme_bw()+
+  theme(legend.position = c(0.85, 0.8),
+        legend.background = element_rect(colour = 'black', fill = 'white', linetype='solid'))+
+  geom_text(x=70, y=3.7, label="Treatment threshold \n (2000 IU/mL)")
+ggsave("./plots/fogarty/vlsexhhmemb.png", width = 12, height = 6)
+
+
+# by Hbeag status
+fogsero %>% #filter(fog_log_vl_num > 0) %>% 
+  ggplot() +
+  geom_point(aes(x=age_yrs, y=fog_log_vl_num, color=hbeag_label), size = 4) +
+  scale_color_manual(breaks = c("HBeAg+ve", "HBeAg-ve"), values = c("#F09745","#5D8EB6"), name = "HBeAg status")+# "#60BFC1", "#EBBA43", "#CF6D49"
+  scale_y_continuous(breaks=seq(0,8, by = 1))+
+  geom_hline(yintercept = 3.3)+
+  ylab("Log HBV viral load (IU/mL")+
+  xlab("Participant age (years)")+
+  ggtitle("HBV Viral load by age, by HBeAg status")+
+  theme_bw()+
+  theme(legend.position = c(0.85, 0.8),
+        legend.background = element_rect(colour = 'black', fill = 'white', linetype='solid'))+
+  geom_text(x=70, y=3.7, label="Treatment threshold \n (2000 IU/mL)")
+
+ggsave("./plots/fogarty/vlage.png", width = 12, height = 6)
+
+#VL by RDT status----------
+
+fogsero %>% #filter(fog_log_vl_num > 0) %>% 
+  ggplot() +
+  geom_point(aes(x=age_yrs, y=fog_log_vl_num, color=lastrdt), size = 4) +
+  scale_color_manual(breaks = c("RDT+", "RDT-") ,values = c("#CF6D49","#60BFC1"), name = "Most recent RDT")+# "#2655A0"  "#F5C944"  "#60BFC1", "#EBBA43", "#CF6D49"
+  scale_y_continuous(breaks=seq(0,8, by = 1))+
+  geom_hline(yintercept = 3.3)+
+  ylab("Log HBV viral load (IU/mL")+
+  xlab("Participant age (years)")+
+  ggtitle("HBV Viral load by age, by most recent HBsAg RDT result")+
+  theme_bw()+
+  theme(legend.position = c(0.85, 0.8),
+        legend.background = element_rect(colour = 'black', fill = 'white', linetype='solid'))+
+  geom_text(x=70, y=3.7, label="Treatment threshold \n (2000 IU/mL)")
+
+ggsave("./plots/fogarty/vlrdt.png", width = 12, height = 6)
+
+#VL by NEXT sAG status------------------
+table(fogsero$hbsag_next_interpret)
+
+fogsero %>% #filter(fog_log_vl_num > 0) %>% 
+  ggplot() +
+  geom_point(aes(x=age_yrs, y=fog_log_vl_num, color=hbsag_next_interpret), size = 4) +
+  scale_color_manual(breaks = c("Reactive", "Nonreactive") ,values = c("#F5C944","#2655A0"), name = "HBsAg NEXT assay")+# "#2655A0"  "#F5C944"  "#60BFC1", "#EBBA43", "#CF6D49"
+  scale_y_continuous(breaks=seq(0,8, by = 1))+
+  geom_hline(yintercept = 3.3)+
+  ylab("Log HBV viral load (IU/mL")+
+  xlab("Participant age (years)")+
+  ggtitle("HBV Viral load by age, by HBsAg NEXT assay result")+
+  theme_bw()+
+  theme(legend.position = c(0.8, 0.8),
+        legend.background = element_rect(colour = 'black', fill = 'white', linetype='solid'))+
+  geom_text(x=70, y=3.7, label="Treatment threshold \n (2000 IU/mL)")
+ggsave("./plots/fogarty/vlnext.png", width = 12, height = 6)
+
+# by next level
+## may not be valid since S/CO and not iu/ml
+fogsero %>% #filter(fog_log_vl_num > 0) %>% 
+  ggplot() +
+  geom_point(aes(x=hbsag_next_num, y=fog_log_vl_num), size = 4) +
+  #scale_color_manual(breaks = c("Reactive", "Nonreactive") ,values = c("#F5C944","#2655A0"), name = "HBsAg NEXT assay")+# "#2655A0"  "#F5C944"  "#60BFC1", "#EBBA43", "#CF6D49"
+  scale_y_continuous(breaks=seq(0,8, by = 1))+
+#  geom_vline(xintercept = 1000)+ # not valid since not iu/ml?
+  ylab("Log HBV viral load (IU/mL")+
+  xlab("Quantitative HBsAg (S/CO)")+
+  ggtitle("HBV Viral load by age, by HBsAg NEXT assay result")+
+  theme_bw()+
+  theme(legend.position = c(0.8, 0.8),
+        legend.background = element_rect(colour = 'black', fill = 'white', linetype='solid'))
+  #+geom_text(x=70, y=3.7, label="Treatment threshold \n (2000 IU/mL)")
+
+
 # HBsAb reactivity for kids with longitudinal sample----------
 # use rdt_0_date_approx as astmh_12mo_hbsab timepoint (approximate - this is 1 year after DOB)
-surfab_astmh <- fogsero %>% filter(!is.na(astmh_12mo_hbsab)) %>% rename("sampdate" = "rdt_0_date_approx", "hbsab"="astmh_12mo_hbsab") %>% select(c("PID_clean","dob","sampdate","rel_to_indexmoth","birthdose","hbsab"))
-surfab_fog_astmhnomiss <- fogsero  %>% filter(!is.na(astmh_12mo_hbsab)) %>% rename("sampdate" = "fog_sampdate", "hbsab"="hbsab_mIUmL") %>% select(c("PID_clean","dob","sampdate","rel_to_indexmoth","birthdose","hbsab"))
+surfab_astmh <- fogsero %>% filter(!is.na(astmh_12mo_hbsab)) %>% rename("sampdate" = "rdt_0_date_approx", "hbsab"="astmh_12mo_hbsab") %>% select(c("PID_clean","dob","sampdate","rel_to_indexmoth","birthdose","hbsab", "indexmomeverpos"))
+surfab_fog_astmhnomiss <- fogsero  %>% filter(!is.na(astmh_12mo_hbsab)) %>% rename("sampdate" = "fog_sampdate", "hbsab"="hbsab_mIUmL") %>% select(c("PID_clean","dob","sampdate","rel_to_indexmoth","birthdose","hbsab","indexmomeverpos"))
 
 surfab <- rbind(surfab_fog_astmhnomiss,surfab_astmh )
 surfab$hbsab <- as.numeric(surfab$hbsab)
 class(surfab$sampdate)
+view(surfab)
 
 surfab %>% 
   ggplot()+
@@ -157,9 +283,18 @@ surfab %>%
   ylab("anti-HBs (mIU/mL)")+
   xlab("Sample date")+
   ggtitle("Anti-HBs of ASTMH offspring across available timepoints")+
-  theme(panel.background = element_blank())+
-  facet_wrap(~birthdose)
-ggsave("~/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/Fogarty work/Data and analysis/ab_results_scattertime.png", width = 12, height = 6)
+  theme(panel.background = element_blank())
+  #+facet_wrap(~birthdose)
+ggsave("~/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/Fogarty work/Data and analysis/ab_7tog.png", width = 12, height = 6)
+
+# describe immunity in supposedly vaccinated kids by mother status
+uninf_kids <- fogsero %>% filter(hbsag_next_interpret == "Nonreactive" & vl_log_interpret == "Target not detected" & hbv_infant_vacc != "not vacc")
+
+addmargins(table(uninf_kids$hbsab_interpret, uninf_kids$indexmomeverpos))
+addmargins(table(uninf_kids$immstat_bin, uninf_kids$indexmomeverpos))
+addmargins(table(uninf_kids$rel_to_indexmoth, uninf_kids$indexmomeverpos))
+
+
 
 
 # everyone with sab
