@@ -315,17 +315,19 @@ all_comps <-   all_comps %>% mutate(labl = case_when(
   comp == "Comparison 2" ~ "Exposed: direct offspring vs other",
   comp == "Comparison 3" ~ "Unexposed: direct offspring vs other"
 ))
-
+view(all_comps)
 all_comps %>% filter(abs(estimate) < 10) %>% 
   ggplot() +
-  geom_hline(yintercept=0, linetype='dashed') + # use 0 if logodds, 1 if odds
-  geom_pointrange(aes(x=fct_rev(fct_reorder(labl, kimorder)), y=estimate, ymin=LCI_95, ymax=UCI_95, color=sens, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  geom_hline(yintercept=1, linetype='dashed') + # use 0 if logodds, 1 if odds
+#  geom_pointrange(aes(x=fct_rev(fct_reorder(labl, kimorder)), y=estimate, ymin=LCI_95, ymax=UCI_95, color=sens, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  geom_pointrange(aes(x=fct_rev(fct_reorder(labl, kimorder)), y=est_exp, ymin=lowerci_exp, ymax=upperci_exp, color=sens, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
   #geom_point( aes(x=term, y=logodds, group=group, color=time),shape=15, size=7, position=position_dodge2(width = 1.0) ,alpha=0.9) + # this was place on incorrect line if multiple groups
   scale_size(range = c(30,45))+
   #scale_color_brewer(palette = "Reds")+
   scale_color_manual(values=c( "#d19999", "#b96666", "#9c1526","#6f0f1b" ))+ # "#8b0000" , "#971919", "#a23333", "#ae4d4d", "#b96666", "#d19999"
   coord_flip() + 
-  labs(x="", y="log prev ratio of HBsAg+") + 
+  scale_y_log10(breaks = c(0.1, 0.2, 0.5, 1.0, 2.0, 5.0), minor_breaks = NULL) +
+  labs(x="", y="Prevalence ratio") + 
   theme(axis.text.y = ggtext::element_markdown(color = "black", size = 20),
         axis.ticks.y = element_blank(),
         axis.text.x = element_text(size = 20),
@@ -343,14 +345,15 @@ ggsave('./plots/prev_sens.png', width=25, height=9)
 p_prev <-
   all_comps %>% filter(abs(estimate) < 10) %>% 
   ggplot() +
-  geom_hline(yintercept=0, linetype='dashed') + # use 0 if logodds, 1 if odds
-  geom_pointrange(aes(x=fct_rev(fct_reorder(labl, kimorder)), y=estimate, ymin=LCI_95, ymax=UCI_95, color=sens, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  geom_hline(yintercept=1, linetype='dashed') + # use 0 if logodds, 1 if odds
+  geom_pointrange(aes(x=fct_rev(fct_reorder(labl, kimorder)), y=est_exp, ymin=lowerci_exp, ymax=upperci_exp, color=sens, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
   #geom_point( aes(x=term, y=logodds, group=group, color=time),shape=15, size=7, position=position_dodge2(width = 1.0) ,alpha=0.9) + # this was place on incorrect line if multiple groups
   scale_size(range = c(30,45))+
   #scale_color_brewer(palette = "Reds")+
   scale_color_manual(values=c( "#d19999", "#b96666", "#9c1526","#6f0f1b" ))+ # "#8b0000" , "#971919", "#a23333", "#ae4d4d", "#b96666", "#d19999"
+  scale_y_log10(breaks = c(0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0), minor_breaks = NULL) +
   coord_flip() + 
-  labs(x="", y="log prev ratio of HBsAg+") + 
+  labs(x="", y="Prevalence ratio") + 
   theme(axis.title.y=element_blank(),
         axis.text.y=element_blank(),# for labeled forest plot 
         axis.ticks.y=element_blank(), # for labeled forest plot 
@@ -377,7 +380,7 @@ view(res_plot_prev)
 # add a row of data that are actually column names which will be shown on the plot in the next step
 #add extra decimal for those that are in the thousandths place
 
-estimate_lab <- "PR (95% CI)\nRecruitment"
+estimate_lab <- "PR (95% CI)*"
 sens <- ""
 labl <- ""
 kimorder <- 0
@@ -393,7 +396,7 @@ p_left_prev <-
   ggplot(aes(y = fct_rev(fct_reorder(labl, kimorder))))+
   geom_text(aes(x = 0, label = labl), hjust = 0, size = 10, fontface = "bold")+
   geom_text(aes(x = 1, label = estimate_lab), hjust = 0 , size = 10,
-            fontface = ifelse(res_plot_prev$estimate_lab == "PR (95% CI)\nRecruitment", "bold", "plain")
+            fontface = ifelse(res_plot_prev$estimate_lab == "PR (95% CI)*", "bold", "plain")
   )+
   theme_void() +
   coord_cartesian(xlim = c(0, 1.5))

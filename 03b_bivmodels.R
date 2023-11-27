@@ -422,7 +422,18 @@ glm_mi_4_rd$term[glm_mi_4_rd$term == "partner3mo_bin1"] <- "Sexual partners in l
 glm_mi_4_rd$term[glm_mi_4_rd$term == "partner12mo_bin1"] <- "Sexual partners in last 12 months: ≥2 or refused vs ≤1"
 glm_mi_4_rd$term[glm_mi_4_rd$term == "newpartner3mo_indic1"] <- "New sexual partners in last 3 months: ≥1 or refuse vs none new"
 glm_mi_4_rd$term[glm_mi_4_rd$term == "newpartner12mo_indic1"] <- "New sexual partners in last 12 months: ≥1 or refuse vs none new"
-#p <- 
+
+# rename nov 2023
+glm_mi_4_rd$term[glm_mi_4_rd$term == "Uses street salons vs not"] <- "Uses street salons" #i10_street_salon_bin
+glm_mi_4_rd$term[glm_mi_4_rd$term == "Uses street salons vs not"] <- "Uses street salons" #i10_street_salon_bin
+glm_mi_4_rd$term[glm_mi_4_rd$term == "Shares toothbrushes in household vs not"] <- "Shares toothbrushes in household"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "Shares razors in household vs not"] <- "Shares razors in household"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "Shares nail clippers in household vs not"] <- "Shares nail clippers in household"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "Tattoos: Yes vs none"] <- "Tattoos" # i17_tattoo_bin change
+glm_mi_4_rd$term[glm_mi_4_rd$term == "Traditional scarring: Yes/Refused vs none"] <- "Traditional scarring"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "Manicures outside home vs not"] <- "Manicures/pedicures outside home"
+glm_mi_4_rd$term[glm_mi_4_rd$term == "1+ past transfusion vs none"] <- "≥1 past transfusion vs none"
+
 
 glm_mi_4_rd <- glm_mi_4_rd %>% mutate(relsize = case_when(
   time == "Recruitment" ~ 1.5,
@@ -432,6 +443,8 @@ table(glm_mi_4_rd$relsize)
 glm_mi_4_rd <- glm_mi_4_rd %>% group_by(time) %>%  mutate(desorder=1:(nrow(glm_mi_4_rd)/4))
 
 write.csv(glm_mi_4, file = "glm_mi_4.csv" )
+view(glm_mi_4_rd)
+write.csv(glm_mi_4_rd, file = "glm_mi_4_rd.csv" )
 
 glm_mi_4_rd %>% 
   ## these mutate steps were to change order - redone with desorder step directly before
@@ -439,13 +452,17 @@ glm_mi_4_rd %>%
   #mutate(desiredorder = fct_relevel(term, levels = c()))
   #ggplot(aes(x=(fct_rev(term)), y=logodds, color = time)) + #group = interaction(level); alpha = level
   ggplot() +
-  geom_hline(yintercept=0, linetype='dashed') + # use 0 if logodds, 1 if odds
-  geom_pointrange(aes(x=fct_rev(fct_reorder(term, desorder)), y=logodds, ymin=LCI_95, ymax=UCI_95, color=time, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  geom_pointrange(aes(x=fct_rev(fct_reorder(term, desorder)), y=or, ymin=lowerci, ymax=upperci, color=time, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  geom_hline(yintercept = 1.0, linetype = "dashed", size = 1) +
+  labs(y = "Odds ratio", x = "Effect") +
+  # geom_hline(yintercept=0, linetype='dashed') + # use 0 if logodds, 1 if odds
+  # geom_pointrange(aes(x=fct_rev(fct_reorder(term, desorder)), y=logodds, ymin=LCI_95, ymax=UCI_95, color=time, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
   #geom_point( aes(x=term, y=logodds, group=group, color=time),shape=15, size=7, position=position_dodge2(width = 1.0) ,alpha=0.9) + # this was place on incorrect line if multiple groups
   scale_size(range = c(30,45))+
   scale_color_manual(values=c("#9DC6E9","#5B85C4", "#28499E","#16246D" ))+  #deeppink3, "#E7B800" "#16246D", "#28499E", "#4676C5",  "#020E54","#C0D9F5"
+  scale_y_log10(breaks = c(0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10, 20), minor_breaks = NULL) +
   coord_flip() + 
-  labs(x="", y="Log(OR) of HBsAg+") + 
+  # labs(x="", y="Log(OR) of HBsAg+") + # old version
   theme(axis.text.y = ggtext::element_markdown(color = "black", size = 20),
         axis.ticks.y = element_blank(),
         axis.text.x = element_text(size = 20),
@@ -468,13 +485,14 @@ plot <-
   #mutate(desiredorder = fct_relevel(term, levels = c()))
   #ggplot(aes(x=(fct_rev(term)), y=logodds, color = time)) + #group = interaction(level); alpha = level
   ggplot() +
-  geom_hline(yintercept=0, linetype='dashed') + # use 0 if logodds, 1 if odds
-  geom_pointrange(aes(x=fct_rev(fct_reorder(term, desorder)), y=logodds, ymin=LCI_95, ymax=UCI_95, color=time, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  geom_pointrange(aes(x=fct_rev(fct_reorder(term, desorder)), y=or, ymin=lowerci, ymax=upperci, color=time, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  geom_hline(yintercept = 1.0, linetype = "dashed", size = 1) +
   #geom_point( aes(x=term, y=logodds, group=group, color=time),shape=15, size=7, position=position_dodge2(width = 1.0) ,alpha=0.9) + 
   scale_size(range = c(30,45))+
   scale_color_manual(values=c("#9DC6E9","#5B85C4", "#28499E","#16246D" ))+  #deeppink3, "#E7B800" "#16246D", "#28499E", "#4676C5",  "#020E54","#C0D9F5"
+  scale_y_log10(breaks = c(0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10, 20), minor_breaks = NULL) +
   coord_flip()+ 
-  labs(x="", y="Log(OR) of HBsAg+") + 
+  labs(y = "Odds ratio", x = "") +
   theme(
     axis.title.y=element_blank(),
     axis.text.y=element_blank(),# for labeled forest plot 
@@ -506,7 +524,7 @@ res_plot$estimate_lab <- ifelse(res_plot$estimate_lab=="1000 (0.39, 2.55)", "1.0
 res_plot$estimate_lab <- ifelse(res_plot$estimate_lab=="1000 (0.35, 2.83)", "1.00 (0.35, 2.83)",res_plot$estimate_lab)
 res_plot$estimate_lab <- ifelse(res_plot$estimate_lab=="1000 (0.53, 1.89)", "1.00 (0.53, 1.89)",res_plot$estimate_lab)
 
-estimate_lab <- "OR (95% CI), Recruitment"
+estimate_lab <- "OR (95% CI)*"
 time <- ""
 term <- ""
 level <- ""
@@ -523,7 +541,7 @@ p_left <-
   ggplot(aes(y = fct_rev(fct_reorder(term, desorder))))+
   geom_text(aes(x = 0, label = term), hjust = 0, size = 5, fontface = "bold")+
   geom_text(aes(x = 1, label = estimate_lab), hjust = 0 , size = 5,
-            fontface = ifelse(res_plot$estimate_lab == "OR (95% CI), Recruitment", "bold", "plain")
+            fontface = ifelse(res_plot$estimate_lab == "OR (95% CI)*", "bold", "plain")
   )+
   theme_void() +
   #xlim(0,2)+
@@ -542,13 +560,14 @@ view(glm_mi_4_rd)
 plot_r <- 
   glm_mi_4_rd %>% filter(time=="Recruitment") %>% 
   ggplot() +
-  geom_hline(yintercept=0, linetype='dashed') + # use 0 if logodds, 1 if odds
-  geom_pointrange(aes(x=fct_rev(fct_reorder(term, desorder)), y=logodds, ymin=LCI_95, ymax=UCI_95, color=time, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  geom_pointrange(aes(x=fct_rev(fct_reorder(term, desorder)), y=or, ymin=lowerci, ymax=upperci, color=time, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  geom_hline(yintercept = 1.0, linetype = "dashed", size = 1) +
   #geom_point( aes(x=term, y=logodds, group=group, color=time),shape=15, size=7, position=position_dodge2(width = 1.0) ,alpha=0.9) + 
   scale_size(range = c(30,45))+
   scale_color_manual(values=c("#16246D" ))+  #deeppink3, "#E7B800" "#16246D", "#28499E", "#4676C5",  "#020E54","#C0D9F5"
+  scale_y_log10(breaks = c(0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10, 20), minor_breaks = NULL) +
   coord_flip()+ 
-  labs(x="", y="Log(OR) of HBsAg+") + 
+  labs(x="", y="Odds ratio") + 
   theme(
     axis.title.y=element_blank(),
     axis.text.y=element_blank(),# for labeled forest plot 
@@ -918,6 +937,20 @@ glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "partner12mo_bin1"] <- "Sexual pa
 glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "newpartner3mo_indic1"] <- "New sexual partners in last 3 months: ≥1 or refuse vs none new"
 glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "newpartner12mo_indic1"] <- "New sexual partners in last 12 months: ≥1 or refuse vs none new"
 
+# requested changes to labels:
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "Born before HBV vaccination vs born since*"] <- "Born before HBV vaccination*"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "Born before HBV vaccination*"] <- "Born before HBV vaccination†"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "1-year increase in age*"] <- "1-year increase in age†"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "Female vs male"] <- "Female sex"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "Shares toothbrushes in household vs not"] <- "Shares toothbrushes in household"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "Shares razors in household vs not"] <- "Shares razors in household"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "Shares nail clippers in household vs not"] <- "Shares nail clippers in household"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "1+ past transfusion vs none"] <- "≥1 past transfusion vs none"
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "Uses street salons vs not"] <- "Uses street salons" #i10_street_salon_bin
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "Uses street salons vs not"] <- "Uses street salons" #i10_street_salon_bin
+glmer_doexp_4_rd$term[glmer_doexp_4_rd$term == "Manicures outside home vs not"] <- "Manicures outside home"
+
+
 glmer_doexp_4_rd <- glmer_doexp_4_rd %>% mutate(relsize = case_when(
   time == "Recruitment" ~ 1.5,
   TRUE ~ 1))
@@ -955,20 +988,27 @@ glmer_doexp_4_rd %>%
 ggsave('./plots/fig_expdo_4grp_95.png', width=25, height=9)
 
 # add point est and CIs to figure - use cowplot to combine two parts
+# update to plot axis on log scale
+
 plot <- 
   glmer_doexp_4_rd %>% 
   ggplot() +
-  geom_hline(yintercept=0, linetype='dashed') + # use 0 if logodds, 1 if odds
-  geom_pointrange(aes(x=fct_rev(fct_reorder(term, desorder)), y=logpr, ymin=LCI_95, ymax=UCI_95, color=time, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  geom_pointrange(aes(x=fct_rev(fct_reorder(term, desorder)), y=pr, ymin=lowerci, ymax=upperci, color=time, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  geom_hline(yintercept = 1.0, linetype = "dashed", size = 1) +
+  labs(y = "Prevalence ratio", x = "Effect") +
+    
+  #geom_hline(yintercept=0, linetype='dashed') + # use 0 if logodds, 1 if odds
+  #geom_pointrange(aes(x=fct_rev(fct_reorder(term, desorder)), y=logpr, ymin=LCI_95, ymax=UCI_95, color=time, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
   scale_size(range = c(30,45))+
   scale_color_manual(values=c("#CAE0AB","#A6CB72", "#88B253","#618A3D" ))+ 
   coord_flip()+ 
-  labs(x="", y="Log(PR) of HBsAg+") + 
+  scale_y_log10(breaks = c(0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10, 100), minor_breaks = NULL) +
+  labs(y = "Prevalence ratio", x = "Effect") +
+  #labs(x="", y="Log(PR) of HBsAg+") + # old version when plotting log(PR)
   theme(
     axis.title.y=element_blank(),
     axis.text.y=element_blank(),# for labeled forest plot 
     axis.ticks.y=element_blank(), # for labeled forest plot 
-    ###
     axis.text.x = element_text(size = 20),
     axis.title.x = element_text(size = 20),
     legend.text=element_text(size=20),
@@ -991,7 +1031,7 @@ view(res_plot_do)
 # add a row of data that are actually column names which will be shown on the plot in the next step
 #add extra decimal for those that are in the thousandths place
 
-estimate_lab <- "PR (95% CI), Recruitment"
+estimate_lab <- "PR (95% CI)*"
 time <- ""
 term <- ""
 level <- ""
@@ -1008,7 +1048,7 @@ p_left <-
   ggplot(aes(y = fct_rev(fct_reorder(term, desorder))))+
   geom_text(aes(x = 0, label = term), hjust = 0, size = 5, fontface = "bold")+
   geom_text(aes(x = 1, label = estimate_lab), hjust = 0 , size = 5,
-            fontface = ifelse(res_plot_do$estimate_lab == "PR (95% CI), Recruitment", "bold", "plain")
+            fontface = ifelse(res_plot_do$estimate_lab == "PR (95% CI)*", "bold", "plain")
   )+
   theme_void() +
   #xlim(0,2)+
@@ -1022,6 +1062,31 @@ p_left + plot + plot_layout(design=layout)
 ggsave('./plots/fig_expdo_4grp_95_numb.png', width=25, height=9)
 
 # plot for main text with just recruitment definition with numbers
+view(glmer_doexp_4_rd)
+# new version to put axis on log scale - nov 2023
+plot_do <- 
+  glmer_doexp_4_rd %>% filter(time=="Recruitment") %>% 
+  ggplot()+
+  geom_pointrange(aes(x=fct_rev(fct_reorder(term, desorder)), y=pr, ymin=lowerci, ymax=upperci, color=time, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
+  geom_hline(yintercept = 1.0, linetype = "dashed", size = 1) +
+  scale_y_log10(breaks = c(0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10, 100),
+                minor_breaks = NULL) +
+  labs(y = "Prevalence ratio", x = "Effect") +
+  scale_size(range = c(30,45))+
+  scale_color_manual(values=c("#618A3D" ))+ 
+  coord_flip(ylim = c(0.1, 100)) +
+  theme(
+    axis.title.y=element_blank(),
+    axis.text.y=element_blank(),# for labeled forest plot 
+    axis.ticks.y=element_blank(), # for labeled forest plot 
+    axis.text.x = element_text(size = 20),
+    axis.title.x = element_text(size = 20),
+    legend.position = "none",
+    panel.grid.minor=element_blank(),
+    panel.background = element_blank(),
+    strip.text = element_text(size = 20))
+
+# old version plotting log(PR)
 plot_do <- 
   glmer_doexp_4_rd %>% filter(time=="Recruitment") %>% 
   ggplot() +
