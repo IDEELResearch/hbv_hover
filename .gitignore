@@ -47,3 +47,5 @@ vignettes/*.pdf
 00_datachecks.html
 00_datachecks.log
 00_datachecks.tex
+00_datachecks.R
+00_datachecks.Rmd
