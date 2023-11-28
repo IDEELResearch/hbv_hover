@@ -8,8 +8,9 @@
 # User-specific files
 .Ruserdata
 
-# Plots
+# subfolders
 /plots
+/subproj
 
 # Example code in package build process
 *-Ex.R
