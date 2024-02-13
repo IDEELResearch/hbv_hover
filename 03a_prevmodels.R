@@ -1,4 +1,5 @@
 ## analyze hover data
+library(survey)
 library(lme4)
 library(lmtest)
 library(geepack)
@@ -8,14 +9,84 @@ library(broom.mixed)
 library(cowplot)
 library(patchwork)
 
+#Datasets for each comparison--------
+hhmemb <- inddata1 %>% filter(indexmom=="Household member")
+#for hbsag analysis, exclude those with missing results
+hhmemb_nomiss <- hhmemb %>% filter(i27a_rdt_result==0 | i27a_rdt_result==1)
+
+##Comp1: Exp/Unexp Overall-----
+#exposed household members (non missing)
+hhmemb_exp <- hhmemb_nomiss %>% filter(h10_hbv_rdt==1)
+#unexposed household members (non missing)
+hhmemb_unexp <- hhmemb_nomiss %>% filter(h10_hbv_rdt==0)
+
+##Comp2: Exposed hh members-----
+### use hhmemb_exp for PR calc
+### for prev CI, subset into exposed DO and exposed other
+hhmemb_expdo <- hhmemb_exp %>% filter(directoff==1)
+hhmemb_expoth <- hhmemb_exp %>% filter(directoff==0)
+
+##Comp3: Unexposed hh members-----
+### use hhmemb_unexp
+### for prev CI, subset into unexposed DO and unexposed other
+hhmemb_unexpdo <- hhmemb_unexp %>% filter(directoff==1)
+hhmemb_unexpoth <- hhmemb_unexp %>% filter(directoff==0)
+
+##Comp4: Direct offspring-----
+directoff <- hhmemb_nomiss %>% filter(directoff==1)
+
+##Comp5: Other household members------
+othermemb <- hhmemb_nomiss %>% filter(directoff==0)
+
+# men
+men_exp <- hhmemb_exp %>% filter(hr3_relationship==2)
+men_unexp <- hhmemb_unexp %>% filter(hr3_relationship==2)
+
+# prevalence and CI for each subgroup
+# accounting for household clustering - incorporate survey design, with household ID variable (hrhhid) as the cluster ID. no fpc
+# cluster svy design for exposed household members
+hhmemb_exp1<-svydesign(id=~hrhhid, data=hhmemb_exp) #warning that no weights were applied and equal prob assumed - this is correct
+# cluster svy design for unexposed household members
+hhmemb_unexp1<-svydesign(id=~hrhhid, data=hhmemb_unexp) #warning that no weights were applied and equal prob assumed - this is correct
+
+# cluster svy design for exposed direct offspring
+hhmemb_expdo1<-svydesign(id=~hrhhid, data=hhmemb_expdo) #warning that no weights were applied and equal prob assumed - this is correct
+# cluster svy design for unexposed other household members
+hhmemb_expoth1<-svydesign(id=~hrhhid, data=hhmemb_expoth) #warning that no weights were applied and equal prob assumed - this is correct
+
+# cluster svy design for unexposed direct offspring
+hhmemb_unexpdo1<-svydesign(id=~hrhhid, data=hhmemb_unexpdo) #warning that no weights were applied and equal prob assumed - this is correct
+# cluster svy design for unexposed other household members
+hhmemb_unexpoth1<-svydesign(id=~hrhhid, data=hhmemb_unexpoth) #warning that no weights were applied and equal prob assumed - this is correct
+
+# exposed men
+menexp1<-svydesign(id=~hrhhid, data=men_exp) #warning that no weights were applied and equal prob assumed - this is correct
+# unexposed men
+menunexp1<-svydesign(id=~hrhhid, data=men_unexp) #warning that no weights were applied and equal prob assumed - this is correct
+
+options(digits=10)
+#methods for CI calc: c("logit", "likelihood", "asin", "beta", "mean","xlogit")
+# use "logit" method (="lo"), per documentation (https://cran.r-project.org/web/packages/survey/survey.pdf): The "logit" method fits a logistic regression model and computes a Wald-type interval on thelog-odds scale, which is then transformed to the probability scale.
+# use "mean" method (="me"), per documentation (https://cran.r-project.org/web/packages/survey/survey.pdf): The "mean" method is a Wald-type interval on the probability scale, the same as confint(svymean())
+# exposed overall
+svyciprop(~I(i27a_rdt_result), hhmemb_exp1, method = "me", level = 0.95)
+# unexposed overall
+svyciprop(~I(i27a_rdt_result), hhmemb_unexp1, method = "me", level = 0.95)
+# exposed direct off
+svyciprop(~I(i27a_rdt_result), hhmemb_expdo1, method = "me", level = 0.95)
+# exposed other hh memb
+svyciprop(~I(i27a_rdt_result), hhmemb_expoth1, method = "me", level = 0.95)
+# unexposed direct off
+svyciprop(~I(i27a_rdt_result), hhmemb_unexpdo1, method = "me", level = 0.95)
+# unexposed other hh memb
+svyciprop(~I(i27a_rdt_result), hhmemb_unexpoth1, method = "me", level = 0.95)
+# exposed male partners
+svyciprop(~I(i27a_rdt_result), menexp1, method = "me", level = 0.95)
+# unexposed male partners
+svyciprop(~I(i27a_rdt_result), menunexp1, method = "me", level = 0.95)
+
 #Comparison 1: prev ratio of hbsag positivity of household members in exposed vs unexposed--------------- 
 # using index mother's CPN/recruitment screening result, not result at enrollment
-hhmemb <- inddata1 %>% filter(indexmom=="Household member")
-exposed <- inddata1 %>% filter(h10_hbv_rdt==1) # includes index moms
-# how to get prevalence accounting for household clustering? univariate?
-
-#exclude those with missing results
-hhmemb_nomiss <- hhmemb %>% filter(i27a_rdt_result==0 | i27a_rdt_result==1)
 
 # 2x2 values
 addmargins(table(hhmemb_nomiss$i27a_rdt_result_f, hhmemb_nomiss$h10_hbv_rdt_f))
@@ -39,6 +110,17 @@ comp1mm <- glmer(i27a_rdt_result ~ h10_hbv_rdt + (1 | hrhhid), family = binomial
 summary(comp1mm)
 fixef(comp1mm)
 exp(fixef(comp1mm))
+
+#compare to OR
+comp1mm_or <- glmer(i27a_rdt_result ~ h10_hbv_rdt + (1 | hrhhid), family = binomial(link = "logit"), data=hhmemb_nomiss, nAGQ = 0) # does not converge without nAGQ=0
+summary(comp1mm_or)
+fixef(comp1mm_or)
+exp(fixef(comp1mm_or))
+
+#unadjusted OR
+comp1mm_oru <- glm(i27a_rdt_result ~ h10_hbv_rdt, family = binomial(link = "logit"), data=hhmemb_nomiss) # does not converge without nAGQ=0
+summary(comp1mm_oru)
+exp(comp1mm_oru$coefficients)
 
 # NEED TO FIGURE OUT CI FROM ML MODEL
 exp(confint((comp1mm)))
@@ -65,8 +147,7 @@ exp(fixef(comp1mm_logit))
 # Comparison 2: odds of infection in exposed households comparing offspring vs non offspring---------
 hhmemb_nomiss %>% group_by(h10_hbv_rdt,directoff, i27a_rdt_result)%>%  count()
 
-# original approach from proposal
-hhmemb_exp <- hhmemb %>% filter(h10_hbv_rdt==1)
+# use hhmemb_exp 
 addmargins(table(hhmemb_exp$i27a_rdt_result_f, hhmemb_exp$hhmemcat_f))
 
 # unadjusted (no hh clustering)
@@ -86,13 +167,22 @@ exp(fixef(comp2mm))
 exp(confint(comp2mm, method = c("boot"), boot.type=c("basic")))
 exp(confint(comp2mm, method = c("Wald")))
 
+#compare to OR
+comp2mm_or <- glmer(i27a_rdt_result ~ h10_hbv_rdt + (1 | hrhhid), family = binomial(link = "logit"), data=hhmemb_exp, nAGQ = 0) # does not converge without nAGQ=0
+summary(comp2mm_or)
+fixef(comp2mm_or)
+exp(fixef(comp2mm_or))
+
+#unadjusted OR
+comp2_oru <- glm(i27a_rdt_result ~ directoff, family = binomial(link = "logit"), data=hhmemb_exp)
+summary(comp2_oru)
+exp(comp2_oru$coefficients)
+
 
 #....................................................................................................
 #Comparison 3: odds of infection in unexposed households comparing offspring vs non offspring--------------------
-hhmemb_unexp <- hhmemb_nomiss %>% filter(h10_hbv_rdt==0)
-
+#use df hhmemb_unexp 
 addmargins(table(hhmemb_unexp$directoff, hhmemb_unexp$i27a_rdt_result_f))
-inddata1 %>% group_by(h10_hbv_rdt, perprot_h10,i27a_rdt_result_f, directoff ) %>% count()
 
 # not accounting for clustering
 comp3 <- glm(i27a_rdt_result ~ directoff, family = binomial(link = "log"), data=hhmemb_unexp)
@@ -113,7 +203,6 @@ exp(confint(comp3mm, method = c("Wald")))
 lrtest(comp3, comp3mm)
 #....................................................................................................
 #Comparison 4: odds of infection in exposed direct off vs unexposed direct off-----
-directoff <- hhmemb_nomiss %>% filter(directoff==1)
 addmargins(table(directoff$i27a_rdt_result_f, directoff$h10_hbv_rdt_f))
 
 # unadjusted
@@ -130,15 +219,23 @@ exp(fixef(comp4mm))
 exp(confint(comp4mm, method = c("boot"), boot.type=c("basic")))
 exp(confint(comp4mm, method = c("Wald")))
 
+#compare to OR
+comp4mm_or <- glmer(i27a_rdt_result ~ h10_hbv_rdt + (1 | hrhhid), family = binomial(link = "logit"), data=directoff, nAGQ = 0) # does not converge without nAGQ=0
+summary(comp4mm_or)
+fixef(comp4mm_or)
+exp(fixef(comp4mm_or))
+
+#unadjusted OR
+comp4mm_oru <- glm(i27a_rdt_result ~ h10_hbv_rdt, family = binomial(link = "logit"), data=directoff)
+summary(comp4mm_oru)
+exp(comp4mm_oru$coefficients)
 
 # comparison of fixed and mixed
 lrtest(comp4, comp4mm)
 
 #....................................................................................................
 #Comparison 5: odds of infection in exposed other mem vs unexposed other mem------
-othermemb <- hhmemb_nomiss %>% filter(directoff==0)
 addmargins(table(othermemb$h10_hbv_rdt_f, othermemb$i27a_rdt_result_f ))
-nrow(othermemb)
 
 # not accounting for clustering
 comp5 <- glm(i27a_rdt_result ~ h10_hbv_rdt, family = binomial(link = "log"), data=othermemb)
@@ -158,7 +255,7 @@ exp(confint(comp5mm, method = c("Wald")))
 lrtest(comp5, comp5mm)
 #..................................................................
 # male partners
-men <- hhmemb %>% filter(hr3_relationship==2)
+# use df men
 
 comp_husb <- glmer(i27a_rdt_result ~ h10_hbv_rdt + (1 | hrhhid), family = binomial(link = "log"), data=men, nAGQ = 0)
 summary(comp_husb)
@@ -173,14 +270,6 @@ summary(comp_husb)
 exp(comp_husb$coefficients)
 exp(confint(comp_husb, method = c("boot"), boot.type=c("basic")))
 exp(confint(comp_husb, method = c("Wald")))
-
-
-##Kim's suggestion--interaction term--------
-# maybe best from SAS
-comp2_int <- glmer(i27a_rdt_result ~ h10_hbv_rdt +directoff+h10_hbv_rdt*directoff +(1 | hrhhid), family = binomial(link = "logit"), data=hhmemb_nomiss)
-summary(comp2_int)
-fixef(comp2_int)
-exp(fixef(comp2_int))
 
 # # Sensitivity analyses for definitions of "exposed"------------------------------------------------------------------------------------------------
 # recruitment def from above : comp1mm
