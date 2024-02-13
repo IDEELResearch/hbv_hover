@@ -631,6 +631,20 @@ inddata1 %>% filter(hhmemcat_f=="Direct offspring" & i27a_rdt_result==1) %>% gro
 inddata1 %>% filter(hhmemcat_f=="Other household member" & i27a_rdt_result==1) %>% group_by(h10_hbv_rdt_f) %>% summarise(hr3_relationship_f, hrhhid)
 
 
+table(inddata1$hr11_religion_f, inddata1$h10_hbv_rdt_f,inddata1$hhmemcat_f)
+  
+table(inddata1$hhmempos)
+table(inddata1$anotherpos)
+inddata1 %>% count(i39_vaccine_eligible, i39a_vac_consent)
+
+inddata1 %>% filter(age_combined >= 18) %>%  group_by(i39_vaccine_eligible, i39a_vac_consent) %>%  count(i39_vac_whynot) %>% print(n=Inf)
+
+inddata1 %>% filter(age_combined >= 18 & anotherpos==1) %>% count() #group_by(i39_vaccine_eligible, i39a_vac_consent) %>%  count(i39_vac_whynot) %>% print(n=Inf)
+
+inddata1 %>% group_by(i39_vaccine_eligible, i39a_vac_consent) %>%  count(i39_vac_whynot) %>% print(n=Inf)
+
+table(inddata1$anotherpos)
+
 
 
 
