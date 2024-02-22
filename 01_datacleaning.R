@@ -16,7 +16,7 @@ library(sf)
 library(tmap)    # for static and interactive maps
 library(leaflet) # for interactive maps
 library(tmaptools)
-# previously used OpenStreetMap but java not working with M1 chip computer - still trying to resolve. downloaded homebrew per https://stackoverflow.com/questions/64788005/java-jdk-for-the-apple-silicon-chips/70456947#70456947 
+library(here)
 
 ## establish colors----------------------------------------------------------------
 drc_colors <- c("#007fff", 	"#ce102f", 	"#f7d618")
@@ -29,20 +29,17 @@ nounprojgraphcol <- c("#4D4D4D","#B2182B")
 
 # API route
 data0 <- redcap_read_oneshot(redcap_uri = "https://global.redcap.unc.edu/api/",
-                             token = read_file("/Users/camillem/Documents/GitHub/redcap_api/hover_api.txt"))$data
+                             token = read_file(here("redcap_api", "file.txt") %>% str_remove("hbv_hover/")))$data
 
 #subset data to all valid IDs
-# remove duplicate Menage1 
-
 data1<- data0 %>% 
   dplyr::filter(hrhhid!="HRB -1045" & hrhhid!="HRB -1048" & hrhhid!="HRB -1059" & hrhhid!="HRK-1101") 
 
-# per Patrick, HR2084 enrolled on April 17 remains HRK 2084 and HRK-2084 on April 30 should be HRK-2085
+# HR2084 enrolled on April 17 remains HRK 2084 and HRK-2084 on April 30 should be HRK-2085
 data1$hrhhid <- ifelse(data1$hrhhid=="HRK-2084", "HRK-2085", data1$hrhhid)
 
 data1$hrhhid <- toupper(data1$hrhhid)
 # Add maternity center where women originally presented for maternity care
-# Binza is in a higher SES part of town than Kingasani.
 data1$mat <- substr(data1$hrhhid,3,3)
 #table(data1$mat)
 data1$maternity <- ifelse(data1$mat=="B","Binza",
@@ -63,7 +60,7 @@ hhdata1 <- hhdata1 %>% relocate("maternity", .after = "h10_hbv_rdt")
 hhdata1$hxcoord <- as.numeric(hhdata1$hxcoord)
 hhdata1$hycoord <- as.numeric(hhdata1$hycoord)
 
-#  HRB-1028 coordinates using coords from the correct neighborhood (interview took place at BINZA)
+#  HRB-1028 coordinates using coords from the correct neighborhood, randomly chosen (interview took place at BINZA)
 hhdata1$hxcoord[hhdata1$hrhhid=="HRB-1028"] <- 4.405503
 hhdata1$hycoord[hhdata1$hrhhid=="HRB-1028"] <- 15.273940
 #  HRB-1040 coordinates using coords from the correct neighborhood (interview took place at BINZA)
@@ -110,7 +107,7 @@ hist(hhdata1$hhprev)
 
 # Add recruitment maternity--------------------
 library(readxl)
-priorstudies <- read_excel("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/Patrick data updates/HOVER etudes precedentes.xlsx", sheet = "forimport")
+priorstudies <- read_excel(here("Data", "HOVER etudes precedentes.xlsx"), sheet = "forimport")
 
 hhdata1 <- left_join(hhdata1, priorstudies, by = c("hrhhid"))
 inddata1 <- left_join(inddata1, priorstudies, by = c("hrhhid"))
@@ -120,9 +117,9 @@ inddata1 <- left_join(inddata1, priorstudies, by = c("hrhhid"))
 options(scipen = 999) # need GPS data not to be in sci notation
 options("digits" = 15) # avoid truncation of gps coords
 
-mat_gps <- read_excel("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/Patrick data updates/HOVER etudes precedentes.xlsx", sheet = "maternity_cpn_gps")
+mat_gps <- read_excel(here("Data", "HOVER etudes precedentes.xlsx"), sheet = "maternity_cpn_gps")
 
-mat_gps_nomiss <- mat_gps %>% filter(!is.na(mat_long)) # waiting for input from Patrick on missing locations
+mat_gps_nomiss <- mat_gps %>% filter(!is.na(mat_long)) # waiting for input on missing locations
 mat_gps_sf <-  st_as_sf(mat_gps_nomiss, coords = c("mat_long","mat_lat"), crs= 4326)
 # add value for size on map
 mat_gps_sf$binzking <- ifelse(mat_gps_sf$cpn_maternity=="Binza" | mat_gps_sf$cpn_maternity=="Kingasani", 4,1)
@@ -1249,7 +1246,7 @@ inddata1$i23_sex_hx_part_past3mo <- as.numeric(inddata1$i23_sex_hx_part_past3mo)
 class(inddata1$i23_sex_hx_part_past3mo)
 table(inddata1$i23_sex_hx_part_past3mo,inddata1$hhmemcat_4_f, useNA = "always") # confirm what 95, 96 mean
 inddata1 %>% filter(i23_sex_hx_part_past3mo == 95 |i23_sex_hx_part_past3mo == 96  ) %>% reframe(hrhhid, hr3_relationship_fr, age_combined,paststudymutexcl,i22_sex_hx_age_1st,hrname_first, hrname_last, hrname_post)
-# same individuals of value or 95 or 96 for subsequent questions - check with Patrick but likely should combine don't know/refused
+# same individuals of value or 95 or 96 for subsequent questions
 
 inddata1$i23_sex_hx_part_past3mo_f <- as.factor(inddata1$i23_sex_hx_part_past3mo)
 
@@ -1513,14 +1510,14 @@ inddata1$hbvposdiroff <- ifelse(is.na(inddata1$hbvposdiroff), 0,inddata1$hbvposd
 # ind_clean is cleaned dataset including those added during fogarty visits (date of enrollment is only on household survey so all new ones have original household date )
 ind_clean <- inddata1
 
-ind1006 <- readRDS("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/HepB/HOVER/hoverdataanalysis/inddata1006.RDS")
+ind1006 <- readRDS(here("Data","ind1006"))
 
 inddata1 <- subset(inddata1, (inddata1$pid %in% ind1006$pid2))
 fognewenroll <- subset(ind_clean, !(ind_clean$pid %in% ind1006$pid))
 
 # summary of datasets:.......................
 # inddata1 - dataset to use for analysis because all code was written using this name
-# ind1006 - saved version of the last download before fogarty began (since the new enrollments don't have dates-only on original hh enrollment data)
+# ind1006 - saved list of pids of the last download before fogarty began (since the new enrollments don't have dates-only on original hh enrollment data)
 # ind_clean - cleaned dataset post fogarty (ongoing) that includes new enrollments
 # fognewenroll - new enrollments in fogarty (future analysis of fog data)
 #...........................................
