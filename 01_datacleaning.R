@@ -1188,6 +1188,12 @@ inddata1  <- inddata1 %>%
     TRUE ~ 0) %>% as.numeric())
 table(inddata1$hhmempos)
 
+# var for hh level
+hhwothpos <- inddata1 %>% group_by(hrhhid) %>% summarise(numotherpos = sum(hhmempos))
+view(hhwothpos)
+inddata1 <- left_join(inddata1, hhwothpos, by = "hrhhid")
+table(inddata1$numotherpos)
+
 # lives with another positive
 inddata1$anotherpos <- ifelse(inddata1$totalpositive - inddata1$i27a_rdt_result > 0 , 1,0)
 table(inddata1$anotherpos)
@@ -1527,6 +1533,25 @@ moms <- inddata1 %>% group_by(hrhhid) %>% filter(hr3_relationship == 1)
 directoff <- inddata1 %>% filter(hr3_relationship == 3)
 othermember <- inddata1 %>% filter(hhmemcat==0)
 men <- othermember %>% filter(hr3_relationship==2)
+
+# indicator for if 'other hh member' (excluding dir off) is positive
+oth_poshh <- othermember %>% group_by(hrhhid) %>% summarise(hbvposoth = sum(i27a_rdt_result))
+table(oth_poshh$hbvposoth, useNA = "always")
+# make indicator
+oth_poshh <- oth_poshh %>% mutate(hbvposoth_indic = case_when(hbvposoth >0 ~ 1, hbvposoth==0 ~ 0))
+# merge onto individual and household datasets
+inddata1 <- left_join(inddata1, oth_poshh, by = "hrhhid")
+# households without other household members (ie households with only mothers/children enrolled) will be NA - need to make 0
+inddata1$hbvposoth_indic <- ifelse(is.na(inddata1$hbvposoth_indic), 0, inddata1$hbvposoth_indic)
+inddata1$hbvposoth <- ifelse(is.na(inddata1$hbvposoth), 0, inddata1$hbvposoth)
+
+# merge onto individual and household datasets
+hhdata1 <- left_join(hhdata1, oth_poshh, by = "hrhhid")
+# households without other household members (ie households with only mothers/children enrolled) will be NA - need to make 0
+hhdata1$hbvposoth_indic <- ifelse(is.na(hhdata1$hbvposoth_indic), 0, hhdata1$hbvposoth_indic)
+hhdata1$hbvposoth <- ifelse(is.na(hhdata1$hbvposoth), 0, hhdata1$hbvposoth)
+
+
 
 # IRB checks aug 2023-----
 table(inddata1$h10_hbv_rdt)

@@ -645,7 +645,34 @@ inddata1 %>% group_by(i39_vaccine_eligible, i39a_vac_consent) %>%  count(i39_vac
 
 table(inddata1$anotherpos)
 
+# figure 2 part c as barchart
+table(hhdata1$hbvposdiroff, hhdata1$h10_hbv_rdt_f)
+table(hhdata1$hrhhid, hhdata1$h10_hbv_rdt_f)
+hhdata1 <- left_join(hhdata1,hhwothpos, by = "hrhhid" ) # hhmempos
+hhdata1 <- left_join(hhdata1, sensdefs[, c("hrhhid", "perprot_h10","anypos","onlypos")], by = "hrhhid" )
 
+hhdata1 <- hhdata1 %>% mutate(hbvposdiroff_indic = case_when(hbvposdiroff>0 ~ 1, hbvposdiroff==0 ~ 0))
+fig2c <- hhdata1 %>% group_by(h10_hbv_rdt_f, hbvposdiroff_indic,hbvposoth_indic, perprot_h10) %>% count()
 
+fig2c <- fig2c %>% unite(label, c(1:4), sep = "_", remove = FALSE)
+view(fig2c)
+library("RColorBrewer")
 
+library("ggchicklet")
+brewer.pal(9, "RdGy")
+my_rdgy <- c("#B2182B", "#D6604D", "#F4A582", "#FDDBC7", "#FFFFFF", "#E0E0E0", "#BABABA", "#878787", "#4D4D4D")
+
+tiff("./plots/fig2c_feb.tiff", units="in", width=3, height=5, res=300)
+ggplot(fig2c, aes(x = fct_rev(h10_hbv_rdt_f), y=n, fill = (label))) +
+#  geom_bar(stat = "identity", width = 0.5)+
+  geom_chicklet(radius = grid::unit(1.15, "mm"), width = 0.6, color = "#4D4D4D", size = 0.25)+
+  scale_fill_manual(values = c("#E0E0E0","#FDDBC7","#D6604D","#B2182B",  "#E0E0E0",  "#D6604D", "#B2182B","#B2182B" ))+
+  #geom_text(aes(label = n), size = 3, position = position_stack(vjust = 0.5))+
+  theme(panel.background = element_blank(),
+        axis.title = element_blank(),
+        legend.text = element_blank(),
+        legend.title = element_blank())
+ggsave('./plots/fig2c_feb.png', width=6, height=9)
+# insert ggplot code
+dev.off()
 
