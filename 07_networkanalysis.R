@@ -36,7 +36,10 @@ pacman::p_load(fs,
 #B. By exposure --------------------------------
 # start with 200
 ## 1. Read in the hovernet200 data ----
-hovernet200 <- inddata1 %>% select("hrhhid","pid","h10_hbv_rdt","hr3_relationship","hr4_sex","totalpositive","i27a_rdt_result","cpn_maternity","tab3hbv") #"i27a_rdt_result_f","age_combined", "hr4_sex_f","hdov",
+inddata1$tab3hbv <- ifelse(inddata1$hhmemcat==2, inddata1$h10_hbv_rdt, inddata1$i27a_rdt_result) # hhmemcat==2 are index moms
+table(inddata1$tab3hbv, useNA = "always")
+
+hovernet200 <- inddata1 %>% select("hrhhid","pid","h10_hbv_rdt","hr3_relationship","hr4_sex","totalpositive","i27a_rdt_result","cpn_maternity", "tab3hbv") #"i27a_rdt_result_f","age_combined", "hr4_sex_f","hdov","tab3hbv"
 # from step below that subsets these, but want to keep the same code
 hovernet <- hovernet200 
 # value for type of relationship
@@ -85,7 +88,15 @@ table(hovernet_attr$hbvnodecross, useNA = "always")
 
 ## 2. Exposed subset------------
 ### 5.1 Subset-------------------------------
-sub_exphh_edge <- hover_edge %>% filter(h10_hbv_rdt == 1)
+hhidbypos <- inddata1 %>% select(c("hrhhid", "pid", "numotherpos", "h10_hbv_rdt","i27a_rdt_result" ))
+
+hvr_ed_gsimp <- graph_from_data_frame(sub_exphh_edge, directed = TRUE)
+
+test <- left_join(hover_edge, hhidbypos[, c("pid", "numotherpos")], by = "pid", relationship = "many-to-many" )
+
+sub_exphh_edge <- test %>% dplyr::arrange(desc(numotherpos)) %>% 
+  filter(h10_hbv_rdt == 1)
+
 hvr_ed_gsimp <- graph_from_data_frame(sub_exphh_edge, directed = TRUE)
 
 ### 5.2 Formatting-------------------------------
@@ -106,6 +117,7 @@ V(hvr_ed_gsimp)$color <-
                 ifelse(V(hvr_ed_gsimp)$hbsag == 2,"black",
                        ifelse(V(hvr_ed_gsimp)$hbsag == 3,"#f4a582",  "gray70"))))
 
+
 #####use for edge list WITHOUT maternity edges
 # node_colors <- c("#B2182B","black", "#f4a582","gray70")
 # V(hvr_ed_gsimp)$color <- node_colors[V(hvr_ed_gsimp)$hbsag]
@@ -119,29 +131,32 @@ V(hvr_ed_gsimp)$shape <-
   node_shapes[ifelse(is.na(V(hvr_ed_gsimp)$sex), 3, V(hvr_ed_gsimp)$sex + 1)]
 
 # Edges
-# solid vs dotted to distinguish sexual/vertical vs other
-E(hvr_ed_gsimp)$lty <-
-  ifelse(E(hvr_ed_gsimp)$value == 4, "dotted", "solid")
+# solid vs dotted to distinguish sexual/vertical vs other - too distracting
+#E(hvr_ed_gsimp)$lty <-
+#  ifelse(E(hvr_ed_gsimp)$value == 4, "dotted", "solid")
 
-# make sexual and vertical routes stand out
+# make sexual and vertical routes stand out - too distracting
 #edge_colors <- c("gray70","#60bfc1","#5d8eb6","gray70") # 1-mothers (doesn't exist), 2 sexual, 3 vertical, 4 other
 
 #edge_colors <- c("gray70","#1f4a76", "#65b5c0","gray70")
 
 #edge_colors <- c("gray70","#1f4a76", "#1F3B4D","gray70")
-edge_colors <- c("gray70","#479cf8", "#1F3B4D","gray70")
-edge_colors <- c("gray70","#3b7e88", "#1F3B4D","gray70")
+#edge_colors <- c("gray70","#479cf8", "#1F3B4D","gray70")
+#edge_colors <- c("gray70","#3b7e88", "#1F3B4D","gray70")
+#edge_colors <- c("gray70","#1F3B4D", "#479cf8","#1F3B4D")
+#edge_colors <- c("gray70","gray70", "#1F3B4D","gray70")
+edge_colors <- c("#1F3B4D","#1F3B4D", "#1F3B4D","#1F3B4D")
 
 # edge color seems distracting
 E(hvr_ed_gsimp)$color <- edge_colors[E(hvr_ed_gsimp)$value]
-E(hvr_ed_gsimp)$width = E(hvr_ed_gsimp)$value
+# E(hvr_ed_gsimp)$width = E(hvr_ed_gsimp)$value
 
 # alternatively could show transmission route by edge weight
 # E(hvr_ed_gsimp)$weight <- E(hvr_ed_gsimp)$value
 
 # Add vertex labels
 V(hvr_ed_gsimp)$label.cex <- 1 # was 0.5
-V(hvr_ed_gsimp)$label.family <- "Helvetica"
+V(hvr_ed_gsimp)$label.family <- "Arial"
 V(hvr_ed_gsimp)$label <- V(hvr_ed_gsimp)$name
 
 # Compute the layout with minimal overlap
@@ -158,6 +173,7 @@ node.size= c(10,10,10)
 ### 5.3 Plot -------------------------------
 setEPS()
 postscript("./plots/network_exp.eps")# quality=100)#, width=600, height=350)
+#exp <- 
 plot(
   hvr_ed_gsimp,
   vertex.size = 3,
@@ -172,7 +188,7 @@ plot(
   edge.lty = E(hvr_ed_gsimp)$lty,
   vertex.shape = V(hvr_ed_gsimp)$shape,
   # main = "HOVER households with ≥2 HBV infections (n=14)",
-  main = "Exposed households",
+  main = "Index+ households",
   layout=layout.auto,
   vertex.size=node.size*0.25) # layout_with_lgl, layout_nicely, layout.auto
 dev.off()
@@ -213,29 +229,23 @@ V(hvr_ed_gsimp)$shape <-
   node_shapes[ifelse(is.na(V(hvr_ed_gsimp)$sex), 3, V(hvr_ed_gsimp)$sex + 1)]
 
 # Edges
-# solid vs dotted to distinguish sexual/vertical vs other
-E(hvr_ed_gsimp)$lty <-
-  ifelse(E(hvr_ed_gsimp)$value == 4, "dotted", "solid")
+# solid vs dotted to distinguish sexual/vertical vs other - this is distracting
+E(hvr_ed_gsimp)$lty <- "solid"
+#  ifelse(E(hvr_ed_gsimp)$value == 4, "dotted", "solid")
 
-# make sexual and vertical routes stand out
-#edge_colors <- c("gray70","#60bfc1","#5d8eb6","gray70") # 1-mothers (doesn't exist), 2 sexual, 3 vertical, 4 other
-
-#edge_colors <- c("gray70","#1f4a76", "#65b5c0","gray70")
-
-#edge_colors <- c("gray70","#1f4a76", "#1F3B4D","gray70")
-edge_colors <- c("gray70","#479cf8", "#1F3B4D","gray70")
-edge_colors <- c("gray70","#3b7e88", "#1F3B4D","gray70")
+# making edges by sexual vs vertical vs other relationships is too distracting 
+edge_colors <- c("#1F3B4D","#1F3B4D", "#1F3B4D","#1F3B4D")
 
 # edge color seems distracting
 E(hvr_ed_gsimp)$color <- edge_colors[E(hvr_ed_gsimp)$value]
-E(hvr_ed_gsimp)$width = E(hvr_ed_gsimp)$value
+ E(hvr_ed_gsimp)$width <- 2  #E(hvr_ed_gsimp)$value
 
 # alternatively could show transmission route by edge weight
 # E(hvr_ed_gsimp)$weight <- E(hvr_ed_gsimp)$value
 
 # Add vertex labels
 V(hvr_ed_gsimp)$label.cex <- 1 # was 0.5
-V(hvr_ed_gsimp)$label.family <- "Helvetica"
+V(hvr_ed_gsimp)$label.family <- "Arial"
 V(hvr_ed_gsimp)$label <- V(hvr_ed_gsimp)$name
 
 # Compute the layout with minimal overlap
@@ -266,14 +276,10 @@ plot(
   edge.lty = E(hvr_ed_gsimp)$lty,
   vertex.shape = V(hvr_ed_gsimp)$shape,
   # main = "HOVER households with ≥2 HBV infections (n=14)",
-  main = "Unexposed households",
+  main = "Index- households",
   layout=layout.auto,
   vertex.size=node.size*0.25) # layout_with_lgl, layout_nicely, layout.auto
 dev.off()
-
-
-
-
 
 
 
@@ -1040,3 +1046,10 @@ plot(
 
 
 plot(fog_gr)
+
+# hh with 2+ sag+ members
+table(hhdata1$hbvposdiroff)
+library(tidyverse)
+hhdata1 %>% filter(hbvposdiroff > 0) %>% reframe(hrhhid, hbvposdiroff)
+
+inddata1 %>% filter(hbvposdiroff > 0 & i27a_rdt_result_f=="HBsAg+") %>% reframe(hrhhid, hbvposdiroff, i27a_rdt_result_f, age_combined)
