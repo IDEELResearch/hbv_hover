@@ -22,19 +22,22 @@ indgps_2_jitt<- st_jitter(indgps_2,  factor = 0.005)
 hover_gps_full_jitt <-st_jitter(hover_gps_full,  factor = 0.01)
 
 # surrounding polygons
-drc_healthzone_correctkinshasa = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/drc_healthzone_adm2_correctkinshasa/RDC_Zone_de_sante_09092019.shp", stringsAsFactors = FALSE) %>% st_transform(4326)
+drc_healthzone_correctkinshasa = st_read(here("Data", "drc_healthzone_adm2_correctkinshasa", "RDC_Zone_de_sante_09092019.shp"), stringsAsFactors = FALSE) %>% st_transform(4326)
 # keep only Kin prov
 drc_healthzone_kinshasa <- subset(drc_healthzone_correctkinshasa, PROVINCE == "Kinshasa")
 
 # brazzaville polygon
-congo_br = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/congo_adm0/cog_admbnda_adm0_gaul_20190617.shp", stringsAsFactors = FALSE) %>% st_transform(4326)
+library(sf)
+congo_br = st_read(here("Data", "congo_adm0", "cog_admbnda_adm0_gaul_20190617.shp"), stringsAsFactors = FALSE) %>% st_transform(4326)
+
 # rename brazza labels
 congo_br$ADM0_FR <- as.character(congo_br$ADM0_FR) 
 congo_br$ADM0_FR[congo_br$ADM0_FR == "Congo (le)"] <- "Congo"
 congo_br$ADM0_FR[congo_br$ADM0_FR == "Congo"] <- "Brazzaville"
 
 # health areas
-drc_healtharea = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/rdc_aires-de-sante/RDC_Aires de sant‚.shp", stringsAsFactors = FALSE) %>% st_transform(4326)
+
+drc_healtharea = st_read(here("Data", "rdc_aires-de-sante", "RDC_Aires de sant‚.shp"), stringsAsFactors = FALSE) %>% st_transform(4326)
 # restrict to Kin
 drc_healtharea_Kin <- subset(drc_healtharea, Province == "Kinshasa")
 
@@ -45,7 +48,7 @@ drcprov_Kin <- subset(drcprov, ADM1_NAME == "KINSHASA")
 drcprov_KinKC <- subset(drcprov, ADM1_NAME == "KINSHASA" | ADM1_NAME == "KONGO CENTRAL" )
 
 ##rivers - covered by adm0 and adm1 
-# rivers = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/congo_rivers_simp/congo_rivers_simp.shp", stringsAsFactors = F) %>% st_transform(4326)
+# rivers = st_read(here("Data","congo_rivers_simp", "congo_rivers_simp.shp"), stringsAsFactors = F) %>% st_transform(4326)
 
 # read in data
 admin0 <- readRDS('./admin0.rds') %>%          # GADM admin0 boundaries
@@ -347,11 +350,6 @@ krige_own <- m.kriged.own %>% cbind(gdf$x, gdf$y) %>% mutate(
 # Integrate Population density-----------------------------
 drcpop = raster("COD_population_v2_0_gridded/COD_population_v2_0_gridded.tif")
 
-# DRC health zone bounds
-drc_healthzone_correctkinshasa = st_read("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/IDEEL/sanru/Mapping/NEW files/drc_healthzone_adm2_correctkinshasa/RDC_Zone_de_sante_09092019.shp", stringsAsFactors = FALSE) %>% st_transform(4326)
-# keep only Kin prov
-drc_healthzone_kinshasa <- subset(drc_healthzone_correctkinshasa, PROVINCE == "Kinshasa")
-
 drcprov = st_read("./adm1/GLOBAL_ADM1.shp", stringsAsFactors = FALSE) %>% st_transform(4326)
 # restrict to Kin and prov below kin (but prov shp covers river)
 drcprov_Kin <- subset(drcprov, ADM1_NAME == "KINSHASA")
@@ -541,8 +539,6 @@ map1 <- make_polygon_map()
 # another example: https://gis.stackexchange.com/questions/332109/extract-population-density-data-from-a-raster-by-shapefile
 
 # Fogarty map------------------
-
-fogpids <- read_excel("/Users/camillem/OneDrive - University of North Carolina at Chapel Hill/Epi PhD/Fogarty work/Data and analysis/FOGARTY DATASET.xlsx", sheet = "fogpids")
 
 hover_gps_full_jitt <-st_jitter(hover_gps_full,  factor = 0.01)
 
