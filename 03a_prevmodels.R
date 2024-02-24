@@ -111,19 +111,19 @@ summary(comp1mm)
 fixef(comp1mm)
 exp(fixef(comp1mm))
 
-#compare to OR
+#compare to OR (logit link)
 comp1mm_or <- glmer(i27a_rdt_result ~ h10_hbv_rdt + (1 | hrhhid), family = binomial(link = "logit"), data=hhmemb_nomiss, nAGQ = 0) # does not converge without nAGQ=0
 summary(comp1mm_or)
 fixef(comp1mm_or)
 exp(fixef(comp1mm_or))
+exp(confint(comp1mm_or, method = c("Wald"))) # proceeding with Wald
 
 #unadjusted OR
 comp1mm_oru <- glm(i27a_rdt_result ~ h10_hbv_rdt, family = binomial(link = "logit"), data=hhmemb_nomiss) # does not converge without nAGQ=0
 summary(comp1mm_oru)
 exp(comp1mm_oru$coefficients)
+exp(confint(comp1mm_oru, method = c("Wald")))
 
-# NEED TO FIGURE OUT CI FROM ML MODEL
-exp(confint((comp1mm)))
 # lmerTest::con
 lrtest(comp1, comp1mm)
 
@@ -135,16 +135,8 @@ exp(confint(comp1mm, method = c("boot"), boot.type=c("perc")))
 exp(confint(comp1mm, method = c("Wald"))) # proceeding with Wald
 exp(confint(comp1mm, method = c("profile")))
 
-# logit link for OR
-comp1mm_logit <- glmer(i27a_rdt_result ~ h10_hbv_rdt + (1 | hrhhid), family = binomial(link = "logit"), data=hhmemb_nomiss)
-summary(comp1mm_logit)
-fixef(comp1mm_logit)
-exp(fixef(comp1mm_logit))
-
-
-
 #....................................................................................................
-# Comparison 2: odds of infection in exposed households comparing offspring vs non offspring---------
+# Comparison 2: odds of infection in exposed (index+) households comparing offspring vs non offspring---------
 hhmemb_nomiss %>% group_by(h10_hbv_rdt,directoff, i27a_rdt_result)%>%  count()
 
 # use hhmemb_exp 
@@ -168,15 +160,17 @@ exp(confint(comp2mm, method = c("boot"), boot.type=c("basic")))
 exp(confint(comp2mm, method = c("Wald")))
 
 #compare to OR
-comp2mm_or <- glmer(i27a_rdt_result ~ h10_hbv_rdt + (1 | hrhhid), family = binomial(link = "logit"), data=hhmemb_exp, nAGQ = 0) # does not converge without nAGQ=0
+comp2mm_or <- glmer(i27a_rdt_result ~ directoff + (1 | hrhhid), family = binomial(link = "logit"), data=hhmemb_exp, nAGQ = 0) # does not converge without nAGQ=0
 summary(comp2mm_or)
 fixef(comp2mm_or)
 exp(fixef(comp2mm_or))
+exp(confint(comp2mm_or, method = c("Wald"))) # proceeding with Wald
 
 #unadjusted OR
 comp2_oru <- glm(i27a_rdt_result ~ directoff, family = binomial(link = "logit"), data=hhmemb_exp)
 summary(comp2_oru)
 exp(comp2_oru$coefficients)
+exp(confint(comp2_oru, method = c("Wald")))
 
 
 #....................................................................................................
@@ -198,6 +192,17 @@ exp(fixef(comp3mm))
 exp(confint(comp3mm, method = c("boot"), boot.type=c("basic")))
 exp(confint(comp3mm, method = c("Wald")))
 
+#compare to OR
+comp3mm_or <- glmer(i27a_rdt_result ~ directoff + (1 | hrhhid), family = binomial(link = "logit"), data=hhmemb_unexp, nAGQ = 0) # does not converge without nAGQ=0
+summary(comp3mm_or)
+exp(fixef(comp3mm_or))
+exp(confint(comp3mm_or, method = c("Wald"))) # proceeding with Wald
+
+#unadjusted OR
+comp3_oru <- glm(i27a_rdt_result ~ directoff, family = binomial(link = "logit"), data=hhmemb_unexp)
+summary(comp3_oru)
+exp(comp3_oru$coefficients)
+exp(confint(comp3_oru, method = c("Wald")))
 
 # comparison of fixed and mixed
 lrtest(comp3, comp3mm)
@@ -224,11 +229,13 @@ comp4mm_or <- glmer(i27a_rdt_result ~ h10_hbv_rdt + (1 | hrhhid), family = binom
 summary(comp4mm_or)
 fixef(comp4mm_or)
 exp(fixef(comp4mm_or))
+exp(confint(comp4mm_or, method = c("Wald"))) 
 
 #unadjusted OR
 comp4mm_oru <- glm(i27a_rdt_result ~ h10_hbv_rdt, family = binomial(link = "logit"), data=directoff)
 summary(comp4mm_oru)
 exp(comp4mm_oru$coefficients)
+exp(confint(comp4mm_oru, method = c("Wald")))
 
 # comparison of fixed and mixed
 lrtest(comp4, comp4mm)
@@ -253,6 +260,20 @@ exp(confint(comp5mm, method = c("Wald")))
 
 # comparison of fixed and mixed
 lrtest(comp5, comp5mm)
+
+#compare to OR
+comp5mm_or <- glmer(i27a_rdt_result ~ h10_hbv_rdt + (1 | hrhhid), family = binomial(link = "logit"), data=othermemb, nAGQ = 0) # does not converge without nAGQ=0
+summary(comp5mm_or)
+exp(fixef(comp5mm_or))
+exp(confint(comp5mm_or, method = c("Wald"))) 
+
+#unadjusted OR
+comp5mm_oru <- glm(i27a_rdt_result ~ h10_hbv_rdt, family = binomial(link = "logit"), data=othermemb)
+summary(comp5mm_oru)
+exp(comp5mm_oru$coefficients)
+exp(confint(comp5mm_oru, method = c("Wald")))
+
+
 #..................................................................
 # male partners
 # use df men
@@ -270,6 +291,14 @@ summary(comp_husb)
 exp(comp_husb$coefficients)
 exp(confint(comp_husb, method = c("boot"), boot.type=c("basic")))
 exp(confint(comp_husb, method = c("Wald")))
+
+# ORs
+# dont need to account for clustering since only one per hh
+comp_husb_or <- glm(i27a_rdt_result ~ h10_hbv_rdt, family = binomial(link = "logit"), data=men)
+summary(comp_husb_or)
+exp(comp_husb_or$coefficients)
+exp(confint(comp_husb_or, method = c("Wald")))
+
 
 # # Sensitivity analyses for definitions of "exposed"------------------------------------------------------------------------------------------------
 # recruitment def from above : comp1mm
@@ -398,11 +427,16 @@ view(all_comps)
 all_comps <- all_comps %>% mutate(desorder = substr(comp, nchar(comp)-1+1, nchar(comp)) %>% as.numeric()) # desorder = original order
   #colnames(glmer_doexp_4_rd) <- c('term','logpr','std.error','statistic','p.value','LCI_95','UCI_95','LCI_99','UCI_99','time')
 all_comps <-   all_comps %>% mutate(labl = case_when(
-  comp == "Comparison 1" ~ "All household members: exposed vs unexposed",
-  comp == "Comparison 4" ~ "Direct offspring: exposed vs unexposed",
-  comp == "Comparison 5" ~ "Other: exposed vs unexposed",
-  comp == "Comparison 2" ~ "Exposed: direct offspring vs other",
-  comp == "Comparison 3" ~ "Unexposed: direct offspring vs other"
+  comp == "Comparison 1" ~ "All household members: index+ vs index-",
+  comp == "Comparison 4" ~ "Direct offspring:  index+ vs index-",
+  comp == "Comparison 5" ~ "Other: index+ vs index-",
+  comp == "Comparison 2" ~ "Index+: direct offspring vs other",
+  comp == "Comparison 3" ~ "Index-: direct offspring vs other"
+  #comp == "All household members: exposed vs unexposed" ~ "All household members: index+ vs index-",
+  #comp == "Direct offspring: exposed vs unexposed" ~ "Direct offspring:  index+ vs index-",
+  #comp == "Other: exposed vs unexposed" ~ "Other: index+ vs index-",
+  #comp == "Exposed: direct offspring vs other" ~ "Index+: direct offspring vs other",
+  #comp == "Unexposed: direct offspring vs other" ~ "Index-: direct offspring vs other"
 ))
 view(all_comps)
 all_comps %>% filter(abs(estimate) < 10) %>% 

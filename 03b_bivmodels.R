@@ -719,6 +719,14 @@ summary(m)
 confint(m, method = "Wald")
 
 
+t <- glmer(i27a_rdt_result ~  (1 | hrhhid) + hr4_sex_f, data=doexp_recr, family=binomial("log"), nAGQ = 0)
+summary(t)
+exp(fixef(t))
+exp(confint(t, method = c("Wald"))) # proceeding with Wald
+
+o <- glmer(i27a_rdt_result ~  (1 | hrhhid) + hr4_sex_f, data=doexp_recr, family=binomial("logit"), nAGQ = 0)
+exp(fixef(o))
+exp(confint(o, method = c("Wald"))) # proceeding with Wald
 
 # vars that converge
 alldovar <- c("hr4_sex_f", "wealth_R_lowestv","i14_shared_razor_f", "i15_shared_nailclippers_f",'trans_bin', "i10_street_salon_bin", "i11_manucure_f",  "partner3mo_bin")
@@ -741,7 +749,7 @@ recr_doexp <- function(var){
 # modified poisson for age_cat_cons, age_combined - family=poisson("log"))
 # logit for OR to PR approx
 recr_doexp_logit <- function(var){
-  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_recr, family=binomial("logit"))
+  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_recr, family=binomial("logit"), nAGQ = 0) #, nAGQ = 0 to make prevalence models when used with
   est <- tidy(m) %>% filter(stringr::str_detect(term, var))
   cis95 <- as.data.frame(confint(m, method = c("Wald")))
   cis95 <- tibble::rownames_to_column(cis95, "term") %>% setNames(c("term", "LCI_95", "UCI_95"))
@@ -767,7 +775,7 @@ enr_doexp <- function(var){
   m <- m %>% select(-c('effect','group'))}
 # logit approximation for age_cat_cons, age_combined
 enr_doexp_logit <- function(var){
-  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_enr, family=binomial("logit"))
+  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_enr, family=binomial("logit"), nAGQ = 0)
   est <- tidy(m) %>% filter(stringr::str_detect(term, var))
   cis95 <- as.data.frame(confint(m, method = c("Wald")))
   cis95 <- tibble::rownames_to_column(cis95, "term") %>% setNames(c("term", "LCI_95", "UCI_95"))
@@ -793,7 +801,7 @@ any_doexp <- function(var){
   m <- m %>% select(-c('effect','group'))}
 # logit approx for age_cat_cons, age_combined
 any_doexp_logit <- function(var){
-  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_any, family=binomial("logit"))
+  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_any, family=binomial("logit"), nAGQ = 0)
   est <- tidy(m) %>% filter(stringr::str_detect(term, var))
   cis95 <- as.data.frame(confint(m, method = c("Wald")))
   cis95 <- tibble::rownames_to_column(cis95, "term") %>% setNames(c("term", "LCI_95", "UCI_95"))
@@ -819,7 +827,7 @@ only_doexp <- function(var){
   m <- m %>% select(-c('effect','group'))}
 # logit approx for age_cat_cons, age_combined
 only_doexp_logit <- function(var){
-  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_only, family=binomial("logit"))
+  m <- glmer(as.formula(paste0('i27a_rdt_result ~  (1 | hrhhid) +', var)), data=doexp_only, family=binomial("logit"), nAGQ = 0)
   est <- tidy(m) %>% filter(stringr::str_detect(term, var))
   cis95 <- as.data.frame(confint(m, method = c("Wald")))
   cis95 <- tibble::rownames_to_column(cis95, "term") %>% setNames(c("term", "LCI_95", "UCI_95"))
@@ -834,12 +842,31 @@ only_doexp_logit <- function(var){
 # check convergence for each variable, for all 4 models
 alldovar <- c("hr4_sex_f", "wealth_R_lowestv", "i14_shared_razor_f", "i15_shared_nailclippers_f", 'trans_bin', "i10_street_salon_bin", "i11_manucure_f",  "partner3mo_bin")
 # datasets: doexp_recr, doexp_enr, doexp_any, doexp_only
+#### ORs for all----
+table(hbsag = doexp_recr$i27a_rdt_result_f, useNA = "always")
+table(doexp_recr$i14_shared_razor_f, doexp_recr$i27a_rdt_result_f)
 
-m <- glmer(i27a_rdt_result ~  (1 | hrhhid) + i11_manucure_f, data=doexp_only, family=binomial("log"), nAGQ = 0) # 
-summary(m)
-m <- glmer(i27a_rdt_result ~  (1 | hrhhid) + i11_manucure_f, data=doexp_only, family=binomial("log")) # 
-summary(m)
+alldovar <- c( "age_combined", "hr4_sex_f", "age_cat_cons", "wealth_R_lowestv","i14_shared_razor_f", "i13_shared_toothbrush_f","i15_shared_nailclippers_f",'i12_food_first_chew_f','trans_bin', "i10_street_salon_bin", "i11_manucure_f", "i17_tattoo_bin", "i16_traditional_scarring_f", "transactionalsex", "debutsex_indic","partner3mo_bin","newpartner3mo_indic")
+options(scipen = 999)
 
+glmer_doexp_allor <- map_dfr(alldovar, recr_doexp_logit)
+glmer_doexp_allor <- glmer_doexp_allor %>% 
+  mutate(est_exp = exp(estimate), lowerci_exp = exp(LCI_95), upperci_exp = exp(UCI_95), clr = upperci_exp/lowerci_exp ) %>% mutate_if(is.numeric, ~round(., 2))
+glmer_doexp_allor_k <- glmer_doexp_allor %>% select(c(term,estimate, std.error, LCI_95, UCI_95, est_exp,lowerci_exp,upperci_exp ))
+write.csv(glmer_doexp_allor_k, file = here("Data", "expdo_or.csv") )
+
+m_pr <- glmer(i27a_rdt_result ~  (1 | hrhhid) + as.factor(partner3mo_bin), data=doexp_recr, family=binomial("log"), nAGQ = 0) # 
+summary(m_pr)
+m_or <- glmer(i27a_rdt_result ~  (1 | hrhhid) + as.factor(partner3mo_bin), data=doexp_recr, family=binomial("logit"), nAGQ = 0) # 
+summary(m_or)
+
+do_pr <- c("hr4_sex_f", "wealth_R_lowestv", "i14_shared_razor_f", "i15_shared_nailclippers_f", 'trans_bin', "i10_street_salon_bin", "i11_manucure_f","partner3mo_bin")
+
+test <- map_dfr(do_pr, recr_doexp)
+test <- test %>% 
+  mutate(est_exp = exp(estimate), lowerci_exp = exp(LCI_95), upperci_exp = exp(UCI_95), clr = upperci_exp/lowerci_exp ) %>% mutate_if(is.numeric, ~round(., 2))
+test <- test %>% select(c(term,estimate, std.error, LCI_95, UCI_95, est_exp,lowerci_exp,upperci_exp ))
+view(test)
 # conclusions:  c("hr4_sex_f", "wealth_R_lowestv", "i14_shared_razor_f", "i15_shared_nailclippers_f", 'trans_bin') converge for all 4 
 # "i10_street_salon_bin", "i11_manucure_f",  "partner3mo_bin" do not converge with a subset of models - run individually and append
 
@@ -896,7 +923,7 @@ glmer_doexp_4_rd <- glmer_doexp_4_rd %>% select(-c(term.1)) # drop the term.1 - 
 
 colnames(glmer_doexp_4_rd) <- c('term','logpr','std.error','statistic','p.value','LCI_95','UCI_95','LCI_99','UCI_99','time','pr','lowerci','upperci')
 rownames(glmer_doexp_4_rd) <- 1:nrow(glmer_doexp_4_rd)
-glmer_doexp_4_rd$group <- "Exposed direct offspring"
+glmer_doexp_4_rd$group <- "Index+ direct offspring"
 view(glmer_doexp_4_rd)
 
 glmer_doexp_4_rd <- glmer_doexp_4_rd %>% mutate(level = case_when(
@@ -958,6 +985,7 @@ table(glmer_doexp_4_rd$relsize)
 
 glmer_doexp_4_rd <- glmer_doexp_4_rd %>% group_by(time) %>%  mutate(desorder=row_number())
 view(glmer_doexp_4_rd)
+write.csv(glmer_doexp_4_rd, file = here("Data", "expdo_pr.csv") )
 
 glmer_doexp_4_rd %>% 
   ## these mutate steps were to change order - redone with desorder step directly before
@@ -989,7 +1017,7 @@ ggsave('./plots/fig_expdo_4grp_95.png', width=25, height=9)
 
 # add point est and CIs to figure - use cowplot to combine two parts
 # update to plot axis on log scale
-
+view(glmer_doexp_4_rd)
 plot <- 
   glmer_doexp_4_rd %>% 
   ggplot() +
@@ -1002,7 +1030,7 @@ plot <-
   scale_size(range = c(30,45))+
   scale_color_manual(values=c("#CAE0AB","#A6CB72", "#88B253","#618A3D" ))+ 
   coord_flip()+ 
-  scale_y_log10(breaks = c(0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10, 100), minor_breaks = NULL) +
+  scale_y_log10(breaks = c(0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10, 20), minor_breaks = NULL) +
   labs(y = "Prevalence ratio", x = "Effect") +
   #labs(x="", y="Log(PR) of HBsAg+") + # old version when plotting log(PR)
   theme(
@@ -1069,7 +1097,7 @@ plot_do <-
   ggplot()+
   geom_pointrange(aes(x=fct_rev(fct_reorder(term, desorder)), y=pr, ymin=lowerci, ymax=upperci, color=time, size=relsize), shape=15,   position=position_dodge2(width=0.8),fatten=0.1) + #size=0.8,  #show.legend=F,  color=timepoint
   geom_hline(yintercept = 1.0, linetype = "dashed", size = 1) +
-  scale_y_log10(breaks = c(0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10, 100),
+  scale_y_log10(breaks = c(0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10),
                 minor_breaks = NULL) +
   labs(y = "Prevalence ratio", x = "Effect") +
   scale_size(range = c(30,45))+
@@ -1175,20 +1203,24 @@ exp(confint(m_glm, method = c("Wald"), level = 0.95))
 exp(confint(m_glm, method = c("Wald"), level = 0.99))
 
 ### fisher exact--repeat for all with low counts?
-fisher.test(directoffexp$i27a_rdt_result,directoffexp$hr4_sex_f, conf.level = 0.99)
-fisher.test(directoffexp$i27a_rdt_result,directoffexp$cpshbvprox_rev)
-fisher.test(directoffexp$i27a_rdt_result,directoffexp$wealth_R_lowestv)
-fisher.test(directoffexp$i27a_rdt_result,directoffexp$sharedhhobj)
-fisher.test(directoffexp$i27a_rdt_result,directoffexp$i12_food_first_chew)
-fisher.test(directoffexp$i27a_rdt_result,directoffexp$trans_bin)
-fisher.test(directoffexp$i27a_rdt_result,directoffexp$i10_street_salon_bin)
-fisher.test(directoffexp$i27a_rdt_result,directoffexp$i11_manucure)
-fisher.test(directoffexp$i27a_rdt_result,directoffexp$i17_tattoo_bin)
-fisher.test(directoffexp$i27a_rdt_result,directoffexp$i16_traditional_scarring)
-fisher.test(directoffexp$i27a_rdt_result,directoffexp$transactionalsex)
-fisher.test(directoffexp$i27a_rdt_result,directoffexp$debutsex_indic)
-fisher.test(directoffexp$i27a_rdt_result,directoffexp$partner3mo_bin)
-fisher.test(directoffexp$i27a_rdt_result,directoffexp$newpartner3mo_indic)
+fisher.test(doexp_recr$i27a_rdt_result, doexp_recr$hr4_sex_f, conf.level = 0.95)
+fisher.test(doexp_recr$i27a_rdt_result,doexp_recr$age_cat_cons)
+fisher.test(doexp_recr$i27a_rdt_result,doexp_recr$wealth_R_lowestv)
+fisher.test(doexp_recr$i27a_rdt_result,doexp_recr$i14_shared_razor_f)
+fisher.test(doexp_recr$i27a_rdt_result,doexp_recr$i13_shared_toothbrush_f)
+fisher.test(doexp_recr$i27a_rdt_result,doexp_recr$i15_shared_nailclippers_f)
+fisher.test(doexp_recr$i27a_rdt_result,doexp_recr$i12_food_first_chew)
+fisher.test(doexp_recr$i27a_rdt_result,doexp_recr$trans_bin)
+fisher.test(doexp_recr$i27a_rdt_result,doexp_recr$i10_street_salon_bin)
+fisher.test(doexp_recr$i27a_rdt_result,doexp_recr$i11_manucure)
+fisher.test(doexp_recr$i27a_rdt_result,doexp_recr$i17_tattoo_bin)
+fisher.test(doexp_recr$i27a_rdt_result,doexp_recr$i16_traditional_scarring)
+fisher.test(doexp_recr$i27a_rdt_result,doexp_recr$transactionalsex)
+fisher.test(doexp_recr$i27a_rdt_result,doexp_recr$debutsex_indic)
+fisher.test(doexp_recr$i27a_rdt_result,doexp_recr$partner3mo_bin)
+fisher.test(doexp_recr$i27a_rdt_result,doexp_recr$newpartner3mo_indic)
+
+table(new3mo =doexp_recr$newpartner3mo_indic, hbsag = doexp_recr$i27a_rdt_result)
 
 #Unexp Direct offspring---------------------------------------------------------------
 dounexp_recr <-directoff %>% filter(h10_hbv_rdt == 0)
