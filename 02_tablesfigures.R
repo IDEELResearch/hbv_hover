@@ -658,7 +658,7 @@ fig2c <- fig2c %>% unite(label, c(1:4), sep = "_", remove = FALSE)
 view(fig2c)
 library("RColorBrewer")
 
-library("ggchicklet")
+# library("ggchicklet") # probably not using this
 brewer.pal(9, "RdGy")
 my_rdgy <- c("#B2182B", "#D6604D", "#F4A582", "#FDDBC7", "#FFFFFF", "#E0E0E0", "#BABABA", "#878787", "#4D4D4D")
 
