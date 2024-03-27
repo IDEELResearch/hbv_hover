@@ -8,6 +8,10 @@
 # User-specific files
 .Ruserdata
 
+# Data files
+/Data/
+*.xlsx
+
 # subfolders
 /plots
 /subproj
