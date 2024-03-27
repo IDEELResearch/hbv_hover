@@ -5,6 +5,10 @@
       {
         "Name": "CRAN",
         "URL": "https://packagemanager.posit.co/cran/latest"
+      },
+      {
+        "Name": "RINLA",
+        "URL": "https://inla.r-inla-download.org/R/stable"
       }
     ]
   },
@@ -43,7 +47,8 @@
     "INLA": {
       "Package": "INLA",
       "Version": "23.04.24",
-      "Source": "unknown",
+      "Source": "Repository",
+      "Repository": "RINLA",
       "Requirements": [
         "Matrix",
         "R",
@@ -1157,17 +1162,6 @@
         "utils"
       ],
       "Hash": "a535d76cf92645364997a8751396d63b"
-    },
-    "ggchicklet": {
-      "Package": "ggchicklet",
-      "Version": "0.5.0",
-      "Source": "unknown",
-      "Requirements": [
-        "R",
-        "ggplot2",
-        "grid"
-      ],
-      "Hash": "060b1c511fb3ccabebf385bb186bb2a5"
     },
     "ggforce": {
       "Package": "ggforce",
