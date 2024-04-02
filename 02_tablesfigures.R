@@ -3,6 +3,9 @@
 # packages for this program
 library(tableone)
 library(tidyverse)
+library(here)
+
+
 #Table 1--------------------
 ##Household--------------------------------------------------------------------------------
 # create table 1
@@ -227,15 +230,6 @@ inddata1 %>% group_by(hhmemcat_f,h10_hbv_rdt_f) %>% filter(!is.na(i6_comb_yr) & 
 # overall
 inddata1  %>%  group_by(h10_hbv_rdt_f) %>% filter(!is.na(i6_comb_yr) & i6_comb_yr!=0) %>%  summarise(median(i6_comb_yr), quantile(i6_comb_yr, probs=c(0.25, 0.75)))
 
-## misc for IRB renewal---------
-hhsincerenew <- (hhdata1 %>% filter(hdov > '2021-10-11'))
-#new members since last approval
-nrow(inddata1 %>% filter(hrhhid %in% hhsincerenew$hrhhid))
-#children
-nrow(inddata1 %>% filter(age_combined <18))
-#pregnant
-table(inddata1$i5_pregnancy_f)
-
 # misc for CROI abstract------------------------------------------------------------------------
 nrow(inddata1 %>% filter(age_combined < 18)) # how many under 18
 nrow(inddata1 %>% filter(age_combined < 18))/nrow(inddata1) # %  under 18
@@ -248,12 +242,9 @@ table(inddata1$i27a_rdt_result_f, inddata1$indexmom)
 
 #how many serostatus changes
 inddata1 %>% filter(indexmom=="Mère index") %>% group_by(h10_hbv_rdt_f ,i27a_rdt_result_f) %>% count()
-6/195
 
 # how many new positives (non-index mothers)
 inddata1 %>% filter(indexmom=="Membre de ménage") %>% group_by(h10_hbv_rdt_f ,i27a_rdt_result_f) %>% count()
-19/(359+19+2)
-8/(413+8+2)
 
 #clusters of infections
 addmargins(table(hhdata1$totalpositive, hhdata1$h10_hbv_rdt_f))
@@ -603,8 +594,6 @@ inddata1 %>% group_by(i27a_rdt_result_f) %>% count(hr3relat_simp_f)
 table(inddata1$hr3_relationship_f,inddata1$i27a_rdt_result_f)
 
 inddata1 %>% filter(i27a_rdt_result==1 & hr3_relationship==3) %>% reframe(pid)
-inddata1 %>% filter(hrhhid=="HRK2081") %>% reframe(hr3_relationship_f, i27a_rdt_result_f)
-ind1006 %>% filter(hrhhid=="HRK2081") %>% reframe(hr3_relationship_f, i27a_rdt_result_f, age_combined)
 
 inddata1 %>% group_by(h10_hbv_rdt) %>% reframe(quantile = scales::percent(c(0.25, 0.5, 0.75)),
                                                numdiroff = quantile(numdiroff, c(0.25, 0.5, 0.75)))

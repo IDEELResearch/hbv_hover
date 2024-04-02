@@ -11,7 +11,6 @@ library(scales)
 library(REDCapR)
 library(readr)
 library(lubridate)
-
 library(sf)
 library(tmap)    # for static and interactive maps
 library(leaflet) # for interactive maps
@@ -27,104 +26,61 @@ nounprojgraphcol <- c("#4D4D4D","#B2182B")
 
 #Load data----------------------------------------------------------------
 
-# API route
+#Data for this study were originally importing directly from the REDCap server using an API token.
+#While this route for data import is not available for users outside the study, the code for how this was done is shown here. CSV import using the publicly available datasets is shown further below.
 data0 <- redcap_read_oneshot(redcap_uri = "https://global.redcap.unc.edu/api/",
                              token = read_file(here("redcap_api", "file.txt") %>% str_remove("hbv_hover/")))$data
+# household and individual data are loaded in same dataset, one row per questionnaire. for all household questionnaire entries, the individual questions are empty, and vice versa. 
+# the first row for a given household is the household questionnaire and the following rows are the individual entries for that household
 
-#subset data to all valid IDs
-data1<- data0 %>% 
-  dplyr::filter(hrhhid!="HRB -1045" & hrhhid!="HRB -1048" & hrhhid!="HRB -1059" & hrhhid!="HRK-1101") 
+#every household should have at least two rows in the downloaded file, as there should be one household questionnaire and at least one individual questionnaire completed. remove rows of false entries (opened but not completed enrollments)
+data1 <- data0 %>% 
+  add_count(hrhhid) %>% 
+  filter(n>1) %>% 
+  rename(origids = hrhhid)
 
-# HR2084 enrolled on April 17 remains HRK 2084 and HRK-2084 on April 30 should be HRK-2085
-data1$hrhhid <- ifelse(data1$hrhhid=="HRK-2084", "HRK-2085", data1$hrhhid)
+# create new random ID variable
+set.seed(888)
+ids <- data1 %>% select(hrhhid) %>% unique() %>% mutate(hrhhid = sample(1000:9999, nrow(ids), replace = F))
+write.csv(ids, here("Data", "hover_id_link.csv"), row.names = FALSE)
+data2 <- left_join(data1, ids, by = "origids")
+data2 <- data2 %>% relocate(hrhhid) %>% select(-origids)
+#make sure ID variable saved as character
+data2$hrhhid <- as.character(data2$hrhhid)
+# create year variable 
+data2$hdov_year <- year(data2$hdov)
 
-data1$hrhhid <- toupper(data1$hrhhid)
-# Add maternity center where women originally presented for maternity care
-data1$mat <- substr(data1$hrhhid,3,3)
-#table(data1$mat)
-data1$maternity <- ifelse(data1$mat=="B","Binza",
-                          ifelse(data1$mat=="K","Kingasani",
-                                 ifelse(data1$hrhhid=="HR2012","Kingasani",
-                                        ifelse(data1$hrhhid=="RB-1047","Binza",
-                                               ifelse(data1$hrhhid=="HR2086","Kingasani",
-                                                      ifelse(data1$hrhhid=="HR2087","Kingasani",""))))))
-# select household entries
-hhdata1 <- data1[(is.na(data1$redcap_repeat_instrument)), ]
-
+## select household entries
+hhdata1 <- data2[(is.na(data2$redcap_repeat_instrument)), ]
 # for hh dataset, select only hh variables
 hhdata1 <- hhdata1 %>% 
-  dplyr::select(starts_with("h"), "questionnaire_menage_complete", "maternity")
-hhdata1 <- hhdata1 %>% relocate("maternity", .after = "h10_hbv_rdt")
-# table(hhdata1$hxcoord, useNA = "always") #check if any non-missing GPS coords of hh are same (duplicate hh)
+  dplyr::select(starts_with("h"), "questionnaire_menage_complete")
+                         
+## select individual entries
+inddata1 <- data2[!is.na(data2$redcap_repeat_instrument),] #data2$redcap_repeat_instrument=="questionnaire_individuel"
+# select only individual variables
+inddata1 <- inddata1 %>% 
+  dplyr::select("hrhhid", "redcap_repeat_instance", "participant_code","hxcoord", "hycoord",starts_with("hr"), starts_with("i"))
+
+# add index mother recruitment HBV status h10_hbv_rdt (index status of hh) on individual dataset
+inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid", "h10_hbv_rdt", "hdov", "hdov_year")] ,by = "hrhhid")
+
+inddata1 <- inddata1 %>% relocate("h10_hbv_rdt", .after = "participant_code")
+#remove empty entries
+inddata1<- inddata1 %>% 
+  dplyr::filter(!is.na(inddata1$participant_code))
+#individual PID var
+inddata1$pid <- paste0(inddata1$hrhhid,"-",inddata1$participant_code)
+
+##Import from CSV----
+inddata1 <- read.csv(here("hover_individual.csv")) # this route assumes the data has been stored in the same folder as the code. adjust as needed
+hhdata1 <- read.csv(here("hover_individual.csv")) # this route assumes the data has been stored in the same folder as the code. adjust as needed
+
+# Clean GPS data--------------------------------------------------
+# code for cleaning GPS data below, but actual GPS data are not shared with publicly available dataset, due to security of PII
 # save GPS coords as numeric
 hhdata1$hxcoord <- as.numeric(hhdata1$hxcoord)
 hhdata1$hycoord <- as.numeric(hhdata1$hycoord)
-
-#  HRB-1028 coordinates using coords from the correct neighborhood, randomly chosen (interview took place at BINZA)
-hhdata1$hxcoord[hhdata1$hrhhid=="HRB-1028"] <- 4.405503
-hhdata1$hycoord[hhdata1$hrhhid=="HRB-1028"] <- 15.273940
-#  HRB-1040 coordinates using coords from the correct neighborhood (interview took place at BINZA)
-hhdata1$hxcoord[hhdata1$hrhhid=="HRB-1040"] <- 4.409953
-hhdata1$hycoord[hhdata1$hrhhid=="HRB-1040"] <- 15.245214
-
-# select individual entries
-inddata1 <- data1[!is.na(data1$redcap_repeat_instrument),] #data1$redcap_repeat_instrument=="questionnaire_individuel"
-# select only individual variables
-inddata1 <- inddata1 %>% 
-  dplyr::select("hrhhid", "redcap_repeat_instance", "participant_code", "maternity","hxcoord", "hycoord",starts_with("hr"), starts_with("i"))
-
-# add index mother HBV status (HBV status of hh)
-inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid", "h10_hbv_rdt", "hdov")], by = "hrhhid")
-
-inddata1 <- inddata1 %>% relocate("h10_hbv_rdt", .after = "participant_code")
-inddata1<- inddata1 %>% 
-  dplyr::filter(!is.na(inddata1$participant_code))
-
-#Clusters/hh prev-----------
-totalhbsagpositive <- inddata1 %>%
-  dplyr::group_by(hrhhid) %>%
-  dplyr::summarise(totalpositive = sum(i27a_rdt_result, na.rm=TRUE), n=n()) # added onto datasets below
-
-## create variable to identify new screening/how recruited
-hhdata1$recruited <- ifelse(hhdata1$hdov > "2022-02-28","Nouveau screening","Étude précédente" )
-table(hhdata1$recruited, hhdata1$h10_hbv_rdt)
-
-hhdata1 <- left_join(hhdata1, totalhbsagpositive, by = "hrhhid")
-inddata1 <- left_join(inddata1, hhdata1[, c("hrhhid","totalpositive", "n", "recruited")],  by = "hrhhid")
-
-clusters <- inddata1[inddata1$totalpositive >1, ]
-table(clusters$hrhhid)
-
-#Prevalence in hh
-hhdata1$hhprev <- ifelse(hhdata1$totalpositive==0,0,hhdata1$totalpositive/hhdata1$n)
-
-# prev by hh exposure status
-hhdata1 %>% group_by(h10_hbv_rdt) %>% reframe(quantile = scales::percent(c(0.25, 0.5, 0.75)),
-                                                hhprev = quantile(hhprev, c(0.25, 0.5, 0.75)))
-
-summary(hhdata1$hhprev)
-hist(hhdata1$hhprev)
-
-# Add recruitment maternity--------------------
-library(readxl)
-priorstudies <- read_excel(here("Data", "HOVER etudes precedentes.xlsx"), sheet = "forimport")
-
-hhdata1 <- left_join(hhdata1, priorstudies, by = c("hrhhid"))
-inddata1 <- left_join(inddata1, priorstudies, by = c("hrhhid"))
-
-# Clean GPS data--------------------------------------------------
-# latitudes are below equator, so need to be negative decimal degrees
-options(scipen = 999) # need GPS data not to be in sci notation
-options("digits" = 15) # avoid truncation of gps coords
-
-mat_gps <- read_excel(here("Data", "HOVER etudes precedentes.xlsx"), sheet = "maternity_cpn_gps")
-
-mat_gps_nomiss <- mat_gps %>% filter(!is.na(mat_long)) # waiting for input on missing locations
-mat_gps_sf <-  st_as_sf(mat_gps_nomiss, coords = c("mat_long","mat_lat"), crs= 4326)
-# add value for size on map
-mat_gps_sf$binzking <- ifelse(mat_gps_sf$cpn_maternity=="Binza" | mat_gps_sf$cpn_maternity=="Kingasani", 4,1)
-table(mat_gps_sf$binzking)
-
 # check GPS data formatting
 hhdata1$hycoord_edit <- ifelse(floor(log10(hhdata1$hycoord))==7,
                                hhdata1$hycoord/1000000,
@@ -133,7 +89,6 @@ hhdata1$hycoord_edit <- ifelse(floor(log10(hhdata1$hycoord))==7,
 hhdata1$hxcoord_edit <- ifelse(floor(log10(hhdata1$hxcoord))==5,
                                hhdata1$hxcoord/100000,
                                hhdata1$hxcoord)
-
 
 hhdata1$hxcoord_edit <- (hhdata1$hxcoord_edit)*-1
 
@@ -173,7 +128,7 @@ addmargins(table(hhdata1$modernroof,useNA = "always"))
 # select out missing obs to check
 # do these truly not have rooves?
 missingroof <- hhdata1 %>% 
-  dplyr::select( "hrhhid","h10_hbv_rdt", "maternity" ,"hdov", starts_with("h1_roof")) %>% 
+  dplyr::select( "hrhhid","h10_hbv_rdt", "hdov", starts_with("h1_roof")) %>% 
   filter(is.na(hhdata1$modernroof))
 
 ## Walls----------------------------------------
@@ -497,8 +452,7 @@ pca_R_output <- pca_R_output %>% rename(hrhhid = `wealthpca_hoverhh_nomiss$hrhhi
 # add new wealth variable back onto main enrollment dataset
 
 hhdata1 <- inner_join(hhdata1, pca_R_output[, c("hrhhid", "wealth_R")], by = c("hrhhid"))
-# check new variable
-table(hhdata1$wealth_R, hhdata1$maternity, useNA = "always")
+
 
 #put wealth onto individual dataset
 inddata1 <- left_join(inddata1, hhdata1[,c("hrhhid","wealth_R")],  by = "hrhhid")
@@ -554,7 +508,7 @@ table(hhdata1$h9_razor_f ,hhdata1$h8a_razer_owned) # what does 96 mean - probabl
 #Final hh spatial object with new variables---------
 hover_gps = st_as_sf(hhdata1[!is.na(hhdata1$hxcoord_edit) &!is.na(hhdata1$hycoord_edit),], coords = c("hycoord_edit", "hxcoord_edit"), crs = 4326)  
 hover_gps_full <- hover_gps
-hover_gps <- subset(hover_gps, select=c( "h10_hbv_rdt_f" , "hrhhid","geometry","maternity","cpn_maternity")) #maternity = indicator for study nurse; cpn_maternity=where their hbsag test was actually done (includes ACQ)
+hover_gps <- subset(hover_gps, select=c( "h10_hbv_rdt_f" , "hrhhid","geometry")) 
 
 #Clean individual survey variables------------------------
 inddata1 <- inddata1 %>% 
@@ -581,21 +535,17 @@ inddata1 %>% group_by(h10_hbv_rdt_f) %>%
 # TDP+hepB first introduced as tetravalent in 2007, limited distribution
 # TDP+hepB+Hib not really distributed until 2009, per 2009 Gavi progress report
 
-inddata1 %>% filter(age_combined < 17) %>% 
-  ggplot()+geom_histogram(aes(x=hdov))
-
-
 # re-coded agegrp15_2 which was based on 15yrs but not year of study enr
 inddata1 = inddata1 %>%
   mutate(age_cat = case_when(
-    year(hdov)=="2021" & age_combined <= 12 ~ 0, # born since penta introduced - ref group
-    year(hdov)=="2022" & age_combined <= 13 ~ 0, # born since penta introduced - ref group
+    hdov_year=="2021" & age_combined <= 12 ~ 0, # born since penta introduced - ref group
+    hdov_year=="2022" & age_combined <= 13 ~ 0, # born since penta introduced - ref group
     
-    year(hdov)=="2021" & age_combined > 12 & age_combined <= 14 ~ 1, # between tetra/penta
-    year(hdov)=="2022" & age_combined > 13 & age_combined <= 15 ~ 1, # between tetra/penta
+    hdov_year=="2021" & age_combined > 12 & age_combined <= 14 ~ 1, # between tetra/penta
+    hdov_year=="2022" & age_combined > 13 & age_combined <= 15 ~ 1, # between tetra/penta
     
-    year(hdov)=="2021" & age_combined > 14 ~ 2, # no vacc
-    year(hdov)=="2022" & age_combined > 15 ~ 2, # no vacc
+    hdov_year=="2021" & age_combined > 14 ~ 2, # no vacc
+    hdov_year=="2022" & age_combined > 15 ~ 2, # no vacc
 
     TRUE ~ 0) %>% as.factor())
 table(inddata1$age_cat, useNA = "always")
@@ -885,11 +835,7 @@ table(inddata1$i14_shared_razor, useNA = "always") # some missing
 #which ones missing
 inddata1 %>% filter(is.na(i14_shared_razor)) %>% reframe(hrhhid, age_combined,hr4_sex_f, hr3_relationship_f)
 # use household questions on razors and responses of other hh members to assign value for individual missing
-hhdata1 %>% filter(hrhhid == "HRB-1100") %>% reframe(h9_razor, h8a_razer_owned) # doesn't own razors - assign i14_shared_razor==0
-inddata1 %>% filter(hrhhid=="HRB-1100") %>% reframe(hrhhid, age_combined,hr4_sex_f, hr3_relationship_f,i14_shared_razor)
-
-hhdata1 %>% filter(hrhhid == "HRK-2026") %>% reframe(h9_razor, h8a_razer_owned) # doesn't own razors - assign i14_shared_razor==0
-inddata1 %>% filter(hrhhid=="HRK-2026") %>% reframe(hrhhid, age_combined,hr4_sex_f, hr3_relationship_f,i14_shared_razor)
+# in both of these households, the individuals don't own razors, so  i14_shared_razor==0 is assigned
 
 inddata1$i14_shared_razor <- ifelse(is.na(inddata1$i14_shared_razor),0,inddata1$i14_shared_razor) # can give all 0 if missing based above analysis above
 
@@ -904,10 +850,8 @@ table(inddata1$i14_shared_razor_f, useNA = "always") #
 table(inddata1$i15_shared_nailclippers, useNA = "always") # some missing
 #which ones missing
 inddata1 %>% filter(is.na(i15_shared_nailclippers)) %>% summarise(hrhhid, age_combined,hr4_sex_f, hr3_relationship_f)
-# use household questions on nail clippers to assign value for individual missing
-hhdata1 %>% filter(hrhhid == "HRK-2007") %>% summarise(h8_nail_cutting, h8a_nail_clippers_owned) 
-inddata1 %>% filter(hrhhid == "HRK-2007") %>%  reframe(hrhhid, age_combined,hr4_sex_f, hr3_relationship_f,i15_shared_nailclippers)
-# other children < 15 have value 0 so assigning missing one to this  
+# use questions on inddata1 dataset for nail clippers to assign value for individual missing
+# other children < 15 have value 0 so assigning member with missing value to 0
 inddata1$i15_shared_nailclippers <- ifelse(is.na(inddata1$i15_shared_nailclippers),0,inddata1$i15_shared_nailclippers) 
 
 inddata1 <- inddata1 %>% 
@@ -1018,14 +962,14 @@ table(inddata1$i13_shared_toothbrush, useNA = "always") # some missing
 #which ones missing
 inddata1 %>% filter(is.na(i13_shared_toothbrush)) %>% reframe(hrhhid, age_combined,hr4_sex_f, hr3_relationship_f)
 # use household questions on toothbrushes to assign value for individual missing
-inddata1 %>% filter(hrhhid == "HRK-2007") %>%  reframe(hrhhid, age_combined,hr4_sex_f, hr3_relationship_f,i13_shared_toothbrush)
+inddata1 %>% filter(hrhhid == "7425") %>%  reframe(hrhhid, age_combined,hr4_sex_f, hr3_relationship_f,i13_shared_toothbrush)
 # no one else in 2007 shares toothbrush, assign the missing to 0
-inddata1 %>% filter(hrhhid == "HRK2038") %>%  reframe(hrhhid, age_combined,hr4_sex_f, hr3_relationship_f,i13_shared_toothbrush)
+inddata1 %>% filter(hrhhid == "4162") %>%  reframe(hrhhid, age_combined,hr4_sex_f, hr3_relationship_f,i13_shared_toothbrush)
 # spouse and youngest in 2038 share, assign sharing to index mother
 
 # reassign the missing
-inddata1$i13_shared_toothbrush <- ifelse(is.na(inddata1$i13_shared_toothbrush) & inddata1$hrhhid == "HRK-2007",0,inddata1$i13_shared_toothbrush) 
-inddata1$i13_shared_toothbrush <- ifelse(is.na(inddata1$i13_shared_toothbrush) & inddata1$hrhhid == "HRK2038",1,inddata1$i13_shared_toothbrush) 
+inddata1$i13_shared_toothbrush <- ifelse(is.na(inddata1$i13_shared_toothbrush) & inddata1$hrhhid == "7425",0,inddata1$i13_shared_toothbrush) 
+inddata1$i13_shared_toothbrush <- ifelse(is.na(inddata1$i13_shared_toothbrush) & inddata1$hrhhid == "4162",1,inddata1$i13_shared_toothbrush) 
 
 inddata1 <- inddata1 %>% 
   dplyr::mutate(i13_shared_toothbrush_f=factor(
@@ -1251,7 +1195,6 @@ table(inddata1$debutsex_cat)
 inddata1$i23_sex_hx_part_past3mo <- as.numeric(inddata1$i23_sex_hx_part_past3mo)
 class(inddata1$i23_sex_hx_part_past3mo)
 table(inddata1$i23_sex_hx_part_past3mo,inddata1$hhmemcat_4_f, useNA = "always") # confirm what 95, 96 mean
-inddata1 %>% filter(i23_sex_hx_part_past3mo == 95 |i23_sex_hx_part_past3mo == 96  ) %>% reframe(hrhhid, hr3_relationship_fr, age_combined,paststudymutexcl,i22_sex_hx_age_1st,hrname_first, hrname_last, hrname_post)
 # same individuals of value or 95 or 96 for subsequent questions
 
 inddata1$i23_sex_hx_part_past3mo_f <- as.factor(inddata1$i23_sex_hx_part_past3mo)
@@ -1293,7 +1236,6 @@ table(inddata1$partner3mo_bin,inddata1$part3mo_cat, useNA = 'always')
 # new partners in last 3 months
 inddata1$i23a_sex_hx_past3mo_num <- as.numeric(inddata1$i23a_sex_hx_past3mo_num)
 table(inddata1$i23a_sex_hx_past3mo_num, useNA = "always") # figure out what 95 means
-inddata1 %>% filter(i23a_sex_hx_past3mo_num >= 95) %>% reframe(hrhhid, hr3_relationship_fr, age_combined,paststudymutexcl,hrname_first, hrname_last, hrname_post)
 
 # recode missing new partners in last 3mo
 inddata1 = inddata1 %>%
@@ -1473,9 +1415,6 @@ inddata1 <- inddata1 %>%
   ) %>% as.numeric())
 table(inddata1$agediff_grands) #n=3 with grandchildren, might as well verify all
 
-# PID var------
-inddata1$pid <- paste0(inddata1$hrhhid,"-",inddata1$participant_code)
-
 # additional variables - should add these to the cleaned dataset that includes new enrollments
 
 #.................................
@@ -1568,12 +1507,12 @@ table(inddata1$i5_pregnancy_f, useNA = "always")
 # sens analysis with 2021 vs 2022 enrollments, potential birth at beginning vs end of year
 inddata1 = inddata1 %>%
   mutate(cpshbvprox = case_when(
-    hdov < '2022-01-01' & age_combined >= 15 ~ 0, # prob not vacc 2021 enroll: 14 oldest born in 2007 so 15yo and above likely wouldn't be vacc
-    hdov > '2022-01-01' & age_combined >= 16 ~ 0, # prob not vacc 2022 enroll: 15 oldest born in 2007 so 16yo and above likely wouldn't be vacc
-    hdov < '2022-01-01' & age_combined < 15 & age_combined >11  ~ 1, # poss vacc during rollout 2021 enroll: 12-14 yos in rollout
-    hdov > '2022-01-01' & age_combined < 16 & age_combined >12 ~ 1, # poss vacc during rollout2 022 enroll: 13-15 yos in rollout
-    hdov < '2022-01-01' & age_combined <= 11 ~ 2, # likely vacc 2021 enroll: <=11 likely vacc
-    hdov > '2022-01-01' & age_combined <= 12 ~ 2, # likely vacc 2022 enroll: <=12 likely vacc
+    hdov_year < '2022' & age_combined >= 15 ~ 0, # prob not vacc 2021 enroll: 14 oldest born in 2007 so 15yo and above likely wouldn't be vacc
+    hdov_year > '2022' & age_combined >= 16 ~ 0, # prob not vacc 2022 enroll: 15 oldest born in 2007 so 16yo and above likely wouldn't be vacc
+    hdov_year < '2022' & age_combined < 15 & age_combined >11  ~ 1, # poss vacc during rollout 2021 enroll: 12-14 yos in rollout
+    hdov_year > '2022' & age_combined < 16 & age_combined >12 ~ 1, # poss vacc during rollout2 022 enroll: 13-15 yos in rollout
+    hdov_year < '2022' & age_combined <= 11 ~ 2, # likely vacc 2021 enroll: <=11 likely vacc
+    hdov_year > '2022' & age_combined <= 12 ~ 2, # likely vacc 2022 enroll: <=12 likely vacc
     TRUE ~ 0) %>% as.numeric())
 table(inddata1$cpshbvprox, inddata1$age_combined)
 
@@ -1591,7 +1530,7 @@ table(inddata1$cpshbvprox_rev, useNA = "always")
 table(inddata1$cpshbvprox, useNA = "always")
 
 # pos male partner - 2015 has two partners enrolled after fogarty
-men <- inddata1 %>% filter(hr3_relationship == 2) %>% select("hrhhid", "pid","hdov","h10_hbv_rdt","hr3_relationship_f", "i3_hiv_pos_test_f","acq_ind","avert_indic","astmh_indic","i27a_rdt_result","i27a_rdt_result_f", 
+men <- inddata1 %>% filter(hr3_relationship == 2) %>% select("hrhhid", "pid","hdov","hdov_year","h10_hbv_rdt","hr3_relationship_f", "i3_hiv_pos_test_f","acq_ind","avert_indic","astmh_indic","i27a_rdt_result","i27a_rdt_result_f", 
                                                              "age_combined","age_cat","serostatchange","serochangedir","i23_sex_hx_part_past3mo","i23a_sex_hx_past3mo_num","i24_sex_hx_part_past1yr","i24a_sex_hx_past1yr_num","malepartner")
 
 men <- men %>% mutate(malepartpos = case_when(
